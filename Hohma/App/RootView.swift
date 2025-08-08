@@ -1,9 +1,10 @@
 import SwiftUI
-
+import Inject
 struct RootView: View {
     @State private var selection: String = "home"
     @StateObject private var authViewModel = AuthViewModel()
-    
+        @ObserveInjection var inject
+
     var body: some View {
         ZStack {
             AnimatedGradientBackground()
@@ -60,6 +61,7 @@ struct RootView: View {
                 }
             }
         }
+        .enableInjection()
         
     }
     

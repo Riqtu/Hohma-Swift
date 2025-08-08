@@ -1,6 +1,7 @@
 import SwiftUI
-
+import Inject   
 struct HomeView: View {
+    @ObserveInjection var inject
     // Массив карточек (чтобы было удобно генерировать)
     let cards: [CardData] = [
         CardData(
@@ -48,6 +49,7 @@ struct HomeView: View {
                     .padding(.bottom)
                     
                 }
+        .enableInjection()
         }
 }
 

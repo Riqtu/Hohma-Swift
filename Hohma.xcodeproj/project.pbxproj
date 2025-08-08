@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		987FCED02E45FFF300AAB2F3 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 987FCECF2E45FFF300AAB2F3 /* Inject */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		98FE9B0C2E3FA8EC004AEED5 /* Hohma.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hohma.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				987FCED02E45FFF300AAB2F3 /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98FE9B182E3FA8ED004AEED5 /* Build configuration list for PBXNativeTarget "Hohma" */;
 			buildPhases = (
+				98199BA62E460C4500F2A306 /* ShellScript */,
 				98FE9B082E3FA8EC004AEED5 /* Sources */,
 				98FE9B092E3FA8EC004AEED5 /* Frameworks */,
 				98FE9B0A2E3FA8EC004AEED5 /* Resources */,
@@ -78,6 +84,7 @@
 			);
 			name = Hohma;
 			packageProductDependencies = (
+				987FCECF2E45FFF300AAB2F3 /* Inject */,
 			);
 			productName = Hohma;
 			productReference = 98FE9B0C2E3FA8EC004AEED5 /* Hohma.app */;
@@ -107,6 +114,9 @@
 			);
 			mainGroup = 98FE9B032E3FA8EC004AEED5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				987FCECE2E45FFF300AAB2F3 /* XCRemoteSwiftPackageReference "Inject" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 98FE9B0D2E3FA8EC004AEED5 /* Products */;
 			projectDirPath = "";
@@ -126,6 +136,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		98199BA62E460C4500F2A306 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "#!/bin/bash\n\n# Function to modify a single Swift file\nmodify_swift_file() {\n    local filepath=\"$1\"\n    local filename=$(basename \"$filepath\")\n    local tempfile=\"$filepath.tmp\"\n\n    # Check if the file should be processed\n    if [[ $(grep -c \": View {\" \"$filepath\") -eq 0 ]]; then\n        echo \"Skipping: $filename (No ': View {' found)\"\n        return\n    fi\n\n    # Create a temporary file for modifications\n    cp \"$filepath\" \"$tempfile\"\n\n    # 1. Add import Inject if needed\n    if ! grep -q \"import Inject\" \"$tempfile\"; then\n        sed -i '' -e '/^import SwiftUI/a\\\nimport Inject' \"$tempfile\"\n    fi\n\n    # 2. Add @ObserveInjection var inject if needed\n    if ! grep -q \"@ObserveInjection var inject\" \"$tempfile\"; then\n        sed -i '' -e '/struct.*: View {/a\\\n    @ObserveInjection var inject' \"$tempfile\"\n    fi\n\n    # 3. Add .enableInjection() just before the closing brace of the body\n    # Find the start of var body: some View {\n    local body_start_line=$(grep -n \"var body: some View {\" \"$tempfile\" | cut -d ':' -f 1)\n\n    if [[ -n \"$body_start_line\" ]]; then\n        # Get the line number of the closing brace of the body\n        local body_end_line=$(awk -v start=\"$body_start_line\" '\n            NR == start { count = 1 }\n            NR > start {\n                if ($0 ~ /{/) count++\n                if ($0 ~ /}/) {\n                    count--\n                    if (count == 0) {\n                        print NR\n                        exit\n                    }\n                }\n            }\n        ' \"$tempfile\")\n\n        if [[ -n \"$body_end_line\" ]]; then\n            # Check if .enableInjection() is already present\n            if ! grep -q \".enableInjection()\" \"$tempfile\"; then\n                # Insert .enableInjection() before the closing brace of the body\n                sed -i '' -e \"${body_end_line}i\\\\\n        .enableInjection()\" \"$tempfile\"\n            fi\n        fi\n    fi\n\n    # Check if modifications were made and overwrite the original file\n    if ! cmp -s \"$filepath\" \"$tempfile\"; then\n        mv \"$tempfile\" \"$filepath\"\n        echo \"Modified: $filename\"\n    else\n        echo \"No changes for: $filename\"\n    fi\n\n    rm -f \"$tempfile\"\n}\n\n# Main script\nfind \"$SRCROOT\" -name \"*.swift\" -print0 | while IFS= read -r -d $'\\0' filepath; do\n    modify_swift_file \"$filepath\"\ndone\n\necho \"Inject modification script completed.\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		98FE9B082E3FA8EC004AEED5 /* Sources */ = {
@@ -263,6 +293,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4D7KVU7P88;
+				EMIT_FRONTEND_COMMAND_LINES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -282,6 +313,10 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-Xlinker",
+					"-interposable",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = riqtu.Hohma;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -303,6 +338,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4D7KVU7P88;
+				EMIT_FRONTEND_COMMAND_LINES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -356,6 +392,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		987FCECE2E45FFF300AAB2F3 /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		987FCECF2E45FFF300AAB2F3 /* Inject */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 987FCECE2E45FFF300AAB2F3 /* XCRemoteSwiftPackageReference "Inject" */;
+			productName = Inject;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 98FE9B042E3FA8EC004AEED5 /* Project object */;
 }

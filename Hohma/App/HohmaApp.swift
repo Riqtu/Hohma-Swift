@@ -6,9 +6,16 @@
 //
 
 import SwiftUI
+import Inject
 
 @main
 struct hohmaApp: App {
+    
+    init() {
+        #if DEBUG
+        InjectConfiguration.animation = .interactiveSpring()
+        #endif
+    }
     
     var body: some Scene {
         WindowGroup {

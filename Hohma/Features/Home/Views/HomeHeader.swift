@@ -1,8 +1,9 @@
 import SwiftUI
 import AVFoundation
+import Inject
 struct HomeHeader: View {
     let player = VideoPlayerManager.shared.player(resourceName: "background")
-
+    @ObserveInjection var inject
     var body: some View {
         ZStack {
             
@@ -33,6 +34,7 @@ struct HomeHeader: View {
             .padding()
         }
         .frame(height: 250)
+        .enableInjection()
     }
 }
 
