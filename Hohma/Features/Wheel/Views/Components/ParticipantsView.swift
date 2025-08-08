@@ -3,6 +3,7 @@ import SwiftUI
 struct ParticipantsView: View {
     let users: [AuthUser]
     let maxVisible: Int
+    @State private var showingParticipantsPopup = false
 
     init(users: [AuthUser], maxVisible: Int = 5) {
         self.users = users
@@ -34,18 +35,26 @@ struct ParticipantsView: View {
             }
 
             if shouldShowAdditionalCount {
-                Text("+\(additionalCount)")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Color.black.opacity(0.6))
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.gray, lineWidth: 2))
+                Button(action: {
+                    showingParticipantsPopup = true
+                }) {
+                    Text("+\(additionalCount)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.black.opacity(0.6))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.gray, lineWidth: 2))
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .padding(.horizontal, 8)
         .padding(.bottom, 8)
+        .sheet(isPresented: $showingParticipantsPopup) {
+            ParticipantsPopupView(users: users)
+        }
     }
 }
 

@@ -1,0 +1,54 @@
+import SwiftUI
+
+struct ParticipantRowView: View {
+    let user: AuthUser
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AvatarView(
+                avatarUrl: user.avatarUrl,
+                size: 50,
+                fallbackColor: .gray,
+                showBorder: true,
+                borderColor: .white
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(user.displayName)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+
+                if !user.username.isEmpty {
+                    Text("@\(user.username)")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("\(user.coins)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.yellow)
+
+                Text("монет")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+#Preview {
+    ParticipantRowView(user: AuthUser.mock)
+        .padding()
+        .background(Color.black)
+}
+
