@@ -5,6 +5,7 @@
 //  Created by Artem Vydro on 17.07.2025.
 //
 
+import AVFoundation
 import Inject
 import SwiftUI
 
@@ -15,6 +16,23 @@ struct hohmaApp: App {
     init() {
         #if DEBUG
             InjectConfiguration.animation = .interactiveSpring()
+        #endif
+
+        setupAudioSession()
+    }
+
+    private func setupAudioSession() {
+        #if os(iOS)
+            do {
+                let audioSession = AVAudioSession.sharedInstance()
+                try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                try audioSession.setActive(true)
+            } catch {
+                print("❌ Ошибка настройки аудиосессии в приложении: \(error)")
+            }
+        #elseif os(macOS)
+            // На macOS аудиосессия настраивается автоматически
+            // Видео будет воспроизводиться без звука (isMuted = true)
         #endif
     }
 

@@ -14,12 +14,28 @@ final class VideoPlayerManager: ObservableObject {
     private var appLifecycleObservers: [NSObjectProtocol] = []
 
     init() {
+        setupAudioSession()
         setupAppLifecycleObservers()
     }
 
     deinit {
         removeAllObservers()
         removeAppLifecycleObservers()
+    }
+
+    private func setupAudioSession() {
+        #if os(iOS)
+            do {
+                let audioSession = AVAudioSession.sharedInstance()
+                try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                try audioSession.setActive(true)
+            } catch {
+                print("❌ Ошибка настройки аудиосессии: \(error)")
+            }
+        #elseif os(macOS)
+            // На macOS аудиосессия настраивается автоматически
+            // Но можно добавить дополнительные настройки если нужно
+        #endif
     }
 
     private func setupAppLifecycleObservers() {

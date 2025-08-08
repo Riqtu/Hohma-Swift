@@ -45,6 +45,7 @@ struct ParticipantsView: View {
             }
         }
         .padding(.horizontal, 8)
+        .padding(.bottom, 8)
     }
 }
 

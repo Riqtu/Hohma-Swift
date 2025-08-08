@@ -39,7 +39,7 @@ import SwiftUI
             // Добавляем observer для отслеживания времени воспроизведения
             let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
             timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
-                [weak self] _ in
+                _ in
                 // Проверяем, что плеер все еще воспроизводится
                 if player.timeControlStatus == .paused {
                     player.play()
@@ -47,8 +47,7 @@ import SwiftUI
             }
 
             // Добавляем observer для отслеживания состояния playerItem
-            playerItemObserver = player.currentItem?.observe(\.status, options: [.new]) {
-                [weak self] item, _ in
+            playerItemObserver = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
                 DispatchQueue.main.async {
                     if item.status == .readyToPlay {
                         player.play()
