@@ -1,9 +1,10 @@
-import SwiftUI
 import Inject
+import SwiftUI
+
 struct RootView: View {
     @State private var selection: String = "home"
     @StateObject private var authViewModel = AuthViewModel()
-        @ObserveInjection var inject
+    @ObserveInjection var inject
 
     var body: some View {
         ZStack {
@@ -39,16 +40,17 @@ struct RootView: View {
                         .tag("home")
                         ZStack {
                             AnimatedGradientBackground()
-                            WheelListView(user: authViewModel.user)     }                       .tabItem {
-                                Label("Колесо", systemImage: "theatermasks.circle")
-                            }
-                            .tag("wheelList")
+                            WheelListView(user: authViewModel.user)
+                        }.tabItem {
+                            Label("Колесо", systemImage: "theatermasks.circle")
+                        }
+                        .tag("wheelList")
                         ProfileView()
                             .tabItem {
                                 Label("Профиль", systemImage: "person")
                             }
                             .tag("profile")
-                        
+
                         MenuView()
                             .tabItem {
                                 Label("Меню", systemImage: "filemenu.and.selection")
@@ -57,23 +59,22 @@ struct RootView: View {
                     }
                     .tint(Color.primary)
                     //                    .background(Color.clear)
-                    
+
                 }
             }
         }
         .enableInjection()
-        
+
     }
-    
+
     var isSidebarPreferred: Bool {
-#if os(macOS)
-        return true
-#else
-        return UIDevice.current.userInterfaceIdiom == .pad
-#endif
+        #if os(macOS)
+            return true
+        #else
+            return UIDevice.current.userInterfaceIdiom == .pad
+        #endif
     }
 }
-
 
 #Preview {
     RootView()

@@ -1,3 +1,4 @@
 {
-  "sweetpad.build.xcodeWorkspacePath": "Hohma.xcodeproj/project.xcworkspace"
+  "sweetpad.build.xcodeWorkspacePath": "Hohma.xcodeproj/project.xcworkspace",
+  "editor.formatOnSave": true
 }

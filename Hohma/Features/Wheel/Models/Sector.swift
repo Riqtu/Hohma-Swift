@@ -40,6 +40,7 @@ struct Sector: Codable, Identifiable {
     
     let wheelId: String
     let userId: String?
+    let user: AuthUser?
     
     let createdAt: Date
     let updatedAt: Date
@@ -62,6 +63,7 @@ struct Sector: Codable, Identifiable {
     labelHidden: false,
     wheelId: "681e3146041024f3c3a92b3a",
     userId: "6804fc3fd253e514c3fb6ae0",
+    user: AuthUser.mock,
     createdAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:09.886Z") ?? Date(),
     updatedAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:49.258Z") ?? Date()
 )

@@ -9,13 +9,14 @@ import AVFoundation
 final class VideoPlayerManager {
     static let shared = VideoPlayerManager()
     private var cache: [String: AVPlayer] = [:]
-    
+
     func player(resourceName: String, resourceExtension: String = "mp4") -> AVPlayer? {
         let key = "\(resourceName).\(resourceExtension)"
         if let cachedPlayer = cache[key] {
             return cachedPlayer
         }
-        guard let url = Bundle.main.url(forResource: resourceName, withExtension: resourceExtension) else {
+        guard let url = Bundle.main.url(forResource: resourceName, withExtension: resourceExtension)
+        else {
             print("❌ Видео не найдено: \(resourceName).\(resourceExtension)")
             return nil
         }
