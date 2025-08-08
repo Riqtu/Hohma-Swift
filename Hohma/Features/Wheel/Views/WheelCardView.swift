@@ -5,6 +5,7 @@ import SwiftUI
 struct WheelCardView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel: WheelCardViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     init(cardData: WheelWithRelations) {
         self._viewModel = StateObject(wrappedValue: WheelCardViewModel(cardData: cardData))
@@ -55,8 +56,23 @@ struct WheelCardView: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
-        .frame(maxWidth: 380)
-        .padding(.horizontal)
+        .onAppear {
+            viewModel.ensurePlayerExists()
+        }
+        .onDisappear {
+            viewModel.pausePlayer()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                viewModel.resumePlayer()
+            case .inactive, .background:
+                viewModel.pausePlayer()
+            @unknown default:
+                break
+            }
+        }
+        .enableInjection()
     }
 }
 

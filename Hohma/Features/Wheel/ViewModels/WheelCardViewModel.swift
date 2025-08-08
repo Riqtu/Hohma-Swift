@@ -7,12 +7,31 @@ final class WheelCardViewModel: ObservableObject {
     @Published var uniqueUsers: [AuthUser] = []
     @Published var winnerUser: AuthUser?
 
+    private let videoManager = VideoPlayerManager.shared
+    private var playerKey: String?
+
     let cardData: WheelWithRelations
 
     init(cardData: WheelWithRelations) {
         self.cardData = cardData
-        setupPlayer()
         processUsers()
+    }
+
+    deinit {
+        // Очищаем ресурсы синхронно в deinit
+        // Не можем обращаться к @Published свойствам в deinit из-за MainActor
+        // Очистка произойдет автоматически при уничтожении объекта
+    }
+
+    private func cleanupPlayer() {
+        if let player = player {
+            player.pause()
+            self.player = nil
+        }
+        if let key = playerKey {
+            videoManager.removePlayer(for: key)
+            playerKey = nil
+        }
     }
 
     private func setupPlayer() {
@@ -20,7 +39,30 @@ final class WheelCardViewModel: ObservableObject {
             let url = URL(string: urlString)
         else { return }
 
-        player = VideoPlayerManager.shared.player(url: url)
+        // Очищаем предыдущий плеер
+        cleanupPlayer()
+
+        // Создаем новый плеер
+        player = videoManager.player(url: url)
+        playerKey = url.absoluteString
+    }
+
+    func resumePlayer() {
+        if player == nil {
+            setupPlayer()
+        } else {
+            player?.play()
+        }
+    }
+
+    func pausePlayer() {
+        player?.pause()
+    }
+
+    func ensurePlayerExists() {
+        if player == nil {
+            setupPlayer()
+        }
     }
 
     private func processUsers() {

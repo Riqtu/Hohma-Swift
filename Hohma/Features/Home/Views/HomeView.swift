@@ -3,6 +3,9 @@ import SwiftUI
 
 struct HomeView: View {
     @ObserveInjection var inject
+    @StateObject private var videoManager = VideoPlayerManager.shared
+    @Environment(\.scenePhase) private var scenePhase
+
     // Массив карточек (чтобы было удобно генерировать)
     let cards: [CardData] = [
         CardData(
@@ -43,17 +46,26 @@ struct HomeView: View {
                             imageName: card.imageName,
                             videoName: card.videoName,
                             player: card.videoName.flatMap {
-                                VideoPlayerManager.shared.player(resourceName: $0)
+                                videoManager.player(resourceName: $0)
                             }
-
                         )
                     }
                 }
-
             }
             .frame(maxWidth: .infinity, alignment: .top)
             .padding(.bottom)
-
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                // Возобновляем все плееры при возвращении в активное состояние
+                videoManager.resumeAllPlayers()
+            case .inactive, .background:
+                // Приостанавливаем все плееры при переходе в неактивное состояние
+                videoManager.pauseAllPlayers()
+            @unknown default:
+                break
+            }
         }
         .enableInjection()
     }
