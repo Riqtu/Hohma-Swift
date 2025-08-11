@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct WheelHeaderView: View {
+    @ObserveInjection var inject
     let hasWinner: Bool
     let winnerUser: AuthUser?
 
@@ -15,6 +17,7 @@ struct WheelHeaderView: View {
                     .foregroundColor(.white)
             }
         }
+        .enableInjection()
     }
 }
 

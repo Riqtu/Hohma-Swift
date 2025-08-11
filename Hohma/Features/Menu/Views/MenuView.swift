@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct MenuView: View {
+    @ObserveInjection var inject
     var body: some View {
         VStack(spacing: 20) {
             Text("Меню")
@@ -18,6 +20,7 @@ struct MenuView: View {
                 .foregroundColor(.secondary)
         }
         .padding()
+        .enableInjection()
     }
 }
 

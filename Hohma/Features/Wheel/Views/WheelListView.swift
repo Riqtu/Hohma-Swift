@@ -32,7 +32,10 @@ struct WheelListView: View {
                         .foregroundColor(.red)
                 } else {
                     ForEach(viewModel.wheels, id: \.id) { wheel in
-                        WheelCardView(cardData: wheel)
+                        WheelCardView(
+                            cardData: wheel,
+                            currentUser: user?.user
+                        )
                     }
                 }
 

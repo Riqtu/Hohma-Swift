@@ -6,8 +6,10 @@ import AVFoundation
 //  Created by Artem Vydro on 03.08.2025.
 //
 import SwiftUI
+import Inject
 
 struct CardView: View {
+    @ObserveInjection var inject
     let title: String
     let description: String
     let imageName: String?  // имя в Assets или URL
@@ -43,6 +45,7 @@ struct CardView: View {
         .cardStyle()
         .frame(maxWidth: 380)
         .padding(.horizontal)
+        .enableInjection()
     }
 }
 

@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct ParticipantsPopupView: View {
+    @ObserveInjection var inject
     let users: [AuthUser]
     @Environment(\.dismiss) private var dismiss
 
@@ -39,6 +41,7 @@ struct ParticipantsPopupView: View {
         #if os(iOS)
             .navigationBarHidden(true)
         #endif
+        .enableInjection()
     }
 }
 

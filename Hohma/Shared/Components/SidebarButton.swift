@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct SidebarButton: View {
+    @ObserveInjection var inject
     let title: String
     let icon: String
     let isSelected: Bool
@@ -32,5 +34,6 @@ struct SidebarButton: View {
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
+        .enableInjection()
     }
 }

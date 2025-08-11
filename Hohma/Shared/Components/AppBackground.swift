@@ -7,8 +7,10 @@
 
 import AVFoundation
 import SwiftUI
+import Inject
 
 struct AppBackground: View {
+    @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @State private var backgroundPlayer: AVPlayer?
     @Environment(\.scenePhase) private var scenePhase
@@ -59,6 +61,7 @@ struct AppBackground: View {
                 break
             }
         }
+        .enableInjection()
     }
 
     private func setupVideoBackground() {

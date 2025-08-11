@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct AvatarView: View {
+    @ObserveInjection var inject
     let avatarUrl: URL?
     let size: CGFloat
     let fallbackColor: Color
@@ -44,6 +46,7 @@ struct AvatarView: View {
             Circle()
                 .stroke(borderColor, lineWidth: showBorder ? 1 : 0)
         )
+        .enableInjection()
     }
 }
 

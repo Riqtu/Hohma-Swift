@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct AnimatedGradientBackground: View {
+    @ObserveInjection var inject
     @Environment(\.colorScheme) private var colorScheme
 
     // Теперь массив rgb для каждого цвета
@@ -49,6 +51,7 @@ struct AnimatedGradientBackground: View {
         .onAppear {
             animate()
         }
+        .enableInjection()
     }
 
     func animate() {

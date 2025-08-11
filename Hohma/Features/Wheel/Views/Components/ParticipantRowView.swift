@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct ParticipantRowView: View {
+    @ObserveInjection var inject
     let user: AuthUser
 
     var body: some View {
@@ -43,6 +45,7 @@ struct ParticipantRowView: View {
         .padding(.vertical, 12)
         .background(Color.white.opacity(0.1))
         .cornerRadius(12)
+        .enableInjection()
     }
 }
 
@@ -51,5 +54,3 @@ struct ParticipantRowView: View {
         .padding()
         .background(Color.black)
 }
-
-

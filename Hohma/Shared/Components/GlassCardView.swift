@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct GlassCardView<Content: View>: View {
+    @ObserveInjection var inject
     let content: Content
     let blurRadius: CGFloat
     let opacity: Double
@@ -27,6 +29,7 @@ struct GlassCardView<Content: View>: View {
             .background(.ultraThinMaterial)
             .cornerRadius(16)
             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .enableInjection()
     }
 }
 

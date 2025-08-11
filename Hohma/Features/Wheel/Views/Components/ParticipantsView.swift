@@ -1,6 +1,8 @@
+import Inject
 import SwiftUI
 
 struct ParticipantsView: View {
+    @ObserveInjection var inject
     let users: [AuthUser]
     let maxVisible: Int
     @State private var showingParticipantsPopup = false
@@ -55,6 +57,7 @@ struct ParticipantsView: View {
         .sheet(isPresented: $showingParticipantsPopup) {
             ParticipantsPopupView(users: users)
         }
+        .enableInjection()
     }
 }
 

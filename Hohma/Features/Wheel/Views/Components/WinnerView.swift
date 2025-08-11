@@ -1,6 +1,8 @@
+import Inject
 import SwiftUI
 
 struct WinnerView: View {
+    @ObserveInjection var inject
     let winnerUser: AuthUser?
 
     var body: some View {
@@ -17,6 +19,7 @@ struct WinnerView: View {
                 .font(.system(size: 40))
                 .foregroundColor(.yellow)
         }
+
     }
 }
 

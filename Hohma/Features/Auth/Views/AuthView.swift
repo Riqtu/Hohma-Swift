@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct AuthView: View {
+    @ObserveInjection var inject
     @ObservedObject var viewModel: AuthViewModel
     @State private var showTelegramWebView = false
     
@@ -36,6 +38,7 @@ struct AuthView: View {
             }
         }
         .padding()
+        .enableInjection()
     }
 }
 #Preview {

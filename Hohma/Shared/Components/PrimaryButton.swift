@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct PrimaryButton: View {
+    @ObserveInjection var inject
     let title: String
     let action: () -> Void
 
@@ -14,5 +16,6 @@ struct PrimaryButton: View {
                 .foregroundColor(.white)
                 .cornerRadius(12)
         }
+        .enableInjection()
     }
 }

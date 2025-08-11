@@ -5,8 +5,10 @@
 //  Created by Artem Vydro on 05.08.2025.
 //
 import SwiftUI
+import Inject
 
 struct CustomSidebar: View {
+    @ObserveInjection var inject
     @Binding var selection: String
     let user: AuthResult?
     
@@ -82,5 +84,6 @@ struct CustomSidebar: View {
         }
         .frame(minWidth: 180, alignment: .leading)
         .background(.ultraThinMaterial)
+        .enableInjection()
     }
 }

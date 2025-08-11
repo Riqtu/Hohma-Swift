@@ -146,14 +146,16 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/**/*.swift",
 			);
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/inject-modification-complete",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "#!/bin/bash\n\n# Function to modify a single Swift file\nmodify_swift_file() {\n    local filepath=\"$1\"\n    local filename=$(basename \"$filepath\")\n    local tempfile=\"$filepath.tmp\"\n\n    # Check if the file should be processed\n    if [[ $(grep -c \": View {\" \"$filepath\") -eq 0 ]]; then\n        echo \"Skipping: $filename (No ': View {' found)\"\n        return\n    fi\n\n    # Create a temporary file for modifications\n    cp \"$filepath\" \"$tempfile\"\n\n    # 1. Add import Inject if needed\n    if ! grep -q \"import Inject\" \"$tempfile\"; then\n        sed -i '' -e '/^import SwiftUI/a\\\nimport Inject' \"$tempfile\"\n    fi\n\n    # 2. Add @ObserveInjection var inject if needed\n    if ! grep -q \"@ObserveInjection var inject\" \"$tempfile\"; then\n        sed -i '' -e '/struct.*: View {/a\\\n    @ObserveInjection var inject' \"$tempfile\"\n    fi\n\n    # 3. Add .enableInjection() just before the closing brace of the body\n    # Find the start of var body: some View {\n    local body_start_line=$(grep -n \"var body: some View {\" \"$tempfile\" | cut -d ':' -f 1)\n\n    if [[ -n \"$body_start_line\" ]]; then\n        # Get the line number of the closing brace of the body\n        local body_end_line=$(awk -v start=\"$body_start_line\" '\n            NR == start { count = 1 }\n            NR > start {\n                if ($0 ~ /{/) count++\n                if ($0 ~ /}/) {\n                    count--\n                    if (count == 0) {\n                        print NR\n                        exit\n                    }\n                }\n            }\n        ' \"$tempfile\")\n\n        if [[ -n \"$body_end_line\" ]]; then\n            # Check if .enableInjection() is already present\n            if ! grep -q \".enableInjection()\" \"$tempfile\"; then\n                # Insert .enableInjection() before the closing brace of the body\n                sed -i '' -e \"${body_end_line}i\\\\\n        .enableInjection()\" \"$tempfile\"\n            fi\n        fi\n    fi\n\n    # Check if modifications were made and overwrite the original file\n    if ! cmp -s \"$filepath\" \"$tempfile\"; then\n        mv \"$tempfile\" \"$filepath\"\n        echo \"Modified: $filename\"\n    else\n        echo \"No changes for: $filename\"\n    fi\n\n    rm -f \"$tempfile\"\n}\n\n# Main script\nfind \"$SRCROOT\" -name \"*.swift\" -print0 | while IFS= read -r -d $'\\0' filepath; do\n    modify_swift_file \"$filepath\"\ndone\n\necho \"Inject modification script completed.\"\n";
+			shellScript = "#!/bin/bash\n\necho \"=== Inject Script Started ===\"\necho \"SRCROOT: $SRCROOT\"\necho \"Current directory: $(pwd)\"\n\n# Function to modify a single Swift file\nmodify_swift_file() {\n    local filepath=\"$1\"\n    local filename=$(basename \"$filepath\")\n    local tempfile=\"$filepath.tmp\"\n\n    echo \"Processing file: $filename\"\n\n    # Check if the file should be processed\n    if [[ $(grep -c \": View {\" \"$filepath\") -eq 0 ]]; then\n        echo \"Skipping: $filename (No ': View {' found)\"\n        return\n    fi\n\n    echo \"File contains ': View {' - processing...\"\n\n    # Create a temporary file for modifications\n    cp \"$filepath\" \"$tempfile\"\n    echo \"Created temp file: $tempfile\"\n\n    # 1. Add import Inject if needed\n    if ! grep -q \"import Inject\" \"$tempfile\"; then\n        echo \"Adding import Inject...\"\n        awk '/^import SwiftUI/ { print; print \"import Inject\"; next } { print }' \"$tempfile\" > \"$tempfile.new\" && mv \"$tempfile.new\" \"$tempfile\"\n    fi\n\n    # 2. Add @ObserveInjection var inject if needed\n    if ! grep -q \"@ObserveInjection var inject\" \"$tempfile\"; then\n        echo \"Adding @ObserveInjection var inject...\"\n        awk '/struct.*: View {/ { print; print \"    @ObserveInjection var inject\"; next } { print }' \"$tempfile\" > \"$tempfile.new\" && mv \"$tempfile.new\" \"$tempfile\"\n    fi\n\n    # 3. Add .enableInjection() just before the closing brace of the body\n    # Find the start of var body: some View {\n    local body_start_line=$(grep -n \"var body: some View {\" \"$tempfile\" | cut -d ':' -f 1)\n\n    if [[ -n \"$body_start_line\" ]]; then\n        # Get the line number of the closing brace of the body\n        local body_end_line=$(awk -v start=\"$body_start_line\" '\n            NR == start { count = 1 }\n            NR > start {\n                if ($0 ~ /{/) count++\n                if ($0 ~ /}/) {\n                    count--\n                    if (count == 0) {\n                        print NR\n                        exit\n                    }\n                }\n            }\n        ' \"$tempfile\")\n\n        if [[ -n \"$body_end_line\" ]]; then\n            # Check if .enableInjection() is already present\n            if ! grep -q \".enableInjection()\" \"$tempfile\"; then\n                echo \"Adding .enableInjection()...\"\n                # Insert .enableInjection() before the closing brace of the body\n                sed -i '' -e \"${body_end_line}i\\\\\n        .enableInjection()\" \"$tempfile\"\n            fi\n        fi\n    fi\n\n    # Check if modifications were made and overwrite the original file\n    if ! cmp -s \"$filepath\" \"$tempfile\"; then\n        mv \"$tempfile\" \"$filepath\"\n        echo \"Modified: $filename\"\n    else\n        echo \"No changes for: $filename\"\n    fi\n\n    rm -f \"$tempfile\"\n}\n\necho \"Looking for Swift files...\"\nfind \"$SRCROOT/Hohma\" -name \"*.swift\" -print0 | while IFS= read -r -d $'\\0' filepath; do\n    modify_swift_file \"$filepath\"\ndone\n\necho \"=== Inject Script Completed ===\"\n\ntouch \"$DERIVED_FILE_DIR/inject-modification-complete\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -206,7 +208,7 @@
 				DEVELOPMENT_TEAM = 4D7KVU7P88;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -268,7 +270,7 @@
 				DEVELOPMENT_TEAM = 4D7KVU7P88;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;

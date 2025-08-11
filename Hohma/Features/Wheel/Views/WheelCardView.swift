@@ -6,9 +6,13 @@ struct WheelCardView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel: WheelCardViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showingGame = false
 
-    init(cardData: WheelWithRelations) {
+    let currentUser: AuthUser?
+
+    init(cardData: WheelWithRelations, currentUser: AuthUser? = nil) {
         self._viewModel = StateObject(wrappedValue: WheelCardViewModel(cardData: cardData))
+        self.currentUser = currentUser
     }
 
     var body: some View {
@@ -48,6 +52,21 @@ struct WheelCardView: View {
 
                     ParticipantsView(users: viewModel.uniqueUsers)
                 }
+
+                // Кнопка для запуска игры
+                Button(action: {
+                    showingGame = true
+                }) {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Играть")
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.blue)
+                    .cornerRadius(8)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
@@ -71,6 +90,12 @@ struct WheelCardView: View {
             @unknown default:
                 break
             }
+        }
+        .sheet(isPresented: $showingGame) {
+            FortuneWheelGameView(
+                wheelData: viewModel.cardData,
+                currentUser: currentUser
+            )
         }
         .enableInjection()
     }
