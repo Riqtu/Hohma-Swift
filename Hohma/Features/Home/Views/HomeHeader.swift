@@ -10,34 +10,30 @@ struct HomeHeader: View {
 
     var body: some View {
         ZStack {
-
             if let player {
-                #if os(iOS)
-                    VideoBackgroundView(player: player)
-                        .frame(height: 250)
-                        .clipped()
-                #elseif os(macOS)
-                    VideoBackgroundView(player: player)
-                        .frame(height: 250)
-                        .clipped()
-                #endif
+                VideoBackgroundView(player: player)
+                    .frame(height: 250)
+                    .clipped()
             }
-            Color.black.opacity(0.4)
+
+            // Полупрозрачный оверлей
+            Color.black.opacity(0.7)
                 .frame(height: 250)
-                .blur(radius: 10)
 
             VStack(spacing: 10) {
                 Text("XOXMA")
-                    .font(.custom("Luckiest Guy", size: 24)).foregroundColor(.white)
+                    .font(.custom("Luckiest Guy", size: 24))
+                    .foregroundColor(.white)
 
                 Text("Приложение для своих.\nВсё, что важно — в одном месте.")
                     .font(.headline)
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(0.9))
             }
             .padding()
         }
         .frame(height: 250)
+        // .glassCard()
         .onAppear {
             setupPlayer()
         }

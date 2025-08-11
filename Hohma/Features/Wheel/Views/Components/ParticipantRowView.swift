@@ -52,3 +52,4 @@ struct ParticipantRowView: View {
         .background(Color.black)
 }
 
+

@@ -7,8 +7,7 @@ struct RootView: View {
     @ObserveInjection var inject
 
     var body: some View {
-        ZStack {
-            AnimatedGradientBackground()
+        Group {
             if !authViewModel.isAuthenticated {
                 // Показываем экран авторизации
                 AuthView(viewModel: authViewModel)
@@ -30,21 +29,19 @@ struct RootView: View {
                     }
                 } else {
                     TabView(selection: $selection) {
-                        ZStack {
-                            AnimatedGradientBackground()
-                            HomeView()
-                        }
-                        .tabItem {
-                            Label("Главная", systemImage: "house")
-                        }
-                        .tag("home")
-                        ZStack {
-                            AnimatedGradientBackground()
-                            WheelListView(user: authViewModel.user)
-                        }.tabItem {
-                            Label("Колесо", systemImage: "theatermasks.circle")
-                        }
-                        .tag("wheelList")
+
+                        HomeView().withAppBackground()
+
+                            .tabItem {
+                                Label("Главная", systemImage: "house")
+                            }
+                        WheelListView(user: authViewModel.user)
+                            .withAppBackground()
+                            .tabItem {
+                                Label("Колесо", systemImage: "theatermasks.circle")
+                            }
+                            .tag("wheelList")
+
                         ProfileView()
                             .tabItem {
                                 Label("Профиль", systemImage: "person")
@@ -58,8 +55,6 @@ struct RootView: View {
                             .tag("menu")
                     }
                     .tint(Color.primary)
-                    //                    .background(Color.clear)
-
                 }
             }
         }

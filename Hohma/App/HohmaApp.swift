@@ -39,6 +39,10 @@ struct hohmaApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                // Глобальный фон для всего приложения
+                AppBackground(useVideoBackground: false)
+                    .ignoresSafeArea()
+
                 RootView()
             }
         }

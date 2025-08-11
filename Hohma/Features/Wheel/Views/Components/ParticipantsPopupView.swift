@@ -36,7 +36,9 @@ struct ParticipantsPopupView: View {
             }
             .background(Color.black.opacity(0.9))
         }
-        .navigationBarHidden(true)
+        #if os(iOS)
+            .navigationBarHidden(true)
+        #endif
     }
 }
 
@@ -44,4 +46,3 @@ struct ParticipantsPopupView: View {
     ParticipantsPopupView(users: [AuthUser.mock, AuthUser.mock])
         .background(Color.black)
 }
-
