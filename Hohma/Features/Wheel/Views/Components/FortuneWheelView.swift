@@ -104,7 +104,8 @@ struct WheelSectorView: View {
         let textOffsetY = (radius * 0.7) * sin(textAngle * .pi / 180)
 
         ZStack {
-            Path { path in
+            // Создаем путь сектора для обрезки
+            let sectorPath = Path { path in
                 path.move(to: CGPoint(x: size / 2, y: size / 2))
                 path.addArc(
                     center: CGPoint(x: size / 2, y: size / 2),
@@ -115,36 +116,83 @@ struct WheelSectorView: View {
                 )
                 path.closeSubpath()
             }
-            .fill(
-                Color(
-                    hue: sector.color.h / 360,
-                    saturation: sector.color.s / 100,
-                    brightness: sector.color.l / 100
-                )
-            )
-            .overlay(
-                Path { path in
-                    path.move(to: CGPoint(x: size / 2, y: size / 2))
-                    path.addArc(
-                        center: CGPoint(x: size / 2, y: size / 2),
-                        radius: radius,
-                        startAngle: .degrees(startAngle),
-                        endAngle: .degrees(endAngle),
-                        clockwise: false
+
+            // Если есть паттерн, используем его с обрезкой
+            if let pattern = sector.pattern {
+                AsyncImage(url: URL(string: pattern)) { image in
+                    ZStack {
+                        // Фоновое размытое изображение (как в React версии)
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: size, height: size)
+                            .blur(radius: 2)
+                            .opacity(0.9)
+                            .rotationEffect(.degrees(startAngle + anglePerSector / 2 + 90))
+                            .clipShape(sectorPath)
+
+                        // Основное изображение с позиционированием
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            // .frame(width: size * 0.8, height: size * 0.8)
+                            .scaleEffect(1 + (sector.patternPosition?.z ?? 0) / 100)
+                            .offset(
+                                x: (sector.patternPosition?.x ?? 0) * (size / 200),
+                                y: (sector.patternPosition?.y ?? 0) * (size / 200)
+                            )
+                            .rotationEffect(.degrees(startAngle + anglePerSector / 2 + 90))
+                            .clipShape(sectorPath)
+                    }
+                    .overlay(
+                        sectorPath
+                            .stroke(Color.white.opacity(0.3), lineWidth: 2)
                     )
-                    path.closeSubpath()
+                } placeholder: {
+                    // Fallback на цвет если изображение не загрузилось
+                    sectorPath
+                        .fill(
+                            Color(
+                                hue: sector.color.h / 360,
+                                saturation: sector.color.s / 100,
+                                brightness: sector.color.l / 100
+                            )
+                        )
+                        .overlay(
+                            sectorPath
+                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        )
                 }
-                .stroke(Color.white.opacity(0.3), lineWidth: 2)
-            )
-            .overlay(
+            } else {
+                // Если паттерна нет, используем цвет
+                sectorPath
+                    .fill(
+                        Color(
+                            hue: sector.color.h / 360,
+                            saturation: sector.color.s / 100,
+                            brightness: sector.color.l / 100
+                        )
+                    )
+                    .overlay(
+                        sectorPath
+                            .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                    )
+            }
+
+            // Текст сектора
+            if !sector.labelHidden {
                 Text(sector.label)
                     .font(.system(size: min(size / 12, 16), weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(
+                        sector.labelColor != nil
+                            ? Color(hex: sector.labelColor!)
+                            : .white
+                    )
                     .multilineTextAlignment(.center)
                     .rotationEffect(.degrees(textAngle))
                     .offset(x: textOffsetX, y: textOffsetY)
                     .shadow(color: .black, radius: 2, x: 1, y: 1)
-            )
+            }
         }
         .frame(width: size, height: size)  // Фиксируем размер контейнера
         .enableInjection()
@@ -234,5 +282,7 @@ extension Color {
 }
 
 #Preview {
-    FortuneWheelView(wheelState: WheelState(), size: 200)
+    let wheelState = WheelState()
+    wheelState.sectors = [Sector.mockWithPattern, Sector.mock, Sector.mock2]
+    return FortuneWheelView(wheelState: wheelState, size: 200)
 }

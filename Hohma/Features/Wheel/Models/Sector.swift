@@ -181,6 +181,30 @@ struct Sector: Codable, Identifiable {
         createdAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:09.886Z") ?? Date(),
         updatedAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:49.258Z") ?? Date()
     )
+
+    // Тестовый сектор с паттерном
+    static let mockWithPattern = Sector(
+        id: "681e3151041024f3c3a92b41",
+        label: "Паттерн",
+        color: ColorJSON(h: 30, s: 80, l: 50),  // Оранжевый
+        name: "Сектор с паттерном",
+        eliminated: false,
+        winner: false,
+        description: "Тестовый сектор с паттерном",
+        pattern: "https://picsum.photos/400/400",  // Тестовое изображение
+        patternPosition: PatternPositionJSON(x: 0, y: 0, z: 10),  // Небольшое увеличение
+        poster: nil,
+        genre: nil,
+        rating: nil,
+        year: nil,
+        labelColor: "#FFD700",  // Золотой цвет для текста
+        labelHidden: false,
+        wheelId: "681e3146041024f3c3a92b3a",
+        userId: "6804fc3fd253e514c3fb6ae0",
+        user: AuthUser.mock,
+        createdAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:09.886Z") ?? Date(),
+        updatedAt: ISO8601DateFormatter().date(from: "2025-05-09T16:46:49.258Z") ?? Date()
+    )
 }
 
 struct SectorWithRelations: Codable {
