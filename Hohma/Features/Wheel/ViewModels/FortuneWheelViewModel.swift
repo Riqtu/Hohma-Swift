@@ -14,6 +14,7 @@ import SwiftUI
 class FortuneWheelViewModel: ObservableObject {
     @Published var wheelState = WheelState()
     @Published var users: [AuthUser] = []
+    @Published var roomUsers: [AuthUser] = []
     @Published var isLoading = false
     @Published var error: String?
     @Published var isVideoReady: Bool = false
@@ -111,8 +112,28 @@ class FortuneWheelViewModel: ObservableObject {
         ) { [weak self] _ in
             print("🔐 FortuneWheelViewModel: Socket authorization error detected")
             // Сначала отключаем сокет, затем очищаем ресурсы
-            self?.socketService.disconnect()
-            self?.cleanup()
+            Task { @MainActor in
+                self?.socketService.disconnect()
+                self?.cleanup()
+            }
+        }
+
+        // Подписываемся на обновления пользователей комнаты
+        NotificationCenter.default.addObserver(
+            forName: .roomUsersUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            print("👥 FortuneWheelViewModel: Received roomUsersUpdated notification")
+            if let users = notification.object as? [AuthUser] {
+                print("👥 FortuneWheelViewModel: Updating room users: \(users.count)")
+                Task { @MainActor in
+                    self?.updateRoomUsers(users)
+                }
+            } else {
+                print("❌ FortuneWheelViewModel: Failed to cast notification object to [AuthUser]")
+                print("❌ FortuneWheelViewModel: Object type: \(type(of: notification.object))")
+            }
         }
 
         // Подключаемся к сокету
@@ -121,6 +142,12 @@ class FortuneWheelViewModel: ObservableObject {
 
     private func joinRoom() {
         wheelState.joinRoom(wheelData.id, userId: currentUser)
+
+        // Инициализируем список пользователей с текущим пользователем
+        if let currentUser = currentUser {
+            updateRoomUsers([currentUser])
+            print("👥 FortuneWheelViewModel: Initialized room users with current user")
+        }
     }
 
     func setupVideoBackground() {
@@ -194,7 +221,7 @@ class FortuneWheelViewModel: ObservableObject {
         Task {
             do {
                 let updatedWheel = try await wheelService.updateWheelStatus(wheelId, status: status)
-                print("Статус колеса обновлен: \(updatedWheel.status)")
+                print("Статус колеса обновлен: \(String(describing: updatedWheel.status))")
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
                 print("🔐 FortuneWheelViewModel: Authorization required for wheel status update")
@@ -276,6 +303,25 @@ class FortuneWheelViewModel: ObservableObject {
         socketService.disconnect()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.socketService.connect()
+        }
+    }
+
+    // MARK: - Room Users Management
+
+    private func updateRoomUsers(_ users: [AuthUser]) {
+        DispatchQueue.main.async {
+            print(
+                "👥 FortuneWheelViewModel: Updating roomUsers array from \(self.roomUsers.count) to \(users.count)"
+            )
+            self.roomUsers = users
+            print("👥 FortuneWheelViewModel: Room users updated: \(users.count) users")
+
+            // Выводим имена пользователей для отладки
+            for (index, user) in users.enumerated() {
+                print(
+                    "👥 FortuneWheelViewModel: User \(index + 1): \(user.username) (\(user.firstName ?? "no name"))"
+                )
+            }
         }
     }
 

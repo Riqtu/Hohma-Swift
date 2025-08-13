@@ -5,35 +5,62 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct UsersPanelView: View {
     @ObserveInjection var inject
-    let users: [AuthUser]
+    @ObservedObject var viewModel: FortuneWheelViewModel
     let accentColor: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Участники (\(users.count))")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(Color(hex: accentColor))
+            HStack {
+                Text("Участники (\(viewModel.roomUsers.count))")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(hex: accentColor))
 
-            if users.isEmpty {
-                Text("Нет участников")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
+                Spacer()
+
+                // Индикатор подключения сокета
+                Circle()
+                    .fill(viewModel.isSocketReady ? Color.green : Color.red)
+                    .frame(width: 8, height: 8)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            .onAppear {
+                print("👥 UsersPanelView: Appeared with \(viewModel.roomUsers.count) users")
+            }
+            .onChange(of: viewModel.roomUsers.count) { newCount in
+                print("👥 UsersPanelView: Users count changed to \(newCount)")
+            }
+
+            if viewModel.roomUsers.isEmpty {
+                VStack(spacing: 8) {
+                    Text("Нет участников")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+
+                    if !viewModel.isSocketReady {
+                        Text("Подключение...")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 20)
             } else {
                 LazyVStack(spacing: 8) {
-                    ForEach(users.prefix(5)) { user in
+                    ForEach(viewModel.roomUsers.prefix(8)) { user in
                         UserRowView(user: user, accentColor: accentColor)
                     }
 
-                    if users.count > 5 {
-                        Text("+\(users.count - 5) еще")
+                    if viewModel.roomUsers.count > 8 {
+                        Text("+\(viewModel.roomUsers.count - 8) еще")
                             .font(.caption)
                             .foregroundColor(.gray)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -51,7 +78,9 @@ struct UsersPanelView: View {
                         .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
                 )
         )
-        .frame(maxWidth: 200)
+        .frame(maxWidth: 220)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.roomUsers.count)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isSocketReady)
     }
 }
 
@@ -68,15 +97,15 @@ struct UserRowView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color(hex: accentColor), lineWidth: 2))
                 } placeholder: {
                     Circle()
                         .fill(Color.gray.opacity(0.3))
-                        .frame(width: 32, height: 32)
+                        .frame(width: 36, height: 36)
                         .overlay(
-                            Text(String(user.username.prefix(1)).uppercased())
+                            Text(getUserInitials())
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
@@ -85,9 +114,9 @@ struct UserRowView: View {
             } else {
                 Circle()
                     .fill(Color.gray.opacity(0.3))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 36, height: 36)
                     .overlay(
-                        Text(String(user.username.prefix(1)).uppercased())
+                        Text(getUserInitials())
                             .font(.caption)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -96,35 +125,68 @@ struct UserRowView: View {
 
             // Информация о пользователе
             VStack(alignment: .leading, spacing: 2) {
-                Text(user.username)
+                Text(getDisplayName())
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text("\(user.coins) монет")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text("\(user.coins)")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(Color(hex: accentColor))
+
+                    Text("монет")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                .lineLimit(1)
             }
 
             Spacer()
         }
-        .padding(8)
+        .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(hex: accentColor).opacity(0.2), lineWidth: 1)
+                )
         )
+    }
+
+    private func getDisplayName() -> String {
+        if let firstName = user.firstName, !firstName.isEmpty {
+            return firstName
+        } else if !user.username.isEmpty {
+            return user.username
+        } else {
+            return "Пользователь"
+        }
+    }
+
+    private func getUserInitials() -> String {
+        let firstName = user.firstName?.isEmpty == false ? String(user.firstName!.prefix(1)) : ""
+        let lastName = user.lastName?.isEmpty == false ? String(user.lastName!.prefix(1)) : ""
+
+        if !firstName.isEmpty && !lastName.isEmpty {
+            return "\(firstName)\(lastName)".uppercased()
+        } else if !firstName.isEmpty {
+            return firstName.uppercased()
+        } else if !user.username.isEmpty {
+            return String(user.username.prefix(1)).uppercased()
+        } else {
+            return "?"
+        }
     }
 }
 
-#Preview {
-    UsersPanelView(
-        users: [
-            AuthUser.mock,
-            AuthUser.mock,
-        ],
-        accentColor: "#F8D568"
-    )
-    .background(Color.black)
-}
+// #Preview {
+//     UsersPanelView(
+//         viewModel: FortuneWheelViewModel(...),
+//         accentColor: "#F8D568"
+//     )
+//     .background(Color.black)
+// }

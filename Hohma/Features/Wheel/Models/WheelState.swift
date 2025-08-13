@@ -8,6 +8,66 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Room User Model
+struct RoomUser: Codable {
+    let id: String
+    let username: String
+    let firstName: String?
+    let lastName: String?
+    let coins: Int
+    let avatarUrl: String?
+    let role: String
+
+    // Опциональные поля, которые могут отсутствовать
+    let email: String?
+    let name: String?
+    let clicks: Int?
+    let createdAt: String?
+    let updatedAt: String?
+    let activeCharacterId: String?
+    let activeBackgroundId: String?
+    let activeSkinId: String?
+    let telegramId: String?
+    let googleId: String?
+    let githubId: String?
+    let facebookId: String?
+    let vkId: String?
+    let twitterId: String?
+    let linkedInId: String?
+    let discordId: String?
+    let password: String?
+
+    // Конвертер в AuthUser
+    func toAuthUser() -> AuthUser {
+        return AuthUser(
+            id: id,
+            email: email,
+            name: name,
+            coins: coins,
+            clicks: clicks ?? 0,
+            createdAt: createdAt ?? "",
+            updatedAt: updatedAt ?? "",
+            activeCharacterId: activeCharacterId,
+            activeBackgroundId: activeBackgroundId,
+            activeSkinId: activeSkinId,
+            role: role,
+            telegramId: telegramId,
+            googleId: googleId,
+            githubId: githubId,
+            facebookId: facebookId,
+            vkId: vkId,
+            twitterId: twitterId,
+            linkedInId: linkedInId,
+            discordId: discordId,
+            username: username,
+            firstName: firstName,
+            lastName: lastName,
+            avatarUrl: avatarUrl != nil ? URL(string: avatarUrl!) : nil,
+            password: password
+        )
+    }
+}
+
 @MainActor
 class WheelState: ObservableObject {
     @Published var sectors: [Sector] = []
@@ -84,14 +144,18 @@ class WheelState: ObservableObject {
             "rotation": newRotation,
             "speed": speed,
             "winningIndex": winningIndex,
-            "senderClientId": clientId ?? "",
+            "clientId": clientId ?? "",  // Используем clientId вместо senderClientId
         ]
 
         // Проверяем, что сокет подключен и авторизован перед отправкой
         if let socket = socket, socket.isConnected, isAuthorized {
-            socket.emit(.wheelSpin, data: spinData)
+            print("📤 WheelState: Emitting wheel:spin event with data: \(spinData)")
+            // Отправляем событие с roomId как первый параметр, как в веб-версии
+            socket.emit(.wheelSpin, roomId: roomId ?? "", data: spinData)
         } else {
             print("⚠️ WheelState: Cannot emit spin event - socket not connected or not authorized")
+            print("   Socket connected: \(socket?.isConnected ?? false)")
+            print("   Is authorized: \(isAuthorized)")
         }
 
         spinning = true
@@ -109,8 +173,12 @@ class WheelState: ObservableObject {
     func spinWheelFromServer(_ spinData: [String: Any]) {
         print("🔄 WheelState: Processing spin data: \(spinData)")
 
-        guard let senderClientId = spinData["senderClientId"] as? String else {
-            print("❌ WheelState: Missing or invalid senderClientId in spin data")
+        // Проверяем оба варианта: senderClientId и clientId
+        let senderClientId =
+            spinData["senderClientId"] as? String ?? spinData["clientId"] as? String
+
+        guard let senderClientId = senderClientId else {
+            print("❌ WheelState: Missing or invalid senderClientId/clientId in spin data")
             return
         }
 
@@ -177,20 +245,22 @@ class WheelState: ObservableObject {
                     "name": sector.name,
                     "eliminated": sector.eliminated,
                     "winner": sector.winner,
-                    "description": sector.description,
+                    "description": sector.description ?? "",
                     "pattern": sector.pattern ?? "",
                     "labelColor": sector.labelColor ?? "",
                     "labelHidden": sector.labelHidden,
                     "wheelId": sector.wheelId,
-                    "userId": sector.userId,
+                    "userId": sector.userId ?? "",
                 ]
             },
-            "senderClientId": clientId ?? "",
+            "clientId": clientId ?? "",  // Используем clientId вместо senderClientId
         ]
 
         // Проверяем, что сокет подключен и авторизован перед отправкой
         if let socket = socket, socket.isConnected, isAuthorized {
-            socket.emit(.sectorsShuffle, data: shuffleData)
+            print("📤 WheelState: Emitting sectors:shuffle event with data: \(shuffleData)")
+            // Отправляем событие с roomId как первый параметр, как в веб-версии
+            socket.emit(.sectorsShuffle, roomId: roomId ?? "", data: shuffleData)
         } else {
             print(
                 "⚠️ WheelState: Cannot emit shuffle event - socket not connected or not authorized")
@@ -200,7 +270,10 @@ class WheelState: ObservableObject {
     }
 
     func shuffleSectorsFromServer(_ data: [String: Any]) {
-        guard let senderClientId = data["senderClientId"] as? String,
+        // Проверяем оба варианта: senderClientId и clientId
+        let senderClientId = data["senderClientId"] as? String ?? data["clientId"] as? String
+
+        guard let senderClientId = senderClientId,
             let sectorsData = data["sectors"] as? [[String: Any]]
         else {
             print("Invalid shuffle data received")
@@ -234,7 +307,7 @@ class WheelState: ObservableObject {
         guard let socket = socket else { return }
 
         // Handle connect event
-        socket.on(.connect) { [weak self] data in
+        socket.on(.connect) { data in
             print("🔌 WheelState: Socket connected, ready to join room")
         }
 
@@ -320,9 +393,119 @@ class WheelState: ObservableObject {
         }
 
         // Handle room users
-        socket.on(.roomUsers) { [weak self] data in
+        socket.on(.roomUsers) { data in
             print("👥 WheelState: Received room users update")
-            // Можно добавить обработку пользователей комнаты здесь
+
+            // Проверяем, что данные не пустые
+            guard data.count > 0 else {
+                print("👥 WheelState: Empty room users data received")
+                return
+            }
+
+            // Сначала выводим сырые данные для отладки
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("👥 WheelState: Raw JSON data: \(jsonString)")
+            }
+
+            do {
+                // Пытаемся декодировать как массив пользователей комнаты
+                let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
+                print("👥 WheelState: Successfully decoded \(roomUsers.count) room users")
+
+                // Конвертируем в AuthUser
+                let users = roomUsers.map { $0.toAuthUser() }
+                print("👥 WheelState: Converted to \(users.count) AuthUser objects")
+
+                DispatchQueue.main.async {
+                    // Обновляем список пользователей в FortuneWheelViewModel
+                    NotificationCenter.default.post(
+                        name: .roomUsersUpdated,
+                        object: users
+                    )
+                }
+            } catch let decodingError as DecodingError {
+                print("❌ WheelState: Decoding error details:")
+                switch decodingError {
+                case .keyNotFound(let key, let context):
+                    print("   - Missing key: \(key.stringValue)")
+                    print("   - Context: \(context.debugDescription)")
+                case .typeMismatch(let type, let context):
+                    print("   - Type mismatch: expected \(type), got \(context.debugDescription)")
+                case .valueNotFound(let type, let context):
+                    print("   - Value not found: expected \(type), \(context.debugDescription)")
+                case .dataCorrupted(let context):
+                    print("   - Data corrupted: \(context.debugDescription)")
+                @unknown default:
+                    print("   - Unknown decoding error")
+                }
+                print("❌ WheelState: Failed to decode room users: \(decodingError)")
+                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
+                print("👥 WheelState: Room users data received, size: \(data.count) bytes")
+
+                // Попробуем альтернативный способ декодирования
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("👥 WheelState: JSON string: \(jsonString)")
+
+                    // Попробуем декодировать как объект с полем "users"
+                    do {
+                        if let jsonData = jsonString.data(using: .utf8),
+                            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
+                                as? [String: Any],
+                            let usersArray = jsonObject["users"] as? [[String: Any]]
+                        {
+
+                            let usersData = try JSONSerialization.data(withJSONObject: usersArray)
+                            let users = try JSONDecoder().decode([AuthUser].self, from: usersData)
+                            print(
+                                "👥 WheelState: Successfully decoded \(users.count) users from nested object"
+                            )
+
+                            DispatchQueue.main.async {
+                                NotificationCenter.default.post(
+                                    name: .roomUsersUpdated,
+                                    object: users
+                                )
+                            }
+                        }
+                    } catch {
+                        print("❌ WheelState: Failed to decode from nested object: \(error)")
+                    }
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode room users: \(error)")
+                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
+                print("👥 WheelState: Room users data received, size: \(data.count) bytes")
+
+                // Попробуем альтернативный способ декодирования
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("👥 WheelState: JSON string: \(jsonString)")
+
+                    // Попробуем декодировать как объект с полем "users"
+                    do {
+                        if let jsonData = jsonString.data(using: .utf8),
+                            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
+                                as? [String: Any],
+                            let usersArray = jsonObject["users"] as? [[String: Any]]
+                        {
+
+                            let usersData = try JSONSerialization.data(withJSONObject: usersArray)
+                            let users = try JSONDecoder().decode([AuthUser].self, from: usersData)
+                            print(
+                                "👥 WheelState: Successfully decoded \(users.count) users from nested object"
+                            )
+
+                            DispatchQueue.main.async {
+                                NotificationCenter.default.post(
+                                    name: .roomUsersUpdated,
+                                    object: users
+                                )
+                            }
+                        }
+                    } catch {
+                        print("❌ WheelState: Failed to decode from nested object: \(error)")
+                    }
+                }
+            }
         }
 
         // Подписываемся на уведомления об ошибках авторизации сокета
@@ -330,24 +513,42 @@ class WheelState: ObservableObject {
             forName: .socketAuthorizationError,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { [weak self] _ in
             print("🔐 WheelState: Socket authorization error detected")
-            // Устанавливаем флаг неавторизованности
-            self.isAuthorized = false
-            // Очищаем состояние колеса при ошибке авторизации
-            self.cleanup()
+            Task { @MainActor in
+                // Устанавливаем флаг неавторизованности
+                self?.isAuthorized = false
+                // Очищаем состояние колеса при ошибке авторизации
+                self?.cleanup()
+            }
         }
     }
 
     func joinRoom(_ roomId: String, userId: AuthUser?) {
+        // Создаем словарь с данными пользователя, которые можно сериализовать в JSON
+        var userData: [String: Any] = [:]
+        if let user = userId {
+            userData = [
+                "id": user.id,
+                "username": user.username,
+                "firstName": user.firstName ?? "",
+                "lastName": user.lastName ?? "",
+                "coins": user.coins,
+                "avatarUrl": user.avatarUrl?.absoluteString ?? "",
+                "role": user.role,
+            ]
+        }
+
         let joinData: [String: Any] = [
             "roomId": roomId,
+            "userId": userData,  // Отправляем словарь вместо объекта
             "clientId": clientId ?? "",
         ]
 
         // Проверяем, что сокет подключен и авторизован перед отправкой
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("🔌 WheelState: Joining room \(roomId)")
+            print(
+                "🔌 WheelState: Joining room \(roomId) with user: \(userId?.username ?? "unknown")")
             socket.emit(.joinRoom, data: joinData)
         } else {
             print(

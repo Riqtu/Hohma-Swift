@@ -48,15 +48,15 @@ struct FortuneWheelGameView: View {
                     )
 
                     // Основная область с колесом
-                    HStack(spacing: 20) {
+                    ScrollView(showsIndicators: false) {
                         // Панель пользователей
-                        // VStack {
-                        //     UsersPanelView(
-                        //         users: viewModel.users,
-                        //         accentColor: viewModel.wheelState.accentColor
-                        //     )
-                        //     Spacer()
-                        // }
+                        VStack {
+                            UsersPanelView(
+                                viewModel: viewModel,
+                                accentColor: viewModel.wheelState.accentColor
+                            )
+                            Spacer()
+                        }
 
                         // Центральная область с колесом
                         VStack(spacing: 16) {
@@ -90,21 +90,21 @@ struct FortuneWheelGameView: View {
                         }
 
                         // Панель секторов
-                        // VStack(spacing: 16) {
-                        //     SectorsTableView(
-                        //         sectors: viewModel.wheelState.sectors,
-                        //         title: "Фильмы",
-                        //         accentColor: viewModel.wheelState.accentColor
-                        //     )
+                        VStack(spacing: 16) {
+                            SectorsTableView(
+                                sectors: viewModel.wheelState.sectors,
+                                title: "Фильмы",
+                                accentColor: viewModel.wheelState.accentColor
+                            )
 
-                        //     SectorsTableView(
-                        //         sectors: viewModel.wheelState.losers,
-                        //         title: "Выбывшие",
-                        //         accentColor: viewModel.wheelState.accentColor
-                        //     )
+                            SectorsTableView(
+                                sectors: viewModel.wheelState.losers,
+                                title: "Выбывшие",
+                                accentColor: viewModel.wheelState.accentColor
+                            )
 
-                        //     Spacer()
-                        // }
+                            Spacer()
+                        }
                     }
                     .padding(.horizontal, 20)
 

@@ -11,6 +11,7 @@ import Foundation
 // MARK: - Notification Names
 extension Notification.Name {
     static let socketAuthorizationError = Notification.Name("socketAuthorizationError")
+    static let roomUsersUpdated = Notification.Name("roomUsersUpdated")
 }
 
 // MARK: - Socket.IO Events
@@ -43,6 +44,8 @@ class SocketIOService: ObservableObject {
     private let session = URLSession.shared
     private var heartbeatTimer: Timer?
     private var authToken: String?
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 5
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -195,11 +198,24 @@ class SocketIOService: ObservableObject {
                     self.isConnected = false
                 }
 
-                // Пытаемся переподключиться через небольшую задержку
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    if !self.isConnected && !self.isConnecting {
-                        print("🔄 SocketIOService: Attempting to reconnect after connection loss")
+                // Пытаемся переподключиться через небольшую задержку, но только если не пытаемся уже
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    if !self.isConnected && !self.isConnecting
+                        && self.reconnectAttempts < self.maxReconnectAttempts
+                    {
+                        self.reconnectAttempts += 1
+                        print(
+                            "🔄 SocketIOService: Attempting to reconnect after connection loss (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts))"
+                        )
                         self.connect()
+                    } else if self.reconnectAttempts >= self.maxReconnectAttempts {
+                        print(
+                            "❌ SocketIOService: Max reconnect attempts reached, stopping reconnection"
+                        )
+                    } else {
+                        print(
+                            "🔄 SocketIOService: Skipping reconnect - already connected or connecting"
+                        )
                     }
                 }
                 return
@@ -276,6 +292,7 @@ class SocketIOService: ObservableObject {
     private func handleConnect() {
         isConnecting = false
         isConnected = true
+        reconnectAttempts = 0  // Сбрасываем счетчик попыток при успешном подключении
         print("✅ SocketIOService: Connected successfully")
 
         // Уведомляем о подключении
@@ -357,8 +374,14 @@ class SocketIOService: ObservableObject {
             if let data = try? JSONSerialization.data(withJSONObject: eventDataDict) {
                 eventDataBytes = data
             }
+        } else if let eventDataArray = eventData as? [Any] {
+            print("🔍 SocketIOService: Event data as array: \(eventDataArray)")
+            // Обрабатываем данные как массив (например, для room:users)
+            if let data = try? JSONSerialization.data(withJSONObject: eventDataArray) {
+                eventDataBytes = data
+            }
         } else {
-            print("🔍 SocketIOService: Event data is not a dict: \(eventData)")
+            print("🔍 SocketIOService: Event data is not a dict or array: \(eventData)")
         }
 
         print(
@@ -430,12 +453,24 @@ class SocketIOService: ObservableObject {
             return
         }
 
-        // Attempt to reconnect after a delay
+        // Attempt to reconnect after a delay, but only if not already connected/connecting
         reconnectTimer?.invalidate()
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) {
             [weak self] _ in
-            print("🔄 SocketIOService: Attempting to reconnect...")
-            self?.connect()
+            guard let self = self else { return }
+            if !self.isConnected && !self.isConnecting
+                && self.reconnectAttempts < self.maxReconnectAttempts
+            {
+                self.reconnectAttempts += 1
+                print(
+                    "🔄 SocketIOService: Attempting to reconnect... (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts))"
+                )
+                self.connect()
+            } else if self.reconnectAttempts >= self.maxReconnectAttempts {
+                print("❌ SocketIOService: Max reconnect attempts reached, stopping reconnection")
+            } else {
+                print("🔄 SocketIOService: Skipping reconnect - already connected or connecting")
+            }
         }
     }
 
@@ -501,6 +536,60 @@ class SocketIOService: ObservableObject {
         } catch {
             print("❌ SocketIOService: Failed to serialize event data: \(error)")
         }
+    }
+
+    func emit(_ event: SocketIOEvent, roomId: String, data: [String: Any]) {
+        guard isConnected else {
+            print("❌ SocketIOService: Cannot emit event '\(event.rawValue)' - not connected")
+            return
+        }
+
+        guard let webSocket = webSocket else {
+            print(
+                "❌ SocketIOService: Cannot emit event '\(event.rawValue)' - no WebSocket instance")
+            return
+        }
+
+        do {
+            let eventData: [Any] = [event.rawValue, roomId, data]
+            let jsonData = try JSONSerialization.data(withJSONObject: eventData)
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? ""
+            let socketIOMessage = "42" + jsonString
+
+            print(
+                "📤 SocketIOService: Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(data)"
+            )
+
+            let wsMessage = URLSessionWebSocketTask.Message.string(socketIOMessage)
+            webSocket.send(wsMessage) { [weak self] error in
+                if let error = error {
+                    print("❌ SocketIOService: Failed to emit event '\(event.rawValue)': \(error)")
+                    // Если ошибка связана с отключением, помечаем соединение как разорванное
+                    if (error as NSError).code == 57
+                        || (error as NSError).domain == "NSPOSIXErrorDomain"
+                    {
+                        DispatchQueue.main.async {
+                            self?.isConnected = false
+                            self?.handleError(
+                                "WebSocket connection lost: \(error.localizedDescription)")
+                        }
+                    }
+                } else {
+                    print(
+                        "✅ SocketIOService: Successfully emitted event '\(event.rawValue)' to room '\(roomId)'"
+                    )
+                }
+            }
+        } catch {
+            print("❌ SocketIOService: Failed to serialize event data: \(error)")
+        }
+    }
+
+    // MARK: - Connection Management
+
+    func resetReconnectAttempts() {
+        reconnectAttempts = 0
+        print("🔄 SocketIOService: Reconnect attempts reset")
     }
 
     // MARK: - Connection Testing
