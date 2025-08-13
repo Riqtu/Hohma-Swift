@@ -6,8 +6,8 @@
 //
 
 import AVFoundation
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct FortuneWheelGameView: View {
     @ObserveInjection var inject
@@ -22,8 +22,20 @@ struct FortuneWheelGameView: View {
         GeometryReader { geometry in
             ZStack {
                 // Видео фон
-                if let player = viewModel.player {
-                    VideoBackgroundView(player: player)
+                let urlString = viewModel.wheelState.backVideo
+                if !urlString.isEmpty,
+                    let url = URL(string: urlString)
+                {
+                    // Используем новый StreamVideoView для внешних URL
+                    StreamVideoView(url: url)
+                        .ignoresSafeArea()
+                } else if viewModel.isVideoReady {
+                    // Fallback на градиент если видео не готово
+                    AnimatedGradientBackground()
+                        .ignoresSafeArea()
+                } else {
+                    // Показываем градиент пока видео загружается
+                    AnimatedGradientBackground()
                         .ignoresSafeArea()
                 }
 
@@ -88,7 +100,8 @@ struct FortuneWheelGameView: View {
             viewModel.setupVideoBackground()
         }
         .onDisappear {
-            viewModel.pauseVideo()
+            // Не останавливаем видео при закрытии игры
+            // viewModel.pauseVideo()
         }
         .enableInjection()
     }

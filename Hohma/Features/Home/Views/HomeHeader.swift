@@ -5,13 +5,20 @@ import SwiftUI
 struct HomeHeader: View {
     @StateObject private var videoManager = VideoPlayerManager.shared
     @State private var player: AVPlayer?
+    @State private var isVideoReady: Bool = false
+    @State private var playerObserver: NSKeyValueObservation?
     @Environment(\.scenePhase) private var scenePhase
     @ObserveInjection var inject
 
     var body: some View {
         ZStack {
-            if let player {
+            if let player = player, isVideoReady {
                 VideoBackgroundView(player: player)
+                    .frame(height: 250)
+                    .clipped()
+            } else {
+                // Показываем градиент пока видео загружается
+                AnimatedGradientBackground()
                     .frame(height: 250)
                     .clipped()
             }
@@ -33,32 +40,76 @@ struct HomeHeader: View {
             .padding()
         }
         .frame(height: 250)
-        // .glassCard()
         .onAppear {
             setupPlayer()
         }
         .onDisappear {
-            player?.pause()
+            cleanupPlayer()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                if player == nil {
-                    setupPlayer()
-                } else {
-                    player?.play()
-                }
-            case .inactive, .background:
-                player?.pause()
-            @unknown default:
-                break
-            }
+            handleScenePhaseChange(newPhase)
         }
         .enableInjection()
     }
 
     private func setupPlayer() {
+        print("🏠 HomeHeader: Настройка плеера")
+
+        // Предварительно загружаем видео
+        videoManager.preloadVideo(resourceName: "background")
+
+        // Получаем плеер
         player = videoManager.player(resourceName: "background")
+
+        // Настраиваем observer для готовности
+        if let player = player {
+            setupPlayerObserver(player)
+        }
+    }
+
+    private func setupPlayerObserver(_ player: AVPlayer) {
+        // Очищаем предыдущий observer
+        playerObserver?.invalidate()
+
+        playerObserver = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
+            DispatchQueue.main.async {
+                print("🏠 HomeHeader: Статус плеера: \(item.status.rawValue)")
+                self.isVideoReady = item.status == .readyToPlay
+                if self.isVideoReady {
+                    print("🏠 HomeHeader: Плеер готов, запускаем воспроизведение")
+                    player.play()
+                }
+            }
+        }
+
+        // Проверяем текущий статус
+        if player.currentItem?.status == .readyToPlay {
+            print("🏠 HomeHeader: Плеер уже готов")
+            self.isVideoReady = true
+            player.play()
+        }
+    }
+
+    private func cleanupPlayer() {
+        print("🏠 HomeHeader: Очистка плеера")
+        playerObserver?.invalidate()
+        playerObserver = nil
+        player?.pause()
+        player = nil
+        isVideoReady = false
+    }
+
+    private func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            if isVideoReady {
+                player?.play()
+            }
+        case .inactive, .background:
+            player?.pause()
+        @unknown default:
+            break
+        }
     }
 }
 

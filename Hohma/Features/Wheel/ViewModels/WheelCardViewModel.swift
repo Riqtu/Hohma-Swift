@@ -1,66 +1,187 @@
 import AVFoundation
+import Combine  // Added for Combine publishers
 import SwiftUI
 
 @MainActor
 final class WheelCardViewModel: ObservableObject {
-    @Published var player: AVPlayer?
+    // MARK: - Properties
+    let cardData: WheelWithRelations
+    @Published var isVideoReady: Bool = false
+    @Published var isLoading: Bool = true
+    @Published var hasError: Bool = false
     @Published var uniqueUsers: [AuthUser] = []
     @Published var winnerUser: AuthUser?
 
-    private let videoManager = VideoPlayerManager.shared
-    private var playerKey: String?
+    // Новый потоковый плеер
+    private var streamPlayer: StreamPlayer?
+    private var streamVideoService = StreamVideoService.shared
 
-    let cardData: WheelWithRelations
+    // MARK: - Initialization
 
     init(cardData: WheelWithRelations) {
         self.cardData = cardData
         processUsers()
+        setupPlayer()
     }
 
     deinit {
-        // Очищаем ресурсы синхронно в deinit
-        // Не можем обращаться к @Published свойствам в deinit из-за MainActor
+        // Не можем вызывать MainActor методы в deinit
         // Очистка произойдет автоматически при уничтожении объекта
     }
 
-    private func cleanupPlayer() {
-        if let player = player {
-            player.pause()
-            self.player = nil
-        }
-        if let key = playerKey {
-            videoManager.removePlayer(for: key)
-            playerKey = nil
+    // MARK: - Public Methods
+
+    func onAppear() {
+        streamPlayer?.resume()
+    }
+
+    func onDisappear() {
+        // Не останавливаем видео при исчезновении карточки
+        // streamPlayer?.pause()
+    }
+
+    func onScenePhaseChanged(_ phase: ScenePhase) {
+        switch phase {
+        case .active:
+            streamPlayer?.resume()
+        case .inactive, .background:
+            streamPlayer?.pause()
+        @unknown default:
+            break
         }
     }
 
+    // MARK: - Private Methods
+
     private func setupPlayer() {
-        guard let urlString = cardData.theme?.backgroundVideoURL,
+        // Сначала пробуем внешний URL (если есть)
+        if let urlString = cardData.theme?.backgroundVideoURL,
             let url = URL(string: urlString)
-        else { return }
+        {
+            setupStreamPlayer(with: url)
+        } else {
+            // Fallback на локальное видео только если нет внешнего URL
+            setupLocalVideo()
+        }
+    }
 
-        // Очищаем предыдущий плеер
-        cleanupPlayer()
+    private func setupStreamPlayer(with url: URL) {
+        // Получаем потоковый плеер
+        streamPlayer = streamVideoService.getStreamPlayer(for: url)
 
-        // Создаем новый плеер
-        player = videoManager.player(url: url)
-        playerKey = url.absoluteString
+        // Подписываемся на изменения состояния
+        streamPlayer?.$isReady
+            .sink { [weak self] isReady in
+                DispatchQueue.main.async {
+                    self?.isVideoReady = isReady
+                    self?.isLoading = false
+                }
+            }
+            .store(in: &cancellables)
+
+        streamPlayer?.$isLoading
+            .sink { [weak self] isLoading in
+                DispatchQueue.main.async {
+                    self?.isLoading = isLoading
+                }
+            }
+            .store(in: &cancellables)
+
+        streamPlayer?.$hasError
+            .sink { [weak self] hasError in
+                DispatchQueue.main.async {
+                    self?.hasError = hasError
+                    if hasError {
+                        self?.fallbackToLocalVideo()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupLocalVideo() {
+        // Для локального видео используем старый VideoPlayerManager
+        let videoManager = VideoPlayerManager.shared
+        let player = videoManager.player(resourceName: "background")
+
+        if let player = player {
+            self._player = player
+            self.playerKey = "background"
+            setupPlayerObserver(player)
+        } else {
+            hasError = true
+        }
+    }
+
+    private func fallbackToLocalVideo() {
+        // Очищаем потоковый плеер
+        if let url = URL(string: cardData.theme?.backgroundVideoURL ?? "") {
+            streamVideoService.removePlayer(for: url)
+        }
+        streamPlayer = nil
+
+        // Переключаемся на локальное видео
+        setupLocalVideo()
+    }
+
+    private func cleanupPlayer() {
+        // Очищаем потоковый плеер
+        if let url = URL(string: cardData.theme?.backgroundVideoURL ?? "") {
+            streamVideoService.removePlayer(for: url)
+        }
+        streamPlayer = nil
+
+        // Очищаем старый плеер
+        playerObserver?.invalidate()
+        playerObserver = nil
+        _player = nil
+        playerKey = nil
+    }
+
+    // MARK: - Legacy Support (для локального видео)
+
+    // Эти свойства и методы используются только для локального видео
+    var player: AVPlayer? { return _player }
+    private var _player: AVPlayer?
+    private var playerKey: String?
+    private var playerObserver: NSKeyValueObservation?
+    private var cancellables = Set<AnyCancellable>()
+
+    private func setupPlayerObserver(_ player: AVPlayer) {
+        playerObserver?.invalidate()
+
+        playerObserver = player.currentItem?.observe(\.status, options: [.new]) {
+            [weak self] item, _ in
+            DispatchQueue.main.async {
+                self?.isVideoReady = item.status == .readyToPlay
+                self?.isLoading = item.status == .unknown
+
+                if self?.isVideoReady == true {
+                    player.play()
+                }
+            }
+        }
+
+        if player.currentItem?.status == .readyToPlay {
+            self.isVideoReady = true
+            player.play()
+        }
     }
 
     func resumePlayer() {
-        if player == nil {
+        if _player == nil {
             setupPlayer()
-        } else {
-            player?.play()
+        } else if isVideoReady {
+            _player?.play()
         }
     }
 
     func pausePlayer() {
-        player?.pause()
+        _player?.pause()
     }
 
     func ensurePlayerExists() {
-        if player == nil {
+        if _player == nil {
             setupPlayer()
         }
     }

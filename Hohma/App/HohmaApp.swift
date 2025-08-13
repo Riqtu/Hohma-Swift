@@ -12,6 +12,7 @@ import SwiftUI
 @main
 struct hohmaApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var videoManager = VideoPlayerManager.shared
 
     init() {
         #if DEBUG
@@ -19,6 +20,7 @@ struct hohmaApp: App {
         #endif
 
         setupAudioSession()
+        preloadCommonVideos()
     }
 
     private func setupAudioSession() {
@@ -36,6 +38,14 @@ struct hohmaApp: App {
         #endif
     }
 
+    private func preloadCommonVideos() {
+        // Предварительно загружаем часто используемые видео
+        videoManager.preloadVideo(resourceName: "background")
+        videoManager.preloadVideo(resourceName: "affirmation")
+        videoManager.preloadVideo(resourceName: "movie")
+        videoManager.preloadVideo(resourceName: "persons")
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -47,19 +57,23 @@ struct hohmaApp: App {
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                // Приложение стало активным - возобновляем видео
-                VideoPlayerManager.shared.resumeAllPlayers()
-            case .inactive:
-                // Приложение стало неактивным - приостанавливаем видео
-                VideoPlayerManager.shared.pauseAllPlayers()
-            case .background:
-                // Приложение в фоне - приостанавливаем видео
-                VideoPlayerManager.shared.pauseAllPlayers()
-            @unknown default:
-                break
-            }
+            handleScenePhaseChange(newPhase)
+        }
+    }
+
+    private func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            // Приложение стало активным - возобновляем видео
+            videoManager.resumeAllPlayers()
+        case .inactive:
+            // Приложение стало неактивным - приостанавливаем видео
+            videoManager.pauseAllPlayers()
+        case .background:
+            // Приложение в фоне - приостанавливаем видео
+            videoManager.pauseAllPlayers()
+        @unknown default:
+            break
         }
     }
 }

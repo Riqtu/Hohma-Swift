@@ -1,4 +1,5 @@
 import AVFoundation
+import Inject
 //
 //  CardView.swift
 //  Hohma
@@ -6,10 +7,14 @@ import AVFoundation
 //  Created by Artem Vydro on 03.08.2025.
 //
 import SwiftUI
-import Inject
 
 struct CardView: View {
     @ObserveInjection var inject
+    @StateObject private var videoManager = VideoPlayerManager.shared
+    @State private var videoPlayer: AVPlayer?
+    @State private var isVideoReady: Bool = false
+    @State private var playerObserver: NSKeyValueObservation?
+
     let title: String
     let description: String
     let imageName: String?  // имя в Assets или URL
@@ -20,7 +25,7 @@ struct CardView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Показываем либо видео, либо картинку, либо ничего
             Group {
-                if let player {
+                if let player = player ?? videoPlayer, isVideoReady {
                     VideoBackgroundView(player: player)
                 } else if let imageName, !imageName.isEmpty {
                     Image(imageName)
@@ -45,7 +50,66 @@ struct CardView: View {
         .cardStyle()
         .frame(maxWidth: 380)
         .padding(.horizontal)
+        .onAppear {
+            setupVideoIfNeeded()
+        }
+        .onDisappear {
+            cleanupVideo()
+        }
         .enableInjection()
+    }
+
+    private func setupVideoIfNeeded() {
+        print("🎴 CardView: Настройка видео для \(title)")
+
+        // Если уже есть готовый плеер, используем его
+        if let player = player {
+            print("🎴 CardView: Используем готовый плеер")
+            setupPlayerObserver(player)
+            return
+        }
+
+        // Если есть имя видео, загружаем его
+        if let videoName = videoName, !videoName.isEmpty {
+            print("🎴 CardView: Загружаем видео \(videoName)")
+            videoPlayer = videoManager.player(resourceName: videoName)
+            if let player = videoPlayer {
+                setupPlayerObserver(player)
+            }
+        }
+    }
+
+    private func setupPlayerObserver(_ player: AVPlayer) {
+        // Очищаем предыдущий observer
+        playerObserver?.invalidate()
+
+        playerObserver = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
+            DispatchQueue.main.async {
+                print("🎴 CardView: Статус плеера для \(self.title): \(item.status.rawValue)")
+                self.isVideoReady = item.status == .readyToPlay
+                if self.isVideoReady {
+                    print("🎴 CardView: Видео готово для \(self.title)")
+                }
+            }
+        }
+
+        // Проверяем текущий статус
+        if player.currentItem?.status == .readyToPlay {
+            print("🎴 CardView: Плеер уже готов для \(title)")
+            self.isVideoReady = true
+        }
+    }
+
+    private func cleanupVideo() {
+        print("🎴 CardView: Очистка видео для \(title)")
+        playerObserver?.invalidate()
+        playerObserver = nil
+
+        if player == nil {  // Только если это не внешний плеер
+            videoPlayer?.pause()
+            videoPlayer = nil
+        }
+        isVideoReady = false
     }
 }
 

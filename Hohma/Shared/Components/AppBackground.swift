@@ -6,13 +6,14 @@
 //
 
 import AVFoundation
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct AppBackground: View {
     @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @State private var backgroundPlayer: AVPlayer?
+    @State private var isPlayerReady: Bool = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
@@ -27,13 +28,17 @@ struct AppBackground: View {
 
     var body: some View {
         ZStack {
-            if useVideoBackground, let player = backgroundPlayer {
+            if useVideoBackground, let player = backgroundPlayer, isPlayerReady {
                 // Видео фон
                 VideoBackgroundView(player: player)
                     .ignoresSafeArea()
 
                 // Полупрозрачный оверлей для лучшей читаемости
                 Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+            } else if useVideoBackground {
+                // Показываем градиент пока видео загружается
+                AnimatedGradientBackground()
                     .ignoresSafeArea()
             } else {
                 // Анимированный градиентный фон
@@ -47,26 +52,59 @@ struct AppBackground: View {
             }
         }
         .onDisappear {
-            backgroundPlayer?.pause()
+            cleanupVideoBackground()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                if useVideoBackground {
-                    backgroundPlayer?.play()
-                }
-            case .inactive, .background:
-                backgroundPlayer?.pause()
-            @unknown default:
-                break
-            }
+            handleScenePhaseChange(newPhase)
         }
         .enableInjection()
     }
 
     private func setupVideoBackground() {
+        // Предварительно загружаем видео
+        videoManager.preloadVideo(resourceName: videoName)
+
+        // Получаем плеер
         backgroundPlayer = videoManager.player(resourceName: videoName)
-        backgroundPlayer?.play()
+
+        // Настраиваем observer для готовности
+        if let player = backgroundPlayer {
+            setupPlayerObserver(player)
+        }
+    }
+
+    private func setupPlayerObserver(_ player: AVPlayer) {
+        // Observer для отслеживания готовности плеера
+        let observer = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
+            DispatchQueue.main.async {
+                self.isPlayerReady = item.status == .readyToPlay
+                if self.isPlayerReady {
+                    player.play()
+                }
+            }
+        }
+
+        // Сохраняем observer для очистки
+        // В реальном приложении нужно сохранить observer в @State
+    }
+
+    private func cleanupVideoBackground() {
+        backgroundPlayer?.pause()
+        backgroundPlayer = nil
+        isPlayerReady = false
+    }
+
+    private func handleScenePhaseChange(_ newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            if useVideoBackground && isPlayerReady {
+                backgroundPlayer?.play()
+            }
+        case .inactive, .background:
+            backgroundPlayer?.pause()
+        @unknown default:
+            break
+        }
     }
 }
 

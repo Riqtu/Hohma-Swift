@@ -1,3 +1,4 @@
+import Inject
 //
 //  CustomSidebar.swift
 //  Hohma
@@ -5,13 +6,12 @@
 //  Created by Artem Vydro on 05.08.2025.
 //
 import SwiftUI
-import Inject
 
 struct CustomSidebar: View {
     @ObserveInjection var inject
     @Binding var selection: String
     let user: AuthResult?
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Аватарка и имя
@@ -42,9 +42,9 @@ struct CustomSidebar: View {
             }
             .padding(.vertical, 16)
             .padding(.horizontal, 12)
-            
+
             Divider()
-            
+
             // Меню
             VStack(alignment: .leading, spacing: 6) {
                 SidebarButton(
@@ -52,13 +52,19 @@ struct CustomSidebar: View {
                     icon: "house",
                     isSelected: selection == "home"
                 ) { selection = "home" }
-                
+
                 SidebarButton(
                     title: "Колесо",
                     icon: "theatermasks.circle",
                     isSelected: selection == "wheelList"
                 ) { selection = "wheelList" }
-                
+
+                SidebarButton(
+                    title: "Тест видео",
+                    icon: "video",
+                    isSelected: selection == "videoTest"
+                ) { selection = "videoTest" }
+
                 SidebarButton(
                     title: "Профиль",
                     icon: "person",
@@ -67,18 +73,18 @@ struct CustomSidebar: View {
             }
             .padding(.top, 12)
             .padding(.horizontal, 8)
-            
+
             Spacer()
-            
+
             Divider()
-            
+
             // Нижний блок, например, настройки
             VStack(alignment: .leading) {
                 SidebarButton(
                     title: "Настройки",
                     icon: "gearshape",
                     isSelected: false
-                ) { /* Тут действия для настроек */ }
+                ) { /* Тут действия для настроек */  }
             }
             .padding(.horizontal, 8)
         }

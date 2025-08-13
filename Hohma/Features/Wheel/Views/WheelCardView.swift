@@ -19,16 +19,23 @@ struct WheelCardView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Видео фон с заголовком
             ZStack {
-                if let player = viewModel.player {
-                    VideoBackgroundView(player: player)
+                if let urlString = viewModel.cardData.theme?.backgroundVideoURL,
+                    let url = URL(string: urlString)
+                {
+                    // Используем новый StreamVideoView для внешних URL
+                    StreamVideoView(url: url)
                         .frame(width: 380, height: 200)
+                        .clipped()
+                } else if viewModel.isVideoReady {
+                    // Используем старый VideoBackgroundView для локального видео
+                    if let player = viewModel.player {
+                        VideoBackgroundView(player: player)
+                            .frame(width: 380, height: 200)
+                    }
                 } else {
-                    Color.gray
+                    // Показываем градиент пока видео загружается
+                    AnimatedGradientBackground()
                         .frame(width: 380, height: 200)
-                        .overlay(
-                            Text("Нет видео")
-                                .foregroundColor(.white)
-                        )
                 }
 
                 WheelHeaderView(
@@ -76,20 +83,14 @@ struct WheelCardView: View {
         .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
         .onAppear {
-            viewModel.ensurePlayerExists()
+            viewModel.onAppear()
         }
         .onDisappear {
-            viewModel.pausePlayer()
+            // Не останавливаем видео при исчезновении карточки
+            // viewModel.onDisappear()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            switch newPhase {
-            case .active:
-                viewModel.resumePlayer()
-            case .inactive, .background:
-                viewModel.pausePlayer()
-            @unknown default:
-                break
-            }
+            viewModel.onScenePhaseChanged(newPhase)
         }
         .sheet(isPresented: $showingGame) {
             FortuneWheelGameView(

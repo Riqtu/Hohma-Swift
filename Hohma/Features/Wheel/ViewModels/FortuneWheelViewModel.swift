@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import Combine
 import Foundation
 import SwiftUI
 
@@ -15,7 +16,13 @@ class FortuneWheelViewModel: ObservableObject {
     @Published var users: [AuthUser] = []
     @Published var isLoading = false
     @Published var error: String?
-    @Published var player: AVPlayer?
+    @Published var isVideoReady: Bool = false
+    @Published var hasError: Bool = false
+
+    // Новый потоковый плеер
+    private var streamPlayer: StreamPlayer?
+    private var streamVideoService = StreamVideoService.shared
+    private var cancellables = Set<AnyCancellable>()
 
     private let wheelData: WheelWithRelations
     private let currentUser: AuthUser?
@@ -54,27 +61,42 @@ class FortuneWheelViewModel: ObservableObject {
 
     func setupVideoBackground() {
         guard let videoURL = URL(string: wheelState.backVideo) else { return }
-        player = AVPlayer(url: videoURL)
-        player?.actionAtItemEnd = .none
-        player?.play()
 
-        // Зацикливание видео
-        NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemDidPlayToEndTime,
-            object: player?.currentItem,
-            queue: .main
-        ) { [weak self] _ in
-            self?.player?.seek(to: .zero)
-            self?.player?.play()
-        }
+        // Используем новый StreamVideoService
+        streamPlayer = streamVideoService.getStreamPlayer(for: videoURL)
+
+        // Подписываемся на изменения состояния
+        streamPlayer?.$isReady
+            .sink { [weak self] isReady in
+                DispatchQueue.main.async {
+                    self?.isVideoReady = isReady
+                }
+            }
+            .store(in: &cancellables)
+
+        streamPlayer?.$isLoading
+            .sink { [weak self] isLoading in
+                DispatchQueue.main.async {
+                    self?.isLoading = isLoading
+                }
+            }
+            .store(in: &cancellables)
+
+        streamPlayer?.$hasError
+            .sink { [weak self] hasError in
+                DispatchQueue.main.async {
+                    self?.hasError = hasError
+                }
+            }
+            .store(in: &cancellables)
     }
 
     func pauseVideo() {
-        player?.pause()
+        streamPlayer?.pause()
     }
 
     func resumeVideo() {
-        player?.play()
+        streamPlayer?.resume()
     }
 
     func calculateWheelSize(for geometry: GeometryProxy) -> CGFloat {
@@ -87,17 +109,14 @@ class FortuneWheelViewModel: ObservableObject {
 
     private func handleSectorEliminated(_ sectorId: String) {
         // Здесь будет логика обновления сектора в БД
-        print("Сектор \(sectorId) выбыл")
     }
 
     private func handleWheelStatusChange(_ status: WheelStatus, wheelId: String) {
         // Здесь будет логика обновления статуса колеса
-        print("Статус колеса \(wheelId) изменен на \(status)")
     }
 
     private func handlePayoutBets(wheelId: String, winningSectorId: String) {
         // Здесь будет логика выплаты ставок
-        print("Выплата ставок для колеса \(wheelId), победитель: \(winningSectorId)")
     }
 
     // MARK: - User Management
