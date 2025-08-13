@@ -5,13 +5,14 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct WheelControlsView: View {
     @ObserveInjection var inject
     @ObservedObject var wheelState: WheelState
     let userCoins: Int
+    let isSocketReady: Bool
 
     var body: some View {
         VStack(spacing: 12) {
@@ -36,8 +37,10 @@ struct WheelControlsView: View {
                             .fill(Color(hex: wheelState.accentColor))
                     )
                 }
-                .disabled(wheelState.spinning || wheelState.sectors.count <= 1)
-                .opacity(wheelState.spinning || wheelState.sectors.count <= 1 ? 0.5 : 1.0)
+                .disabled(wheelState.spinning || wheelState.sectors.count <= 1 || !isSocketReady)
+                .opacity(
+                    (wheelState.spinning || wheelState.sectors.count <= 1 || !isSocketReady)
+                        ? 0.5 : 1.0)
 
                 // Кнопка перемешивания
                 Button(action: {
@@ -58,8 +61,8 @@ struct WheelControlsView: View {
                             .stroke(Color(hex: wheelState.accentColor), lineWidth: 1)
                     )
                 }
-                .disabled(wheelState.spinning)
-                .opacity(wheelState.spinning ? 0.5 : 1.0)
+                .disabled(wheelState.spinning || !isSocketReady)
+                .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
             }
 
             // Настройки
@@ -140,7 +143,8 @@ struct WheelControlsView: View {
 #Preview {
     WheelControlsView(
         wheelState: WheelState(),
-        userCoins: 1000
+        userCoins: 1000,
+        isSocketReady: true
     )
     .background(Color.black)
 }

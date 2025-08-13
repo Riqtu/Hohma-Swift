@@ -18,10 +18,13 @@ class FortuneWheelViewModel: ObservableObject {
     @Published var error: String?
     @Published var isVideoReady: Bool = false
     @Published var hasError: Bool = false
+    @Published var isSocketReady = false
 
-    // Новый потоковый плеер
+    // Services
     private var streamPlayer: StreamPlayer?
     private var streamVideoService = StreamVideoService.shared
+    private var socketService: SocketIOService
+    private var wheelService = FortuneWheelService()
     private var cancellables = Set<AnyCancellable>()
 
     private let wheelData: WheelWithRelations
@@ -30,7 +33,13 @@ class FortuneWheelViewModel: ObservableObject {
     init(wheelData: WheelWithRelations, currentUser: AuthUser?) {
         self.wheelData = wheelData
         self.currentUser = currentUser
+
+        // Инициализируем SocketIOService с правильным URL
+        let socketURL = wheelService.getSocketURL()
+        self.socketService = SocketIOService(baseURL: socketURL)
+
         setupWheel()
+        setupSocket()
     }
 
     private func setupWheel() {
@@ -57,6 +66,34 @@ class FortuneWheelViewModel: ObservableObject {
         wheelState.payoutBets = { [weak self] wheelId, winningSectorId in
             self?.handlePayoutBets(wheelId: wheelId, winningSectorId: winningSectorId)
         }
+    }
+
+    private func setupSocket() {
+        // Подписываемся на изменения состояния сокета
+        socketService.$isConnected
+            .sink { [weak self] isConnected in
+                self?.isSocketReady = isConnected
+                if isConnected {
+                    self?.joinRoom()
+                }
+            }
+            .store(in: &cancellables)
+
+        socketService.$error
+            .sink { [weak self] error in
+                self?.error = error
+            }
+            .store(in: &cancellables)
+
+        // Настраиваем сокет для wheelState
+        wheelState.setupSocket(socketService, roomId: wheelData.id)
+
+        // Подключаемся к сокету
+        socketService.connect()
+    }
+
+    private func joinRoom() {
+        wheelState.joinRoom(wheelData.id, userId: currentUser)
     }
 
     func setupVideoBackground() {
@@ -108,15 +145,37 @@ class FortuneWheelViewModel: ObservableObject {
     // MARK: - Callbacks
 
     private func handleSectorEliminated(_ sectorId: String) {
-        // Здесь будет логика обновления сектора в БД
+        Task {
+            do {
+                let updatedSector = try await wheelService.updateSector(sectorId, eliminated: true)
+                wheelState.updateSector(updatedSector)
+            } catch {
+                self.error = "Ошибка обновления сектора: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func handleWheelStatusChange(_ status: WheelStatus, wheelId: String) {
-        // Здесь будет логика обновления статуса колеса
+        Task {
+            do {
+                let updatedWheel = try await wheelService.updateWheelStatus(wheelId, status: status)
+                print("Статус колеса обновлен: \(updatedWheel.status)")
+            } catch {
+                self.error = "Ошибка обновления статуса колеса: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func handlePayoutBets(wheelId: String, winningSectorId: String) {
-        // Здесь будет логика выплаты ставок
+        Task {
+            do {
+                try await wheelService.payoutBets(
+                    wheelId: wheelId, winningSectorId: winningSectorId)
+                print("Ставки выплачены для сектора: \(winningSectorId)")
+            } catch {
+                self.error = "Ошибка выплаты ставок: \(error.localizedDescription)"
+            }
+        }
     }
 
     // MARK: - User Management
@@ -154,6 +213,14 @@ class FortuneWheelViewModel: ObservableObject {
     }
 
     var canSpin: Bool {
-        !wheelState.spinning && isGameActive
+        !wheelState.spinning && isGameActive && isSocketReady
+    }
+
+    // MARK: - Cleanup
+
+    func cleanup() {
+        wheelState.cleanup()
+        socketService.disconnect()
+        cancellables.removeAll()
     }
 }

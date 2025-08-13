@@ -1,8 +1,10 @@
 import AVFoundation
 import SwiftUI
+import Inject
 
 /// Специализированный SwiftUI компонент для отображения потокового видео
 struct StreamVideoView: View {
+    @ObserveInjection var inject
     let url: URL
     @StateObject private var streamPlayer: StreamPlayer
 
@@ -40,6 +42,7 @@ struct StreamVideoView: View {
         .onDisappear {
             // View исчез
         }
+        .enableInjection()
     }
 }
 

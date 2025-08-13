@@ -1,7 +1,9 @@
 import AVFoundation
 import SwiftUI
+import Inject
 
 struct VideoTestView: View {
+    @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @State private var player: AVPlayer?
     @State private var isVideoReady: Bool = false
@@ -98,6 +100,7 @@ struct VideoTestView: View {
             // Автоматически тестируем background.mp4 при загрузке
             testVideo(resourceName: "background")
         }
+        .enableInjection()
     }
 
     private func testVideo(resourceName: String) {

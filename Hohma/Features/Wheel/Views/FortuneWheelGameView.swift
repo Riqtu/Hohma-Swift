@@ -69,8 +69,24 @@ struct FortuneWheelGameView: View {
                             // Управление
                             WheelControlsView(
                                 wheelState: viewModel.wheelState,
-                                userCoins: viewModel.currentUserCoins
+                                userCoins: viewModel.currentUserCoins,
+                                isSocketReady: viewModel.isSocketReady
                             )
+
+                            // Индикатор подключения
+                            if !viewModel.isSocketReady {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Подключение к игре...")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(8)
+                            }
                         }
 
                         // Панель секторов
@@ -94,14 +110,32 @@ struct FortuneWheelGameView: View {
 
                     Spacer()
                 }
+
+                // Ошибка подключения
+                if let error = viewModel.error {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.8))
+                        .cornerRadius(8)
+                        .padding(.bottom, 20)
+                    }
+                }
             }
         }
         .onAppear {
             viewModel.setupVideoBackground()
         }
         .onDisappear {
-            // Не останавливаем видео при закрытии игры
-            // viewModel.pauseVideo()
+            viewModel.cleanup()
         }
         .enableInjection()
     }
