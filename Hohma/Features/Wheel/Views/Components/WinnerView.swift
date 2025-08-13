@@ -19,7 +19,10 @@ struct WinnerView: View {
                 .font(.system(size: 40))
                 .foregroundColor(.yellow)
         }
+        ZStack {
 
+        }
+        .enableInjection()
     }
 }
 
