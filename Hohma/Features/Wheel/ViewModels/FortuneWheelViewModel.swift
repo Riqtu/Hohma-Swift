@@ -300,10 +300,14 @@ class FortuneWheelViewModel: ObservableObject {
 
     func reconnectSocket() {
         print("🔄 FortuneWheelViewModel: Manually reconnecting socket")
-        socketService.disconnect()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.socketService.connect()
-        }
+        socketService.forceReconnect()
+    }
+
+    func checkSocketHealth() {
+        print("🔍 FortuneWheelViewModel: Socket health check")
+        print("   - Connected: \(socketService.isConnected)")
+        print("   - Connecting: \(socketService.isConnecting)")
+        print("   - Error: \(socketService.error ?? "none")")
     }
 
     // MARK: - Room Users Management

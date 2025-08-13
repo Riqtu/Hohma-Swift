@@ -508,6 +508,208 @@ class WheelState: ObservableObject {
             }
         }
 
+        // Handle request:sectors - когда другой клиент запрашивает сектора
+        socket.on(.requestSectors) { [weak self] data in
+            print("📋 WheelState: Received request:sectors")
+
+            // Отправляем текущие сектора только если они есть
+            if let socket = self?.socket, socket.isConnected, self?.isAuthorized == true {
+                let hasSectors = !(self?.sectors.isEmpty ?? true)
+                let hasLosers = !(self?.losers.isEmpty ?? true)
+
+                print(
+                    "📋 WheelState: Has sectors to send: \(hasSectors) (\(self?.sectors.count ?? 0))"
+                )
+                print("📋 WheelState: Has losers to send: \(hasLosers) (\(self?.losers.count ?? 0))")
+
+                // Отправляем сектора только если они есть
+                if hasSectors || hasLosers {
+                    let sectorsData: [String: Any] = [
+                        "sectors": self?.sectors.map { sector in
+                            [
+                                "id": sector.id,
+                                "label": sector.label,
+                                "name": sector.name,
+                                "eliminated": sector.eliminated,
+                                "winner": sector.winner,
+                                "description": sector.description ?? "",
+                                "pattern": sector.pattern ?? "",
+                                "labelColor": sector.labelColor ?? "",
+                                "labelHidden": sector.labelHidden,
+                                "wheelId": sector.wheelId,
+                                "userId": sector.userId ?? "",
+                            ]
+                        },
+                        "losers": self?.losers.map { sector in
+                            [
+                                "id": sector.id,
+                                "label": sector.label,
+                                "name": sector.name,
+                                "eliminated": sector.eliminated,
+                                "winner": sector.winner,
+                                "description": sector.description ?? "",
+                                "pattern": sector.pattern ?? "",
+                                "labelColor": sector.labelColor ?? "",
+                                "labelHidden": sector.labelHidden,
+                                "wheelId": sector.wheelId,
+                                "userId": sector.userId ?? "",
+                            ]
+                        },
+                    ]
+
+                    print(
+                        "📋 WheelState: Sending sectors data: \(self?.sectors.count ?? 0) active, \(self?.losers.count ?? 0) eliminated"
+                    )
+                    socket.emit(.syncSectors, data: sectorsData)
+                } else {
+                    print("📋 WheelState: No sectors to send, skipping response")
+                }
+            }
+        }
+
+        // Handle sync:sectors - когда получаем сектора от другого клиента
+        socket.on(.syncSectors) { [weak self] data in
+            print("📋 WheelState: Received sync:sectors")
+
+            guard let self = self else { return }
+
+            do {
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("📋 WheelState: Sectors JSON: \(jsonString)")
+                }
+
+                if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    let sectorsArray = jsonObject["sectors"] as? [[String: Any]] ?? []
+                    let losersArray = jsonObject["losers"] as? [[String: Any]] ?? []
+
+                    // Обрабатываем только если есть сектора или выбывшие
+                    if !sectorsArray.isEmpty || !losersArray.isEmpty {
+
+                        // Конвертируем обратно в сектора
+                        let newSectors = sectorsArray.compactMap { sectorDict -> Sector? in
+                            guard let id = sectorDict["id"] as? String,
+                                let label = sectorDict["label"] as? String,
+                                let name = sectorDict["name"] as? String,
+                                let eliminated = sectorDict["eliminated"] as? Bool,
+                                let winner = sectorDict["winner"] as? Bool,
+                                let wheelId = sectorDict["wheelId"] as? String
+                            else {
+                                return nil
+                            }
+
+                            return Sector(
+                                id: id,
+                                label: label,
+                                color: ColorJSON(h: 0, s: 80, l: 50),  // Дефолтный цвет
+                                name: name,
+                                eliminated: eliminated,
+                                winner: winner,
+                                description: sectorDict["description"] as? String,
+                                pattern: sectorDict["pattern"] as? String,
+                                patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
+                                poster: sectorDict["poster"] as? String,
+                                genre: sectorDict["genre"] as? String,
+                                rating: sectorDict["rating"] as? String,
+                                year: sectorDict["year"] as? String,
+                                labelColor: sectorDict["labelColor"] as? String,
+                                labelHidden: sectorDict["labelHidden"] as? Bool ?? false,
+                                wheelId: wheelId,
+                                userId: sectorDict["userId"] as? String,
+                                user: nil,  // Пользователь будет загружен отдельно
+                                createdAt: Date(),
+                                updatedAt: Date()
+                            )
+                        }
+
+                        let newLosers = losersArray.compactMap { sectorDict -> Sector? in
+                            guard let id = sectorDict["id"] as? String,
+                                let label = sectorDict["label"] as? String,
+                                let name = sectorDict["name"] as? String,
+                                let eliminated = sectorDict["eliminated"] as? Bool,
+                                let winner = sectorDict["winner"] as? Bool,
+                                let wheelId = sectorDict["wheelId"] as? String
+                            else {
+                                return nil
+                            }
+
+                            return Sector(
+                                id: id,
+                                label: label,
+                                color: ColorJSON(h: 0, s: 80, l: 50),  // Дефолтный цвет
+                                name: name,
+                                eliminated: eliminated,
+                                winner: winner,
+                                description: sectorDict["description"] as? String,
+                                pattern: sectorDict["pattern"] as? String,
+                                patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
+                                poster: sectorDict["poster"] as? String,
+                                genre: sectorDict["genre"] as? String,
+                                rating: sectorDict["rating"] as? String,
+                                year: sectorDict["year"] as? String,
+                                labelColor: sectorDict["labelColor"] as? String,
+                                labelHidden: sectorDict["labelHidden"] as? Bool ?? false,
+                                wheelId: wheelId,
+                                userId: sectorDict["userId"] as? String,
+                                user: nil,  // Пользователь будет загружен отдельно
+                                createdAt: Date(),
+                                updatedAt: Date()
+                            )
+                        }
+
+                        print(
+                            "📋 WheelState: Received \(newSectors.count) sectors and \(newLosers.count) losers"
+                        )
+
+                        Task { @MainActor in
+                            let hasExistingSectors = !self.sectors.isEmpty
+                            let hasIncomingSectors = !newSectors.isEmpty
+
+                            print(
+                                "📋 WheelState: Has existing sectors: \(hasExistingSectors) (\(self.sectors.count))"
+                            )
+                            print(
+                                "📋 WheelState: Has incoming sectors: \(hasIncomingSectors) (\(newSectors.count))"
+                            )
+
+                            // Обновляем сектора только если:
+                            // 1. У нас нет секторов ИЛИ
+                            // 2. Входящие сектора не пустые
+                            if !hasExistingSectors || hasIncomingSectors {
+                                // Сливаем сектора вместо полной замены
+                                if hasExistingSectors && hasIncomingSectors {
+                                    // Объединяем сектора, избегая дубликатов
+                                    let existingSectorIds = Set(self.sectors.map { $0.id })
+                                    let newUniqueSectors = newSectors.filter {
+                                        !existingSectorIds.contains($0.id)
+                                    }
+                                    self.sectors.append(contentsOf: newUniqueSectors)
+
+                                    let existingLoserIds = Set(self.losers.map { $0.id })
+                                    let newUniqueLosers = newLosers.filter {
+                                        !existingLoserIds.contains($0.id)
+                                    }
+                                    self.losers.append(contentsOf: newUniqueLosers)
+
+                                    print(
+                                        "📋 WheelState: Merged sectors - added \(newUniqueSectors.count) new sectors, \(newUniqueLosers.count) new losers"
+                                    )
+                                } else {
+                                    // Полная замена
+                                    self.sectors = newSectors
+                                    self.losers = newLosers
+                                    print("📋 WheelState: Replaced sectors from sync")
+                                }
+                            } else {
+                                print("📋 WheelState: Skipped update - keeping existing sectors")
+                            }
+                        }
+                    }
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode sectors: \(error)")
+            }
+        }
+
         // Подписываемся на уведомления об ошибках авторизации сокета
         NotificationCenter.default.addObserver(
             forName: .socketAuthorizationError,
@@ -550,6 +752,11 @@ class WheelState: ObservableObject {
             print(
                 "🔌 WheelState: Joining room \(roomId) with user: \(userId?.username ?? "unknown")")
             socket.emit(.joinRoom, data: joinData)
+
+            // Запрашиваем сектора у других клиентов после присоединения к комнате
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.requestSectors()
+            }
         } else {
             print(
                 "⚠️ WheelState: Cannot join room - socket not connected (\(socket?.isConnected ?? false)) or not authorized (\(isAuthorized))"
@@ -567,6 +774,19 @@ class WheelState: ObservableObject {
             } else {
                 print("⚠️ WheelState: Cannot leave room - socket not connected or not authorized")
             }
+        }
+    }
+
+    // MARK: - Sectors Synchronization
+
+    func requestSectors() {
+        print("📋 WheelState: Requesting sectors from other clients")
+
+        if let socket = socket, socket.isConnected, isAuthorized {
+            let requestData: [String: Any] = ["request": "sectors"]
+            socket.emit(.requestSectors, data: requestData)
+        } else {
+            print("⚠️ WheelState: Cannot request sectors - socket not connected or not authorized")
         }
     }
 

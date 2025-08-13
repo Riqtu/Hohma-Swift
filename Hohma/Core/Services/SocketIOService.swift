@@ -45,7 +45,9 @@ class SocketIOService: ObservableObject {
     private var heartbeatTimer: Timer?
     private var authToken: String?
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 5
+    private let maxReconnectAttempts = 10  // Увеличиваем количество попыток
+    private var lastReconnectTime: Date?
+    private let minReconnectInterval: TimeInterval = 2.0  // Минимальный интервал между попытками
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -198,14 +200,25 @@ class SocketIOService: ObservableObject {
                     self.isConnected = false
                 }
 
-                // Пытаемся переподключиться через небольшую задержку, но только если не пытаемся уже
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                // Пытаемся переподключиться с экспоненциальной задержкой
+                let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Экспоненциальная задержка, максимум 30 сек
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    // Проверяем, прошло ли достаточно времени с последней попытки
+                    if let lastReconnect = self.lastReconnectTime,
+                        Date().timeIntervalSince(lastReconnect) < self.minReconnectInterval
+                    {
+                        print("🔄 SocketIOService: Skipping reconnect - too soon since last attempt")
+                        return
+                    }
+
                     if !self.isConnected && !self.isConnecting
                         && self.reconnectAttempts < self.maxReconnectAttempts
                     {
                         self.reconnectAttempts += 1
+                        self.lastReconnectTime = Date()
                         print(
-                            "🔄 SocketIOService: Attempting to reconnect after connection loss (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts))"
+                            "🔄 SocketIOService: Attempting to reconnect after connection loss (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts), delay: \(String(format: "%.1f", delay))s)"
                         )
                         self.connect()
                     } else if self.reconnectAttempts >= self.maxReconnectAttempts {
@@ -455,15 +468,27 @@ class SocketIOService: ObservableObject {
 
         // Attempt to reconnect after a delay, but only if not already connected/connecting
         reconnectTimer?.invalidate()
-        reconnectTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) {
+        let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Экспоненциальная задержка
+
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) {
             [weak self] _ in
             guard let self = self else { return }
+
+            // Проверяем, прошло ли достаточно времени с последней попытки
+            if let lastReconnect = self.lastReconnectTime,
+                Date().timeIntervalSince(lastReconnect) < self.minReconnectInterval
+            {
+                print("🔄 SocketIOService: Skipping reconnect - too soon since last attempt")
+                return
+            }
+
             if !self.isConnected && !self.isConnecting
                 && self.reconnectAttempts < self.maxReconnectAttempts
             {
                 self.reconnectAttempts += 1
+                self.lastReconnectTime = Date()
                 print(
-                    "🔄 SocketIOService: Attempting to reconnect... (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts))"
+                    "🔄 SocketIOService: Attempting to reconnect... (attempt \(self.reconnectAttempts)/\(self.maxReconnectAttempts), delay: \(String(format: "%.1f", delay))s)"
                 )
                 self.connect()
             } else if self.reconnectAttempts >= self.maxReconnectAttempts {
@@ -476,7 +501,7 @@ class SocketIOService: ObservableObject {
 
     private func startHeartbeat() {
         heartbeatTimer?.invalidate()
-        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) {
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) {  // Уменьшаем интервал
             [weak self] _ in
             self?.sendHeartbeat()
         }
@@ -589,7 +614,17 @@ class SocketIOService: ObservableObject {
 
     func resetReconnectAttempts() {
         reconnectAttempts = 0
+        lastReconnectTime = nil
         print("🔄 SocketIOService: Reconnect attempts reset")
+    }
+
+    func forceReconnect() {
+        print("🔄 SocketIOService: Force reconnecting...")
+        disconnect()
+        resetReconnectAttempts()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.connect()
+        }
     }
 
     // MARK: - Connection Testing
