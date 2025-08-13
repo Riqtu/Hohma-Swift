@@ -59,7 +59,19 @@ struct RootView: View {
             }
         }
         .enableInjection()
+        .onAppear {
+            // Связываем AuthViewModel с NetworkManager для обработки 401 ошибок
+            NetworkManager.shared.setAuthViewModel(authViewModel)
 
+            // Подписываемся на уведомления об ошибках авторизации сокета
+            NotificationCenter.default.addObserver(
+                forName: .socketAuthorizationError,
+                object: nil,
+                queue: .main
+            ) { _ in
+                authViewModel.logout()
+            }
+        }
     }
 
     var isSidebarPreferred: Bool {

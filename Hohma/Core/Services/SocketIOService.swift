@@ -8,6 +8,11 @@
 import Combine
 import Foundation
 
+// MARK: - Notification Names
+extension Notification.Name {
+    static let socketAuthorizationError = Notification.Name("socketAuthorizationError")
+}
+
 // MARK: - Socket.IO Events
 enum SocketIOEvent: String, CaseIterable {
     case connect = "connect"
@@ -37,6 +42,7 @@ class SocketIOService: ObservableObject {
     private var webSocket: URLSessionWebSocketTask?
     private let session = URLSession.shared
     private var heartbeatTimer: Timer?
+    private var authToken: String?
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -49,8 +55,9 @@ class SocketIOService: ObservableObject {
     }
 
     // MARK: - Initialization
-    init(baseURL: String = "https://ws.hohma.su") {
+    init(baseURL: String = "https://ws.hohma.su", authToken: String? = nil) {
         self.baseURL = baseURL
+        self.authToken = authToken
     }
 
     // MARK: - Connection Management
@@ -78,6 +85,14 @@ class SocketIOService: ObservableObject {
         request.setValue("13", forHTTPHeaderField: "Sec-WebSocket-Version")
         request.setValue("socket.io", forHTTPHeaderField: "Sec-WebSocket-Protocol")
 
+        // Добавляем токен авторизации, если он есть
+        if let authToken = authToken {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+                print("🔐 SocketIOService: Added authorization token to WebSocket connection")
+            #endif
+        }
+
         let task = session.webSocketTask(with: request)
         self.webSocket = task
 
@@ -99,9 +114,10 @@ class SocketIOService: ObservableObject {
     }
 
     func disconnect() {
+        print("🔌 SocketIOService: Disconnecting...")
+
         isConnecting = false
         isConnected = false
-        print("🔌 SocketIOService: Disconnected")
 
         webSocket?.cancel()
         webSocket = nil
@@ -111,6 +127,8 @@ class SocketIOService: ObservableObject {
 
         reconnectTimer?.invalidate()
         reconnectTimer = nil
+
+        print("🔌 SocketIOService: Disconnected successfully")
     }
 
     // MARK: - Event Handling
@@ -169,6 +187,24 @@ class SocketIOService: ObservableObject {
             print("   - Error domain: \(error._domain)")
             print("   - Error code: \(error._code)")
             print("   - Error description: \(error.localizedDescription)")
+
+            // Проверяем, не является ли это ошибкой отключения
+            if (error as NSError).code == 57 || (error as NSError).domain == "NSPOSIXErrorDomain" {
+                print("🔌 SocketIOService: WebSocket connection lost, marking as disconnected")
+                DispatchQueue.main.async {
+                    self.isConnected = false
+                }
+
+                // Пытаемся переподключиться через небольшую задержку
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    if !self.isConnected && !self.isConnecting {
+                        print("🔄 SocketIOService: Attempting to reconnect after connection loss")
+                        self.connect()
+                    }
+                }
+                return
+            }
+
             handleError("WebSocket error: \(error.localizedDescription) (Code: \(error._code))")
         }
     }
@@ -244,6 +280,11 @@ class SocketIOService: ObservableObject {
 
         // Уведомляем о подключении
         notifyEventHandlers(for: .connect, data: Data())
+
+        // Добавляем небольшую задержку перед установкой готовности
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("🔌 SocketIOService: Connection stabilized")
+        }
     }
 
     private func handleSocketIOEvent(_ text: String) {
@@ -277,6 +318,19 @@ class SocketIOService: ObservableObject {
             return
         }
 
+        // Проверяем, не является ли это событие ошибкой авторизации
+        if eventName == "error" || eventName == "unauthorized" {
+            if let errorData = json[1] as? [String: Any],
+                let message = errorData["message"] as? String
+            {
+                print("🔐 SocketIOService: Authorization error received: \(message)")
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
+                }
+                return
+            }
+        }
+
         guard let socketEvent = SocketIOEvent(rawValue: eventName) else {
             print("❌ SocketIOService: Unknown event: \(eventName)")
             return
@@ -288,6 +342,18 @@ class SocketIOService: ObservableObject {
 
         if let eventDataDict = eventData as? [String: Any] {
             print("🔍 SocketIOService: Event data as dict: \(eventDataDict)")
+
+            // Проверяем, не содержит ли данные события ошибку авторизации
+            if let error = eventDataDict["error"] as? String,
+                error.lowercased().contains("unauthorized") || error.lowercased().contains("401")
+            {
+                print("🔐 SocketIOService: Authorization error in event data: \(error)")
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
+                }
+                return
+            }
+
             if let data = try? JSONSerialization.data(withJSONObject: eventDataDict) {
                 eventDataBytes = data
             }
@@ -335,6 +401,35 @@ class SocketIOService: ObservableObject {
         isConnecting = false
         print("❌ SocketIOService: \(message)")
 
+        // Проверяем, не является ли ошибка связанной с авторизацией
+        if message.lowercased().contains("unauthorized") || message.lowercased().contains("401") {
+            #if DEBUG
+                print("🔐 SocketIOService: Authorization error detected, triggering logout")
+            #endif
+            // Уведомляем о необходимости logout через NotificationCenter
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
+            }
+            return
+        }
+
+        // Проверяем, не является ли это ошибкой отключения (код 57)
+        if message.lowercased().contains("socket is not connected")
+            || message.lowercased().contains("code: 57")
+        {
+            #if DEBUG
+                print("🔌 SocketIOService: Connection lost, will attempt to reconnect")
+            #endif
+            // Пытаемся переподключиться через задержку
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                if !self.isConnected && !self.isConnecting {
+                    print("🔄 SocketIOService: Attempting to reconnect after error")
+                    self.connect()
+                }
+            }
+            return
+        }
+
         // Attempt to reconnect after a delay
         reconnectTimer?.invalidate()
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) {
@@ -367,7 +462,13 @@ class SocketIOService: ObservableObject {
     // MARK: - Event Emission
     func emit(_ event: SocketIOEvent, data: [String: Any]) {
         guard isConnected else {
-            print("❌ SocketIOService: Cannot emit event - not connected")
+            print("❌ SocketIOService: Cannot emit event '\(event.rawValue)' - not connected")
+            return
+        }
+
+        guard let webSocket = webSocket else {
+            print(
+                "❌ SocketIOService: Cannot emit event '\(event.rawValue)' - no WebSocket instance")
             return
         }
 
@@ -380,9 +481,19 @@ class SocketIOService: ObservableObject {
             print("📤 SocketIOService: Emitting event '\(event.rawValue)' with data: \(data)")
 
             let wsMessage = URLSessionWebSocketTask.Message.string(socketIOMessage)
-            webSocket?.send(wsMessage) { error in
+            webSocket.send(wsMessage) { [weak self] error in
                 if let error = error {
                     print("❌ SocketIOService: Failed to emit event '\(event.rawValue)': \(error)")
+                    // Если ошибка связана с отключением, помечаем соединение как разорванное
+                    if (error as NSError).code == 57
+                        || (error as NSError).domain == "NSPOSIXErrorDomain"
+                    {
+                        DispatchQueue.main.async {
+                            self?.isConnected = false
+                            self?.handleError(
+                                "WebSocket connection lost: \(error.localizedDescription)")
+                        }
+                    }
                 } else {
                     print("✅ SocketIOService: Successfully emitted event '\(event.rawValue)'")
                 }

@@ -33,6 +33,12 @@ class WheelListViewModel: ObservableObject {
             #if DEBUG
                 print("Загрузка отменена")
             #endif
+        } catch URLError.userAuthenticationRequired {
+            // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+            // через NetworkManager
+            #if DEBUG
+                print("Требуется авторизация")
+            #endif
         } catch {
             self.error = error.localizedDescription
             #if DEBUG
@@ -52,6 +58,12 @@ class WheelListViewModel: ObservableObject {
         } catch is CancellationError {
             #if DEBUG
                 print("Обновление отменено")
+            #endif
+        } catch URLError.userAuthenticationRequired {
+            // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+            // через NetworkManager
+            #if DEBUG
+                print("Требуется авторизация")
             #endif
         } catch {
             self.error = error.localizedDescription
@@ -82,19 +94,22 @@ class WheelListViewModel: ObservableObject {
             request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
         }
 
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601withMilliseconds
+
         #if DEBUG
+            // В DEBUG режиме сначала получаем сырые данные для логирования
             let (data, _) = try await URLSession.shared.data(for: request)
             if let rawString = String(data: data, encoding: .utf8) {
                 print("Raw server response:", rawString)
             }
+            // Затем используем NetworkManager для правильной обработки ошибок
+            let response: WheelListResponse = try await NetworkManager.shared.request(
+                request, decoder: decoder)
         #else
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let response: WheelListResponse = try await NetworkManager.shared.request(
+                request, decoder: decoder)
         #endif
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601withMilliseconds
-        let response: WheelListResponse = try await NetworkManager.shared.request(
-            request, decoder: decoder)
 
         return response.result.data.json
     }

@@ -25,6 +25,7 @@ class WheelState: ObservableObject {
     var socket: SocketIOService?
     var roomId: String?
     var clientId: String?
+    private var isAuthorized = true
 
     // Callbacks
     var setEliminated: ((String) -> Void)?
@@ -85,7 +86,13 @@ class WheelState: ObservableObject {
             "winningIndex": winningIndex,
             "senderClientId": clientId ?? "",
         ]
-        socket?.emit(.wheelSpin, data: spinData)
+
+        // Проверяем, что сокет подключен и авторизован перед отправкой
+        if let socket = socket, socket.isConnected, isAuthorized {
+            socket.emit(.wheelSpin, data: spinData)
+        } else {
+            print("⚠️ WheelState: Cannot emit spin event - socket not connected or not authorized")
+        }
 
         spinning = true
         rotation = newRotation
@@ -180,7 +187,14 @@ class WheelState: ObservableObject {
             },
             "senderClientId": clientId ?? "",
         ]
-        socket?.emit(.sectorsShuffle, data: shuffleData)
+
+        // Проверяем, что сокет подключен и авторизован перед отправкой
+        if let socket = socket, socket.isConnected, isAuthorized {
+            socket.emit(.sectorsShuffle, data: shuffleData)
+        } else {
+            print(
+                "⚠️ WheelState: Cannot emit shuffle event - socket not connected or not authorized")
+        }
 
         sectors = shuffledSectors
     }
@@ -218,6 +232,11 @@ class WheelState: ObservableObject {
 
     private func setupSocketEventHandlers() {
         guard let socket = socket else { return }
+
+        // Handle connect event
+        socket.on(.connect) { [weak self] data in
+            print("🔌 WheelState: Socket connected, ready to join room")
+        }
 
         // Handle wheel spin from server
         socket.on(.wheelSpin) { [weak self] data in
@@ -299,6 +318,25 @@ class WheelState: ObservableObject {
                 print("Failed to decode sector removal: \(error)")
             }
         }
+
+        // Handle room users
+        socket.on(.roomUsers) { [weak self] data in
+            print("👥 WheelState: Received room users update")
+            // Можно добавить обработку пользователей комнаты здесь
+        }
+
+        // Подписываемся на уведомления об ошибках авторизации сокета
+        NotificationCenter.default.addObserver(
+            forName: .socketAuthorizationError,
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("🔐 WheelState: Socket authorization error detected")
+            // Устанавливаем флаг неавторизованности
+            self.isAuthorized = false
+            // Очищаем состояние колеса при ошибке авторизации
+            self.cleanup()
+        }
     }
 
     func joinRoom(_ roomId: String, userId: AuthUser?) {
@@ -306,13 +344,28 @@ class WheelState: ObservableObject {
             "roomId": roomId,
             "clientId": clientId ?? "",
         ]
-        socket?.emit(.joinRoom, data: joinData)
+
+        // Проверяем, что сокет подключен и авторизован перед отправкой
+        if let socket = socket, socket.isConnected, isAuthorized {
+            print("🔌 WheelState: Joining room \(roomId)")
+            socket.emit(.joinRoom, data: joinData)
+        } else {
+            print(
+                "⚠️ WheelState: Cannot join room - socket not connected (\(socket?.isConnected ?? false)) or not authorized (\(isAuthorized))"
+            )
+        }
     }
 
     func leaveRoom() {
         if let roomId = roomId {
             let leaveData: [String: Any] = ["roomId": roomId]
-            socket?.emit(.leaveRoom, data: leaveData)
+
+            // Проверяем, что сокет подключен и авторизован перед отправкой
+            if let socket = socket, socket.isConnected, isAuthorized {
+                socket.emit(.leaveRoom, data: leaveData)
+            } else {
+                print("⚠️ WheelState: Cannot leave room - socket not connected or not authorized")
+            }
         }
     }
 
@@ -321,5 +374,10 @@ class WheelState: ObservableObject {
         socket = nil
         roomId = nil
         clientId = nil
+        isAuthorized = false
+
+        // Отписываемся от уведомлений
+        NotificationCenter.default.removeObserver(
+            self, name: .socketAuthorizationError, object: nil)
     }
 }

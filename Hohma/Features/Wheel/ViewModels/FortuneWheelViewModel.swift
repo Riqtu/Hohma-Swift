@@ -34,9 +34,18 @@ class FortuneWheelViewModel: ObservableObject {
         self.wheelData = wheelData
         self.currentUser = currentUser
 
-        // Инициализируем SocketIOService с правильным URL
+        // Инициализируем SocketIOService с правильным URL и токеном
         let socketURL = wheelService.getSocketURL()
-        self.socketService = SocketIOService(baseURL: socketURL)
+
+        // Получаем токен из UserDefaults
+        var authToken: String?
+        if let authResultData = UserDefaults.standard.data(forKey: "authResult"),
+            let savedAuthResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
+        {
+            authToken = savedAuthResult.token
+        }
+
+        self.socketService = SocketIOService(baseURL: socketURL, authToken: authToken)
 
         setupWheel()
         setupSocket()
@@ -74,19 +83,37 @@ class FortuneWheelViewModel: ObservableObject {
             .sink { [weak self] isConnected in
                 self?.isSocketReady = isConnected
                 if isConnected {
-                    self?.joinRoom()
+                    // Добавляем небольшую задержку для стабилизации соединения
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self?.joinRoom()
+                    }
                 }
             }
             .store(in: &cancellables)
 
         socketService.$error
             .sink { [weak self] error in
-                self?.error = error
+                if let error = error {
+                    print("❌ FortuneWheelViewModel: Socket error: \(error)")
+                    self?.error = error
+                }
             }
             .store(in: &cancellables)
 
         // Настраиваем сокет для wheelState
         wheelState.setupSocket(socketService, roomId: wheelData.id)
+
+        // Подписываемся на уведомления об ошибках авторизации сокета
+        NotificationCenter.default.addObserver(
+            forName: .socketAuthorizationError,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("🔐 FortuneWheelViewModel: Socket authorization error detected")
+            // Сначала отключаем сокет, затем очищаем ресурсы
+            self?.socketService.disconnect()
+            self?.cleanup()
+        }
 
         // Подключаемся к сокету
         socketService.connect()
@@ -149,8 +176,16 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 let updatedSector = try await wheelService.updateSector(sectorId, eliminated: true)
                 wheelState.updateSector(updatedSector)
+            } catch URLError.userAuthenticationRequired {
+                // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+                print("🔐 FortuneWheelViewModel: Authorization required for sector update")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Decoding error for sector update: \(decodingError)")
             } catch {
                 self.error = "Ошибка обновления сектора: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Sector update error: \(error)")
             }
         }
     }
@@ -160,8 +195,18 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 let updatedWheel = try await wheelService.updateWheelStatus(wheelId, status: status)
                 print("Статус колеса обновлен: \(updatedWheel.status)")
+            } catch URLError.userAuthenticationRequired {
+                // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+                print("🔐 FortuneWheelViewModel: Authorization required for wheel status update")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print(
+                    "❌ FortuneWheelViewModel: Decoding error for wheel status update: \(decodingError)"
+                )
             } catch {
                 self.error = "Ошибка обновления статуса колеса: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Wheel status update error: \(error)")
             }
         }
     }
@@ -172,8 +217,16 @@ class FortuneWheelViewModel: ObservableObject {
                 try await wheelService.payoutBets(
                     wheelId: wheelId, winningSectorId: winningSectorId)
                 print("Ставки выплачены для сектора: \(winningSectorId)")
+            } catch URLError.userAuthenticationRequired {
+                // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+                print("🔐 FortuneWheelViewModel: Authorization required for payout")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Decoding error for payout: \(decodingError)")
             } catch {
                 self.error = "Ошибка выплаты ставок: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Payout error: \(error)")
             }
         }
     }
@@ -213,7 +266,17 @@ class FortuneWheelViewModel: ObservableObject {
     }
 
     var canSpin: Bool {
-        !wheelState.spinning && isGameActive && isSocketReady
+        !wheelState.spinning && isGameActive && isSocketReady && socketService.isConnected
+    }
+
+    // MARK: - Socket Management
+
+    func reconnectSocket() {
+        print("🔄 FortuneWheelViewModel: Manually reconnecting socket")
+        socketService.disconnect()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.socketService.connect()
+        }
     }
 
     // MARK: - Cleanup
@@ -222,5 +285,9 @@ class FortuneWheelViewModel: ObservableObject {
         wheelState.cleanup()
         socketService.disconnect()
         cancellables.removeAll()
+
+        // Отписываемся от уведомлений
+        NotificationCenter.default.removeObserver(
+            self, name: .socketAuthorizationError, object: nil)
     }
 }

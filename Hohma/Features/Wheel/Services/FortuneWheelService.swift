@@ -13,6 +13,16 @@ class FortuneWheelService: ObservableObject {
     private let networkManager = NetworkManager.shared
     private var cancellables = Set<AnyCancellable>()
 
+    // Получаем токен авторизации
+    private var authToken: String? {
+        if let authResultData = UserDefaults.standard.data(forKey: "authResult"),
+            let savedAuthResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
+        {
+            return savedAuthResult.token
+        }
+        return nil
+    }
+
     // MARK: - Wheel Operations
 
     func getWheelById(_ id: String) async throws -> WheelWithRelations {
@@ -27,7 +37,10 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["id": id] as [String: Any])
+        let body = wrapInTRPCFormat(["id": id])
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
     }
@@ -44,8 +57,10 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["id": id, "status": status.rawValue]
+        let body = wrapInTRPCFormat(["id": id, "status": status.rawValue])
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
     }
@@ -64,8 +79,10 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["id": id, "eliminated": eliminated]
+        let body = wrapInTRPCFormat(["id": id, "eliminated": eliminated])
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
     }
@@ -82,7 +99,12 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(sector)
+        let sectorData = try JSONEncoder().encode(sector)
+        let sectorDict = try JSONSerialization.jsonObject(with: sectorData) as? [String: Any] ?? [:]
+        let body = wrapInTRPCFormat(sectorDict)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
     }
@@ -99,8 +121,10 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["id": id]
+        let body = wrapInTRPCFormat(["id": id])
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
     }
@@ -119,13 +143,15 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = [
+        let body = wrapInTRPCFormat([
             "wheelId": wheelId,
             "winningSectorId": winningSectorId,
-        ]
+        ])
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let _: EmptyResponse = try await networkManager.request(request)
+        addAuthorizationHeader(to: &request)
+
+        let _: SuccessResponse = try await networkManager.request(request)
     }
 
     // MARK: - User Operations
@@ -142,9 +168,39 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["id": id] as [String: Any])
+        let body = wrapInTRPCFormat(["id": id])
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &request)
 
         return try await networkManager.request(request)
+    }
+
+    // MARK: - Private Methods
+
+    private func addAuthorizationHeader(to request: inout URLRequest) {
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+                print("🔐 FortuneWheelService: Added authorization token to request")
+            #endif
+        } else {
+            #if DEBUG
+                print("⚠️ FortuneWheelService: No authorization token available")
+            #endif
+        }
+
+        #if DEBUG
+            print("🔍 FortuneWheelService: Request URL: \(request.url?.absoluteString ?? "unknown")")
+            print("🔍 FortuneWheelService: Request method: \(request.httpMethod ?? "unknown")")
+            if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
+                print("🔍 FortuneWheelService: Request body: \(bodyString)")
+            }
+        #endif
+    }
+
+    private func wrapInTRPCFormat(_ data: [String: Any]) -> [String: Any] {
+        return ["json": data]
     }
 
     // MARK: - Socket Configuration
@@ -155,5 +211,9 @@ class FortuneWheelService: ObservableObject {
     }
 }
 
-// MARK: - Empty Response
+// MARK: - Response Models
 struct EmptyResponse: Codable {}
+
+struct SuccessResponse: Codable {
+    let success: Bool
+}
