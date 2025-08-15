@@ -45,9 +45,13 @@ class SocketIOService: ObservableObject {
     private var heartbeatTimer: Timer?
     private var authToken: String?
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 10  // Увеличиваем количество попыток
+    private let maxReconnectAttempts = 15  // Увеличиваем количество попыток
     private var lastReconnectTime: Date?
-    private let minReconnectInterval: TimeInterval = 2.0  // Минимальный интервал между попытками
+    private let minReconnectInterval: TimeInterval = 3.0  // Увеличиваем минимальный интервал
+    private var connectionTimeoutTimer: Timer?
+    private var lastPongTime: Date?
+    private let heartbeatInterval: TimeInterval = 30.0  // Увеличиваем интервал heartbeat
+    private let connectionTimeout: TimeInterval = 60.0  // Таймаут соединения
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -110,12 +114,20 @@ class SocketIOService: ObservableObject {
         // Запускаем heartbeat
         startHeartbeat()
 
-        // Проверяем состояние подключения через 2 секунды
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        // Проверяем состояние подключения через 5 секунд
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             if self?.isConnected == false {
-                print("⚠️ SocketIOService: Connection not established after 2s")
+                print(
+                    "⚠️ SocketIOService: Connection not established after 5s, attempting reconnect")
+                self?.handleError("Connection timeout")
             }
         }
+
+        // Запускаем таймер таймаута соединения
+        startConnectionTimeoutTimer()
+
+        // Запускаем мониторинг здоровья соединения
+        startHealthMonitoring()
     }
 
     func disconnect() {
@@ -132,6 +144,9 @@ class SocketIOService: ObservableObject {
 
         reconnectTimer?.invalidate()
         reconnectTimer = nil
+
+        connectionTimeoutTimer?.invalidate()
+        connectionTimeoutTimer = nil
 
         print("🔌 SocketIOService: Disconnected successfully")
     }
@@ -201,7 +216,7 @@ class SocketIOService: ObservableObject {
                 }
 
                 // Пытаемся переподключиться с экспоненциальной задержкой
-                let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Экспоненциальная задержка, максимум 30 сек
+                let delay = min(60.0, pow(2.0, Double(self.reconnectAttempts)))  // Увеличиваем максимум до 60 сек
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     // Проверяем, прошло ли достаточно времени с последней попытки
@@ -225,6 +240,13 @@ class SocketIOService: ObservableObject {
                         print(
                             "❌ SocketIOService: Max reconnect attempts reached, stopping reconnection"
                         )
+                        // Сбрасываем счетчик через 5 минут для возможности повторных попыток
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 300) {
+                            self.reconnectAttempts = 0
+                            print(
+                                "🔄 SocketIOService: Reset reconnect attempts, ready for new attempts"
+                            )
+                        }
                     } else {
                         print(
                             "🔄 SocketIOService: Skipping reconnect - already connected or connecting"
@@ -306,6 +328,7 @@ class SocketIOService: ObservableObject {
         isConnecting = false
         isConnected = true
         reconnectAttempts = 0  // Сбрасываем счетчик попыток при успешном подключении
+        lastPongTime = Date()  // Устанавливаем время последнего pong
         print("✅ SocketIOService: Connected successfully")
 
         // Уведомляем о подключении
@@ -416,7 +439,11 @@ class SocketIOService: ObservableObject {
 
     private func handlePong() {
         // Обрабатываем pong
-        print("🏓 SocketIOService: Received pong")
+        lastPongTime = Date()
+        print("🏓 SocketIOService: Received pong at \(lastPongTime?.description ?? "unknown")")
+
+        // Перезапускаем таймер таймаута
+        startConnectionTimeoutTimer()
     }
 
     private func notifyEventHandlers(for event: SocketIOEvent, data: Data) {
@@ -501,10 +528,29 @@ class SocketIOService: ObservableObject {
 
     private func startHeartbeat() {
         heartbeatTimer?.invalidate()
-        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) {  // Уменьшаем интервал
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: heartbeatInterval, repeats: true) {
             [weak self] _ in
             self?.sendHeartbeat()
         }
+        print("💓 SocketIOService: Heartbeat started with interval: \(heartbeatInterval)s")
+    }
+
+    private func startConnectionTimeoutTimer() {
+        connectionTimeoutTimer?.invalidate()
+        connectionTimeoutTimer = Timer.scheduledTimer(
+            withTimeInterval: connectionTimeout, repeats: false
+        ) { [weak self] _ in
+            guard let self = self else { return }
+
+            // Проверяем, получили ли мы pong за последнее время
+            if let lastPong = self.lastPongTime,
+                Date().timeIntervalSince(lastPong) > self.connectionTimeout
+            {
+                print("⏰ SocketIOService: Connection timeout - no pong received")
+                self.handleError("Connection timeout - no heartbeat response")
+            }
+        }
+        print("⏰ SocketIOService: Connection timeout timer started: \(connectionTimeout)s")
     }
 
     private func sendHeartbeat() {
@@ -620,11 +666,30 @@ class SocketIOService: ObservableObject {
 
     func forceReconnect() {
         print("🔄 SocketIOService: Force reconnecting...")
+
+        // Проверяем доступность сети перед переподключением
+        if !checkNetworkReachability() {
+            print("⚠️ SocketIOService: Network not reachable, delaying reconnect")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                self.forceReconnect()
+            }
+            return
+        }
+
         disconnect()
         resetReconnectAttempts()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             self.connect()
         }
+    }
+
+    // MARK: - Periodic Health Monitoring
+    func startHealthMonitoring() {
+        // Запускаем периодические проверки здоровья соединения
+        Timer.scheduledTimer(withTimeInterval: 120.0, repeats: true) { [weak self] _ in
+            self?.performHealthCheck()
+        }
+        print("🏥 SocketIOService: Health monitoring started")
     }
 
     // MARK: - Connection Testing
@@ -645,5 +710,39 @@ class SocketIOService: ObservableObject {
         }
 
         return false
+    }
+
+    // MARK: - Network Monitoring
+    func checkNetworkReachability() -> Bool {
+        // Простая проверка доступности сети
+        guard let url = URL(string: "https://www.apple.com") else { return false }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var isReachable = false
+
+        URLSession.shared.dataTask(with: url) { _, response, error in
+            if let httpResponse = response as? HTTPURLResponse {
+                isReachable = httpResponse.statusCode == 200
+            }
+            semaphore.signal()
+        }.resume()
+
+        _ = semaphore.wait(timeout: .now() + 5.0)
+        return isReachable
+    }
+
+    // MARK: - Connection Health Check
+    func performHealthCheck() {
+        guard isConnected else { return }
+
+        // Проверяем, когда был последний pong
+        if let lastPong = lastPongTime,
+            Date().timeIntervalSince(lastPong) > connectionTimeout
+        {
+            print("🏥 SocketIOService: Health check failed - no recent pong")
+            handleError("Health check failed - connection appears dead")
+        } else {
+            print("🏥 SocketIOService: Health check passed")
+        }
     }
 }
