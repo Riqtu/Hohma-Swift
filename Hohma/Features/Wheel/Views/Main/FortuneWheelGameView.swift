@@ -42,10 +42,12 @@ struct FortuneWheelGameView: View {
                 // Основной контент
                 VStack(spacing: 20) {
                     // Заголовок
-                    WheelHeaderView(
-                        hasWinner: viewModel.hasWinner,
-                        winnerUser: viewModel.winnerUser
-                    )
+                    Text("XOXMA")
+                        .font(.custom("Luckiest Guy", size: 32))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.top, 20)
+                        .padding(.bottom, -10)
 
                     // Основная область с колесом
                     ScrollView(showsIndicators: false) {
@@ -92,14 +94,8 @@ struct FortuneWheelGameView: View {
                         // Панель секторов
                         VStack(spacing: 16) {
                             SectorsTableView(
-                                sectors: viewModel.wheelState.sectors,
+                                sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
                                 title: "Фильмы",
-                                accentColor: viewModel.wheelState.accentColor
-                            )
-
-                            SectorsTableView(
-                                sectors: viewModel.wheelState.losers,
-                                title: "Выбывшие",
                                 accentColor: viewModel.wheelState.accentColor
                             )
 

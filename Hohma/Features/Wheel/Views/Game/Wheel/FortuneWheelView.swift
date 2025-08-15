@@ -14,6 +14,10 @@ struct FortuneWheelView: View {
 
     let size: CGFloat
 
+    private var accentColor: Color {
+        Color(hex: wheelState.accentColor)
+    }
+
     var body: some View {
         ZStack {
             // Контейнер для правильного центрирования
@@ -22,13 +26,13 @@ struct FortuneWheelView: View {
             // Фон колеса
             Circle()
                 .fill(Color(hex: wheelState.mainColor))
-                .frame(width: size, height: size)
+                .frame(width: size + 35, height: size + 35)
                 .overlay(
                     Circle()
-                        .stroke(Color(hex: wheelState.accentColor), lineWidth: 4)
+                        .stroke(accentColor, lineWidth: 4)
                 )
                 .shadow(
-                    color: Color(hex: wheelState.accentColor).opacity(0.5), radius: 10, x: 4, y: 10
+                    color: accentColor.opacity(0.5), radius: 10, x: 4, y: 10
                 )
 
             // Сектора колеса
@@ -38,7 +42,7 @@ struct FortuneWheelView: View {
                         sector: sector,
                         index: index,
                         totalSectors: wheelState.sectors.count,
-                        size: size
+                        size: size + 10
                     )
                 }
                 .rotationEffect(.degrees(wheelState.rotation))
@@ -49,31 +53,31 @@ struct FortuneWheelView: View {
 
             // Центральная кнопка
             Circle()
-                .fill(Color(hex: wheelState.mainColor))
+                .fill(accentColor.opacity(0.1))
                 .frame(width: size / 5, height: size / 5)
                 .overlay(
                     Circle()
-                        .stroke(Color(hex: wheelState.accentColor), lineWidth: 4)
+                        .stroke(accentColor, lineWidth: 4)
                 )
                 .shadow(
-                    color: Color(hex: wheelState.accentColor).opacity(0.5), radius: 10, x: 4, y: 10
+                    color: accentColor.opacity(0.5), radius: 10, x: 4, y: 10
                 )
                 .overlay(
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: size / 15, weight: .bold))
-                        .foregroundColor(Color(hex: wheelState.accentColor))
-                        .rotationEffect(.degrees(-45))
+                    Text("X")
+                        .font(.custom("Luckiest Guy", size: size / 8))
+                        .foregroundColor(accentColor)
+                        .padding(.top, 15)
                 )
 
             // Указатель
             if wheelState.sectors.count > 1 {
                 Triangle()
-                    .fill(Color(hex: wheelState.accentColor))
+                    .fill(accentColor)
                     .frame(width: 30, height: 35)
                     .rotationEffect(.degrees(180))
                     .offset(y: -(size) / 2)  // Учитываем размер основного круга с отступом
                     .shadow(
-                        color: Color(hex: wheelState.accentColor).opacity(0.5), radius: 5, x: 2,
+                        color: accentColor.opacity(0.5), radius: 5, x: 2,
                         y: 5)
             }
 
@@ -82,6 +86,7 @@ struct FortuneWheelView: View {
                 WinnerOverlayView(sector: wheelState.sectors[0])
             }
         }
+        .padding(.top, 20)
         .enableInjection()
     }
 }

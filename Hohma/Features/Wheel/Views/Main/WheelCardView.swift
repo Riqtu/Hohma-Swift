@@ -45,9 +45,9 @@ struct WheelCardView: View {
             }
 
             // Информация о колесе
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text(viewModel.cardData.name)
-                    .font(.body)
+                    .font(.system(size: 20))
                     .fontWeight(.bold)
                     .padding(.bottom)
 
@@ -55,7 +55,7 @@ struct WheelCardView: View {
                     Text("Участники")
                         .font(.body)
                         .fontWeight(.semibold)
-                        .padding(.bottom)
+                        .padding(.bottom, 10)
 
                     ParticipantsView(users: viewModel.uniqueUsers)
                 }
@@ -74,6 +74,7 @@ struct WheelCardView: View {
                     .background(Color.blue)
                     .cornerRadius(8)
                 }
+                .padding(.top, 10)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)

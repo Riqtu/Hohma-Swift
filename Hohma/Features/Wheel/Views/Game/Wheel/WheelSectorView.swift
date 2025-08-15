@@ -25,6 +25,12 @@ struct WheelSectorView: View {
         let textOffsetX = (radius * 0.7) * cos(textAngle * .pi / 180)
         let textOffsetY = (radius * 0.7) * sin(textAngle * .pi / 180)
 
+        // Вычисляем центр сектора для точного позиционирования изображения
+        let sectorCenterAngle = startAngle + anglePerSector / 2
+        let sectorCenterRadius = radius * 0.6  // Позиция изображения в секторе (60% от радиуса)
+        let imageCenterX = size / 2 + sectorCenterRadius * cos(sectorCenterAngle * .pi / 180)
+        let imageCenterY = size / 2 + sectorCenterRadius * sin(sectorCenterAngle * .pi / 180)
+
         ZStack {
             // Создаем путь сектора для обрезки
             let sectorPath = Path { path in
@@ -53,22 +59,31 @@ struct WheelSectorView: View {
                             .rotationEffect(.degrees(startAngle + anglePerSector / 2 + 90))
                             .clipShape(sectorPath)
 
-                        // Основное изображение с позиционированием
+                        // Основное изображение с точным центрированием в секторе
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            // .frame(width: size * 0.8, height: size * 0.8)
+                            .frame(
+                                width: radius * 0.8,  // Размер относительно радиуса сектора
+                                height: radius * 0.8
+                            )
                             .scaleEffect(1 + (sector.patternPosition?.z ?? 0) / 100)
                             .offset(
-                                x: (sector.patternPosition?.x ?? 0) * (size / 200),
-                                y: (sector.patternPosition?.y ?? 0) * (size / 200)
+                                x: (sector.patternPosition?.x ?? 0) / 200,
+                                y: (sector.patternPosition?.y ?? 0) / 200
                             )
                             .rotationEffect(.degrees(startAngle + anglePerSector / 2 + 90))
+                            .position(x: imageCenterX, y: imageCenterY)  // Точное позиционирование в центре сектора
                             .clipShape(sectorPath)
                     }
                     .overlay(
                         sectorPath
-                            .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                            .stroke(
+                                Color(
+                                    hue: sector.color.h / 360,
+                                    saturation: sector.color.s / 100,
+                                    brightness: sector.color.l / 100
+                                ), lineWidth: 2)
                     )
                 } placeholder: {
                     // Fallback на цвет если изображение не загрузилось

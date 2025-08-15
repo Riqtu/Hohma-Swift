@@ -5,21 +5,38 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct SectorsTableView: View {
     @ObserveInjection var inject
+    @State private var showingFullScreen = false
+
     let sectors: [Sector]
     let title: String
     let accentColor: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(Color(hex: accentColor))
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(hex: accentColor))
+
+                Spacer()
+
+                HStack(spacing: 8) {
+
+                    Button(action: {
+                        showingFullScreen = true
+                    }) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.title3)
+                            .foregroundColor(Color(hex: accentColor))
+                    }
+                }
+            }
 
             if sectors.isEmpty {
                 Text("Нет элементов")
@@ -44,7 +61,13 @@ struct SectorsTableView: View {
                         .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
                 )
         )
-        .frame(maxWidth: 200)
+        .fullScreenCover(isPresented: $showingFullScreen) {
+            SectorsFullScreenView(
+                sectors: sectors,
+                title: title,
+                accentColor: accentColor
+            )
+        }
     }
 }
 

@@ -1,5 +1,5 @@
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct WheelHeaderView: View {
     @ObserveInjection var inject
@@ -11,12 +11,16 @@ struct WheelHeaderView: View {
             if hasWinner {
                 WinnerView(winnerUser: winnerUser)
             } else {
-                Text("Колесо фортуны")
-                    .font(.title)
+                Text("XOXMA")
+                    .font(.custom("Luckiest Guy", size: 32))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
+                    .padding(.top, 20)
+                    .padding(.bottom, -10)
+
             }
         }
+        .frame(width: .infinity)
         .enableInjection()
     }
 }

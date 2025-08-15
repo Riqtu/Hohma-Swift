@@ -47,38 +47,10 @@ struct UserRowView: View {
                     )
             }
 
-            // Информация о пользователе
-            VStack(alignment: .leading, spacing: 2) {
-                Text(getDisplayName())
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                HStack(spacing: 4) {
-                    Text("\(user.coins)")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundColor(Color(hex: accentColor))
-
-                    Text("монет")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                .lineLimit(1)
-            }
-
             Spacer()
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(hex: accentColor).opacity(0.2), lineWidth: 1)
-                )
-        )
+        // .padding(10)
+
         .enableInjection()
     }
 

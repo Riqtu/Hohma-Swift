@@ -54,7 +54,7 @@ struct UsersPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 20)
             } else {
-                LazyVStack(spacing: 8) {
+                LazyHStack(spacing: 8) {
                     ForEach(viewModel.roomUsers.prefix(8)) { user in
                         UserRowView(user: user, accentColor: accentColor)
                     }
@@ -78,7 +78,6 @@ struct UsersPanelView: View {
                         .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
                 )
         )
-        .frame(maxWidth: 220)
         .animation(.easeInOut(duration: 0.3), value: viewModel.roomUsers.count)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isSocketReady)
         .enableInjection()
