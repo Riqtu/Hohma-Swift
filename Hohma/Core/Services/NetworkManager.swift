@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 final class NetworkManager {
     static let shared = NetworkManager()
     var authViewModel: AuthViewModel?
@@ -36,12 +37,11 @@ final class NetworkManager {
                 print("🔐 NetworkManager: Received 401 error, logging out user")
             #endif
             // Уведомляем об ошибке авторизации через NotificationCenter
-            await MainActor.run {
-                NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
-                // Даем небольшую задержку для корректного отключения сокета
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.authViewModel?.logout()
-                }
+            NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
+            // Даем небольшую задержку для корректного отключения сокета
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
+                self.authViewModel?.logout()
             }
             throw URLError(.userAuthenticationRequired)
         }

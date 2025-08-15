@@ -124,7 +124,7 @@ final class VideoPlayerManager: ObservableObject {
 
             // Observer для приостановки
             player.publisher(for: \.rate)
-                .sink { [weak self] rate in
+                .sink { rate in
                     DispatchQueue.main.async {
                         if rate == 0 {
                             print("🎬 CachedPlayer: Плеер приостановлен")

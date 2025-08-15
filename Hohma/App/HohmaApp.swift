@@ -12,7 +12,7 @@ import SwiftUI
 @main
 struct hohmaApp: App {
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var videoManager = VideoPlayerManager.shared
+    private let videoManager = VideoPlayerManager.shared
 
     init() {
         #if DEBUG

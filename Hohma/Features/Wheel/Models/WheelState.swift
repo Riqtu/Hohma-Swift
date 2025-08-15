@@ -8,68 +8,16 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Room User Model
-struct RoomUser: Codable {
-    let id: String
-    let username: String
-    let firstName: String?
-    let lastName: String?
-    let coins: Int
-    let avatarUrl: String?
-    let role: String
-
-    // Опциональные поля, которые могут отсутствовать
-    let email: String?
-    let name: String?
-    let clicks: Int?
-    let createdAt: String?
-    let updatedAt: String?
-    let activeCharacterId: String?
-    let activeBackgroundId: String?
-    let activeSkinId: String?
-    let telegramId: String?
-    let googleId: String?
-    let githubId: String?
-    let facebookId: String?
-    let vkId: String?
-    let twitterId: String?
-    let linkedInId: String?
-    let discordId: String?
-    let password: String?
-
-    // Конвертер в AuthUser
-    func toAuthUser() -> AuthUser {
-        return AuthUser(
-            id: id,
-            email: email,
-            name: name,
-            coins: coins,
-            clicks: clicks ?? 0,
-            createdAt: createdAt ?? "",
-            updatedAt: updatedAt ?? "",
-            activeCharacterId: activeCharacterId,
-            activeBackgroundId: activeBackgroundId,
-            activeSkinId: activeSkinId,
-            role: role,
-            telegramId: telegramId,
-            googleId: googleId,
-            githubId: githubId,
-            facebookId: facebookId,
-            vkId: vkId,
-            twitterId: twitterId,
-            linkedInId: linkedInId,
-            discordId: discordId,
-            username: username,
-            firstName: firstName,
-            lastName: lastName,
-            avatarUrl: avatarUrl != nil ? URL(string: avatarUrl!) : nil,
-            password: password
-        )
-    }
+// MARK: - Notification Names Extension
+extension Notification.Name {
+    static let sectorEliminated = Notification.Name("sectorEliminated")
+    static let wheelCompleted = Notification.Name("wheelCompleted")
 }
 
 @MainActor
 class WheelState: ObservableObject {
+
+    // MARK: - Published Properties
     @Published var sectors: [Sector] = []
     @Published var losers: [Sector] = []
     @Published var rotation: Double = 0
@@ -81,19 +29,51 @@ class WheelState: ObservableObject {
     @Published var font: String = "pacifico"
     @Published var backVideo: String = "/themeVideo/CLASSIC.mp4"
 
-    // Socket.IO properties
+    // MARK: - Callbacks
+    var setEliminated: ((String) -> Void)?
+    var setWheelStatus: ((WheelStatus, String) -> Void)?
+    var payoutBets: ((String, String) -> Void)?
+
+    // MARK: - Socket.IO properties
     var socket: SocketIOService?
     var roomId: String?
     var clientId: String?
     private var isAuthorized = true
 
-    // Callbacks
-    var setEliminated: ((String) -> Void)?
-    var setWheelStatus: ((WheelStatus, String) -> Void)?
-    var payoutBets: ((String, String) -> Void)?
+    // MARK: - Initialization
+    init() {
+        setupNotificationObservers()
+    }
 
-    init() {}
+    // MARK: - Setup
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            forName: .sectorEliminated,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                if let sectorId = notification.object as? String {
+                    self?.setEliminated?(sectorId)
+                }
+            }
+        }
 
+        NotificationCenter.default.addObserver(
+            forName: .wheelCompleted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                if let winningSector = notification.object as? Sector {
+                    self?.setWheelStatus?(.completed, winningSector.wheelId)
+                    self?.payoutBets?(winningSector.wheelId, winningSector.id)
+                }
+            }
+        }
+    }
+
+    // MARK: - Sector Management
     func setSectors(_ newSectors: [Sector]) {
         print("🔄 WheelState: Setting \(newSectors.count) sectors from server")
         sectors = newSectors.filter { !$0.eliminated }
@@ -123,6 +103,7 @@ class WheelState: ObservableObject {
         sectors = sectors.filter { $0.id != id }
     }
 
+    // MARK: - Wheel Actions
     func spinWheel() {
         guard !spinning && sectors.count > 1 else { return }
 
@@ -144,19 +125,10 @@ class WheelState: ObservableObject {
             "rotation": newRotation,
             "speed": speed,
             "winningIndex": winningIndex,
-            "clientId": clientId ?? "",  // Используем clientId вместо senderClientId
+            "clientId": clientId ?? "",
         ]
 
-        // Проверяем, что сокет подключен и авторизован перед отправкой
-        if let socket = socket, socket.isConnected, isAuthorized {
-            print("📤 WheelState: Emitting wheel:spin event with data: \(spinData)")
-            // Отправляем событие с roomId как первый параметр, как в веб-версии
-            socket.emit(.wheelSpin, roomId: roomId ?? "", data: spinData)
-        } else {
-            print("⚠️ WheelState: Cannot emit spin event - socket not connected or not authorized")
-            print("   Socket connected: \(socket?.isConnected ?? false)")
-            print("   Is authorized: \(isAuthorized)")
-        }
+        emitSpinEvent(spinData)
 
         spinning = true
         rotation = newRotation
@@ -170,47 +142,26 @@ class WheelState: ObservableObject {
         }
     }
 
-    func spinWheelFromServer(_ spinData: [String: Any]) {
-        print("🔄 WheelState: Processing spin data: \(spinData)")
+    func shuffleSectors() {
+        let shuffledSectors = sectors.shuffled()
 
-        // Проверяем оба варианта: senderClientId и clientId
-        let senderClientId =
-            spinData["senderClientId"] as? String ?? spinData["clientId"] as? String
+        // Emit shuffle event to other clients
+        let shuffleData: [String: Any] = [
+            "sectors": createSectorsArray(shuffledSectors),
+            "clientId": clientId ?? "",
+        ]
 
-        guard let senderClientId = senderClientId else {
-            print("❌ WheelState: Missing or invalid senderClientId/clientId in spin data")
-            return
-        }
+        emitShuffleEvent(shuffleData)
 
-        guard let rotation = spinData["rotation"] as? Double else {
-            print("❌ WheelState: Missing or invalid rotation in spin data")
-            return
-        }
-
-        guard let speed = spinData["speed"] as? Double else {
-            print("❌ WheelState: Missing or invalid speed in spin data")
-            return
-        }
-
-        guard let winningIndex = spinData["winningIndex"] as? Int else {
-            print("❌ WheelState: Missing or invalid winningIndex in spin data")
-            return
-        }
-
-        // Ignore if this event was initiated by this client
-        if senderClientId == clientId {
-            print("Ignoring spin event initiated by this client")
-            return
-        }
-
-        print(
-            "Received spin event from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex)"
-        )
-        spinning = true
-        self.rotation = rotation
-        handleSpinResult(winningIndex: winningIndex, rotation: rotation, speed: speed)
+        sectors = shuffledSectors
     }
 
+    func randomColor() -> (h: Double, s: Double, l: Double) {
+        let hue = Double.random(in: 0...360)
+        return (h: hue, s: 60, l: 30)
+    }
+
+    // MARK: - Private Methods
     private func handleSpinResult(winningIndex: Int, rotation: Double, speed: Double) {
         DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
             let eliminatedSector = self.sectors[winningIndex]
@@ -232,69 +183,46 @@ class WheelState: ObservableObject {
         }
     }
 
-    func shuffleSectors() {
-        let shuffledSectors = sectors.shuffled()
-
-        // Emit shuffle event to other clients
-        let shuffleData: [String: Any] = [
-            "sectors": shuffledSectors.map { sector in
-                [
-                    "id": sector.id,
-                    "label": sector.label,
-                    "color": "#000000",
-                    "name": sector.name,
-                    "eliminated": sector.eliminated,
-                    "winner": sector.winner,
-                    "description": sector.description ?? "",
-                    "pattern": sector.pattern ?? "",
-                    "labelColor": sector.labelColor ?? "",
-                    "labelHidden": sector.labelHidden,
-                    "wheelId": sector.wheelId,
-                    "userId": sector.userId ?? "",
-                ]
-            },
-            "clientId": clientId ?? "",  // Используем clientId вместо senderClientId
+    private func createSectorDictionary(_ sector: Sector) -> [String: Any] {
+        return [
+            "id": sector.id,
+            "label": sector.label,
+            "color": "#000000",
+            "name": sector.name,
+            "eliminated": sector.eliminated,
+            "winner": sector.winner,
+            "description": sector.description ?? "",
+            "pattern": sector.pattern ?? "",
+            "labelColor": sector.labelColor ?? "",
+            "labelHidden": sector.labelHidden,
+            "wheelId": sector.wheelId,
+            "userId": sector.userId ?? "",
         ]
+    }
 
-        // Проверяем, что сокет подключен и авторизован перед отправкой
+    private func createSectorsArray(_ sectors: [Sector]) -> [[String: Any]] {
+        return sectors.map { createSectorDictionary($0) }
+    }
+
+    private func emitSpinEvent(_ spinData: [String: Any]) {
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("📤 WheelState: Emitting sectors:shuffle event with data: \(shuffleData)")
-            // Отправляем событие с roomId как первый параметр, как в веб-версии
+            print("📤 WheelState: Emitting wheel:spin event")
+            socket.emit(.wheelSpin, roomId: roomId ?? "", data: spinData)
+        } else {
+            print("⚠️ WheelState: Cannot emit spin event - socket not connected")
+        }
+    }
+
+    private func emitShuffleEvent(_ shuffleData: [String: Any]) {
+        if let socket = socket, socket.isConnected, isAuthorized {
+            print("📤 WheelState: Emitting sectors:shuffle event")
             socket.emit(.sectorsShuffle, roomId: roomId ?? "", data: shuffleData)
         } else {
-            print(
-                "⚠️ WheelState: Cannot emit shuffle event - socket not connected or not authorized")
-        }
-
-        sectors = shuffledSectors
-    }
-
-    func shuffleSectorsFromServer(_ data: [String: Any]) {
-        // Проверяем оба варианта: senderClientId и clientId
-        let senderClientId = data["senderClientId"] as? String ?? data["clientId"] as? String
-
-        guard let senderClientId = senderClientId,
-            let sectorsData = data["sectors"] as? [[String: Any]]
-        else {
-            print("Invalid shuffle data received")
-            return
-        }
-
-        // Only update if the event came from another client
-        if senderClientId != clientId {
-            // For now, just log the received data
-            print("Received shuffle data from server: \(sectorsData.count) sectors")
-            // TODO: Implement proper sector creation from dictionary
+            print("⚠️ WheelState: Cannot emit shuffle event - socket not connected")
         }
     }
 
-    func randomColor() -> (h: Double, s: Double, l: Double) {
-        let hue = Double.random(in: 0...360)
-        return (h: hue, s: 60, l: 30)
-    }
-
-    // MARK: - Socket Integration
-
+    // MARK: - Socket Integration (упрощенная версия)
     func setupSocket(_ socket: SocketIOService, roomId: String) {
         self.socket = socket
         self.roomId = roomId
@@ -303,431 +231,7 @@ class WheelState: ObservableObject {
         setupSocketEventHandlers()
     }
 
-    private func setupSocketEventHandlers() {
-        guard let socket = socket else { return }
-
-        // Handle connect event
-        socket.on(.connect) { data in
-            print("🔌 WheelState: Socket connected, ready to join room")
-        }
-
-        // Handle wheel spin from server
-        socket.on(.wheelSpin) { [weak self] data in
-            print(
-                "🔄 WheelState: Received wheelSpin event with data: \(String(data: data, encoding: .utf8) ?? "invalid")"
-            )
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("🔄 WheelState: Parsed JSON: \(json)")
-                    DispatchQueue.main.async {
-                        self?.spinWheelFromServer(json)
-                    }
-                } else {
-                    print("❌ WheelState: Failed to parse JSON from spin data")
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode spin data: \(error)")
-                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
-            }
-        }
-
-        // Handle sectors shuffle from server
-        socket.on(.sectorsShuffle) { [weak self] data in
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    DispatchQueue.main.async {
-                        self?.shuffleSectorsFromServer(json)
-                    }
-                }
-            } catch {
-                print("Failed to decode shuffle data: \(error)")
-            }
-        }
-
-        // Handle sectors sync
-        socket.on(.syncSectors) { [weak self] data in
-            do {
-                let sectors = try JSONDecoder().decode([Sector].self, from: data)
-                DispatchQueue.main.async {
-                    self?.setSectors(sectors)
-                }
-            } catch {
-                print("Failed to decode sectors data: \(error)")
-            }
-        }
-
-        // Handle sector updates
-        socket.on(.sectorUpdated) { [weak self] data in
-            do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
-                DispatchQueue.main.async {
-                    self?.updateSector(sector)
-                }
-            } catch {
-                print("Failed to decode sector update: \(error)")
-            }
-        }
-
-        // Handle sector creation
-        socket.on(.sectorCreated) { [weak self] data in
-            do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
-                DispatchQueue.main.async {
-                    self?.addSector(sector)
-                }
-            } catch {
-                print("Failed to decode sector creation: \(error)")
-            }
-        }
-
-        // Handle sector removal
-        socket.on(.sectorRemoved) { [weak self] data in
-            do {
-                let sectorId = try JSONDecoder().decode(String.self, from: data)
-                DispatchQueue.main.async {
-                    self?.removeSector(id: sectorId)
-                }
-            } catch {
-                print("Failed to decode sector removal: \(error)")
-            }
-        }
-
-        // Handle room users
-        socket.on(.roomUsers) { data in
-            print("👥 WheelState: Received room users update")
-
-            // Проверяем, что данные не пустые
-            guard data.count > 0 else {
-                print("👥 WheelState: Empty room users data received")
-                return
-            }
-
-            // Сначала выводим сырые данные для отладки
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("👥 WheelState: Raw JSON data: \(jsonString)")
-            }
-
-            do {
-                // Пытаемся декодировать как массив пользователей комнаты
-                let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
-                print("👥 WheelState: Successfully decoded \(roomUsers.count) room users")
-
-                // Конвертируем в AuthUser
-                let users = roomUsers.map { $0.toAuthUser() }
-                print("👥 WheelState: Converted to \(users.count) AuthUser objects")
-
-                DispatchQueue.main.async {
-                    // Обновляем список пользователей в FortuneWheelViewModel
-                    NotificationCenter.default.post(
-                        name: .roomUsersUpdated,
-                        object: users
-                    )
-                }
-            } catch let decodingError as DecodingError {
-                print("❌ WheelState: Decoding error details:")
-                switch decodingError {
-                case .keyNotFound(let key, let context):
-                    print("   - Missing key: \(key.stringValue)")
-                    print("   - Context: \(context.debugDescription)")
-                case .typeMismatch(let type, let context):
-                    print("   - Type mismatch: expected \(type), got \(context.debugDescription)")
-                case .valueNotFound(let type, let context):
-                    print("   - Value not found: expected \(type), \(context.debugDescription)")
-                case .dataCorrupted(let context):
-                    print("   - Data corrupted: \(context.debugDescription)")
-                @unknown default:
-                    print("   - Unknown decoding error")
-                }
-                print("❌ WheelState: Failed to decode room users: \(decodingError)")
-                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
-                print("👥 WheelState: Room users data received, size: \(data.count) bytes")
-
-                // Попробуем альтернативный способ декодирования
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("👥 WheelState: JSON string: \(jsonString)")
-
-                    // Попробуем декодировать как объект с полем "users"
-                    do {
-                        if let jsonData = jsonString.data(using: .utf8),
-                            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
-                                as? [String: Any],
-                            let usersArray = jsonObject["users"] as? [[String: Any]]
-                        {
-
-                            let usersData = try JSONSerialization.data(withJSONObject: usersArray)
-                            let users = try JSONDecoder().decode([AuthUser].self, from: usersData)
-                            print(
-                                "👥 WheelState: Successfully decoded \(users.count) users from nested object"
-                            )
-
-                            DispatchQueue.main.async {
-                                NotificationCenter.default.post(
-                                    name: .roomUsersUpdated,
-                                    object: users
-                                )
-                            }
-                        }
-                    } catch {
-                        print("❌ WheelState: Failed to decode from nested object: \(error)")
-                    }
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode room users: \(error)")
-                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
-                print("👥 WheelState: Room users data received, size: \(data.count) bytes")
-
-                // Попробуем альтернативный способ декодирования
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("👥 WheelState: JSON string: \(jsonString)")
-
-                    // Попробуем декодировать как объект с полем "users"
-                    do {
-                        if let jsonData = jsonString.data(using: .utf8),
-                            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
-                                as? [String: Any],
-                            let usersArray = jsonObject["users"] as? [[String: Any]]
-                        {
-
-                            let usersData = try JSONSerialization.data(withJSONObject: usersArray)
-                            let users = try JSONDecoder().decode([AuthUser].self, from: usersData)
-                            print(
-                                "👥 WheelState: Successfully decoded \(users.count) users from nested object"
-                            )
-
-                            DispatchQueue.main.async {
-                                NotificationCenter.default.post(
-                                    name: .roomUsersUpdated,
-                                    object: users
-                                )
-                            }
-                        }
-                    } catch {
-                        print("❌ WheelState: Failed to decode from nested object: \(error)")
-                    }
-                }
-            }
-        }
-
-        // Handle request:sectors - когда другой клиент запрашивает сектора
-        socket.on(.requestSectors) { [weak self] data in
-            print("📋 WheelState: Received request:sectors")
-
-            // Отправляем текущие сектора только если они есть
-            if let socket = self?.socket, socket.isConnected, self?.isAuthorized == true {
-                let hasSectors = !(self?.sectors.isEmpty ?? true)
-                let hasLosers = !(self?.losers.isEmpty ?? true)
-
-                print(
-                    "📋 WheelState: Has sectors to send: \(hasSectors) (\(self?.sectors.count ?? 0))"
-                )
-                print("📋 WheelState: Has losers to send: \(hasLosers) (\(self?.losers.count ?? 0))")
-
-                // Отправляем сектора только если они есть
-                if hasSectors || hasLosers {
-                    let sectorsData: [String: Any] = [
-                        "sectors": self?.sectors.map { sector in
-                            [
-                                "id": sector.id,
-                                "label": sector.label,
-                                "name": sector.name,
-                                "eliminated": sector.eliminated,
-                                "winner": sector.winner,
-                                "description": sector.description ?? "",
-                                "pattern": sector.pattern ?? "",
-                                "labelColor": sector.labelColor ?? "",
-                                "labelHidden": sector.labelHidden,
-                                "wheelId": sector.wheelId,
-                                "userId": sector.userId ?? "",
-                            ]
-                        },
-                        "losers": self?.losers.map { sector in
-                            [
-                                "id": sector.id,
-                                "label": sector.label,
-                                "name": sector.name,
-                                "eliminated": sector.eliminated,
-                                "winner": sector.winner,
-                                "description": sector.description ?? "",
-                                "pattern": sector.pattern ?? "",
-                                "labelColor": sector.labelColor ?? "",
-                                "labelHidden": sector.labelHidden,
-                                "wheelId": sector.wheelId,
-                                "userId": sector.userId ?? "",
-                            ]
-                        },
-                    ]
-
-                    print(
-                        "📋 WheelState: Sending sectors data: \(self?.sectors.count ?? 0) active, \(self?.losers.count ?? 0) eliminated"
-                    )
-                    socket.emit(.syncSectors, data: sectorsData)
-                } else {
-                    print("📋 WheelState: No sectors to send, skipping response")
-                }
-            }
-        }
-
-        // Handle sync:sectors - когда получаем сектора от другого клиента
-        socket.on(.syncSectors) { [weak self] data in
-            print("📋 WheelState: Received sync:sectors")
-
-            guard let self = self else { return }
-
-            do {
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("📋 WheelState: Sectors JSON: \(jsonString)")
-                }
-
-                if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    let sectorsArray = jsonObject["sectors"] as? [[String: Any]] ?? []
-                    let losersArray = jsonObject["losers"] as? [[String: Any]] ?? []
-
-                    // Обрабатываем только если есть сектора или выбывшие
-                    if !sectorsArray.isEmpty || !losersArray.isEmpty {
-
-                        // Конвертируем обратно в сектора
-                        let newSectors = sectorsArray.compactMap { sectorDict -> Sector? in
-                            guard let id = sectorDict["id"] as? String,
-                                let label = sectorDict["label"] as? String,
-                                let name = sectorDict["name"] as? String,
-                                let eliminated = sectorDict["eliminated"] as? Bool,
-                                let winner = sectorDict["winner"] as? Bool,
-                                let wheelId = sectorDict["wheelId"] as? String
-                            else {
-                                return nil
-                            }
-
-                            return Sector(
-                                id: id,
-                                label: label,
-                                color: ColorJSON(h: 0, s: 80, l: 50),  // Дефолтный цвет
-                                name: name,
-                                eliminated: eliminated,
-                                winner: winner,
-                                description: sectorDict["description"] as? String,
-                                pattern: sectorDict["pattern"] as? String,
-                                patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
-                                poster: sectorDict["poster"] as? String,
-                                genre: sectorDict["genre"] as? String,
-                                rating: sectorDict["rating"] as? String,
-                                year: sectorDict["year"] as? String,
-                                labelColor: sectorDict["labelColor"] as? String,
-                                labelHidden: sectorDict["labelHidden"] as? Bool ?? false,
-                                wheelId: wheelId,
-                                userId: sectorDict["userId"] as? String,
-                                user: nil,  // Пользователь будет загружен отдельно
-                                createdAt: Date(),
-                                updatedAt: Date()
-                            )
-                        }
-
-                        let newLosers = losersArray.compactMap { sectorDict -> Sector? in
-                            guard let id = sectorDict["id"] as? String,
-                                let label = sectorDict["label"] as? String,
-                                let name = sectorDict["name"] as? String,
-                                let eliminated = sectorDict["eliminated"] as? Bool,
-                                let winner = sectorDict["winner"] as? Bool,
-                                let wheelId = sectorDict["wheelId"] as? String
-                            else {
-                                return nil
-                            }
-
-                            return Sector(
-                                id: id,
-                                label: label,
-                                color: ColorJSON(h: 0, s: 80, l: 50),  // Дефолтный цвет
-                                name: name,
-                                eliminated: eliminated,
-                                winner: winner,
-                                description: sectorDict["description"] as? String,
-                                pattern: sectorDict["pattern"] as? String,
-                                patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
-                                poster: sectorDict["poster"] as? String,
-                                genre: sectorDict["genre"] as? String,
-                                rating: sectorDict["rating"] as? String,
-                                year: sectorDict["year"] as? String,
-                                labelColor: sectorDict["labelColor"] as? String,
-                                labelHidden: sectorDict["labelHidden"] as? Bool ?? false,
-                                wheelId: wheelId,
-                                userId: sectorDict["userId"] as? String,
-                                user: nil,  // Пользователь будет загружен отдельно
-                                createdAt: Date(),
-                                updatedAt: Date()
-                            )
-                        }
-
-                        print(
-                            "📋 WheelState: Received \(newSectors.count) sectors and \(newLosers.count) losers"
-                        )
-
-                        Task { @MainActor in
-                            let hasExistingSectors = !self.sectors.isEmpty
-                            let hasIncomingSectors = !newSectors.isEmpty
-
-                            print(
-                                "📋 WheelState: Has existing sectors: \(hasExistingSectors) (\(self.sectors.count))"
-                            )
-                            print(
-                                "📋 WheelState: Has incoming sectors: \(hasIncomingSectors) (\(newSectors.count))"
-                            )
-
-                            // Обновляем сектора только если:
-                            // 1. У нас нет секторов ИЛИ
-                            // 2. Входящие сектора не пустые
-                            if !hasExistingSectors || hasIncomingSectors {
-                                // Сливаем сектора вместо полной замены
-                                if hasExistingSectors && hasIncomingSectors {
-                                    // Объединяем сектора, избегая дубликатов
-                                    let existingSectorIds = Set(self.sectors.map { $0.id })
-                                    let newUniqueSectors = newSectors.filter {
-                                        !existingSectorIds.contains($0.id)
-                                    }
-                                    self.sectors.append(contentsOf: newUniqueSectors)
-
-                                    let existingLoserIds = Set(self.losers.map { $0.id })
-                                    let newUniqueLosers = newLosers.filter {
-                                        !existingLoserIds.contains($0.id)
-                                    }
-                                    self.losers.append(contentsOf: newUniqueLosers)
-
-                                    print(
-                                        "📋 WheelState: Merged sectors - added \(newUniqueSectors.count) new sectors, \(newUniqueLosers.count) new losers"
-                                    )
-                                } else {
-                                    // Полная замена
-                                    self.sectors = newSectors
-                                    self.losers = newLosers
-                                    print("📋 WheelState: Replaced sectors from sync")
-                                }
-                            } else {
-                                print("📋 WheelState: Skipped update - keeping existing sectors")
-                            }
-                        }
-                    }
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode sectors: \(error)")
-            }
-        }
-
-        // Подписываемся на уведомления об ошибках авторизации сокета
-        NotificationCenter.default.addObserver(
-            forName: .socketAuthorizationError,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            print("🔐 WheelState: Socket authorization error detected")
-            Task { @MainActor in
-                // Устанавливаем флаг неавторизованности
-                self?.isAuthorized = false
-                // Очищаем состояние колеса при ошибке авторизации
-                self?.cleanup()
-            }
-        }
-    }
-
     func joinRoom(_ roomId: String, userId: AuthUser?) {
-        // Создаем словарь с данными пользователя, которые можно сериализовать в JSON
         var userData: [String: Any] = [:]
         if let user = userId {
             userData = [
@@ -743,24 +247,20 @@ class WheelState: ObservableObject {
 
         let joinData: [String: Any] = [
             "roomId": roomId,
-            "userId": userData,  // Отправляем словарь вместо объекта
+            "userId": userData,
             "clientId": clientId ?? "",
         ]
 
-        // Проверяем, что сокет подключен и авторизован перед отправкой
         if let socket = socket, socket.isConnected, isAuthorized {
-            print(
-                "🔌 WheelState: Joining room \(roomId) with user: \(userId?.username ?? "unknown")")
+            print("🔌 WheelState: Joining room \(roomId)")
             socket.emit(.joinRoom, data: joinData)
 
-            // Запрашиваем сектора у других клиентов после присоединения к комнате
+            // Request sectors after joining room
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.requestSectors()
             }
         } else {
-            print(
-                "⚠️ WheelState: Cannot join room - socket not connected (\(socket?.isConnected ?? false)) or not authorized (\(isAuthorized))"
-            )
+            print("⚠️ WheelState: Cannot join room - socket not connected or not authorized")
         }
     }
 
@@ -768,7 +268,6 @@ class WheelState: ObservableObject {
         if let roomId = roomId {
             let leaveData: [String: Any] = ["roomId": roomId]
 
-            // Проверяем, что сокет подключен и авторизован перед отправкой
             if let socket = socket, socket.isConnected, isAuthorized {
                 socket.emit(.leaveRoom, data: leaveData)
             } else {
@@ -776,8 +275,6 @@ class WheelState: ObservableObject {
             }
         }
     }
-
-    // MARK: - Sectors Synchronization
 
     func requestSectors() {
         print("📋 WheelState: Requesting sectors from other clients")
@@ -790,6 +287,165 @@ class WheelState: ObservableObject {
         }
     }
 
+    func spinWheelFromServer(_ spinData: [String: Any]) {
+        let senderClientId =
+            spinData["senderClientId"] as? String ?? spinData["clientId"] as? String
+
+        guard let senderClientId = senderClientId,
+            let rotation = spinData["rotation"] as? Double,
+            let speed = spinData["speed"] as? Double,
+            let winningIndex = spinData["winningIndex"] as? Int
+        else {
+            print("❌ WheelState: Invalid spin data received")
+            return
+        }
+
+        // Ignore if this event was initiated by this client
+        if senderClientId == clientId {
+            print("Ignoring spin event initiated by this client")
+            return
+        }
+
+        print(
+            "Received spin event from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex)"
+        )
+        spinning = true
+        self.rotation = rotation
+
+        handleSpinResult(winningIndex: winningIndex, rotation: rotation, speed: speed)
+    }
+
+    func shuffleSectorsFromServer(_ data: [String: Any]) {
+        let senderClientId = data["senderClientId"] as? String ?? data["clientId"] as? String
+
+        guard let senderClientId = senderClientId,
+            let sectorsData = data["sectors"] as? [[String: Any]]
+        else {
+            print("Invalid shuffle data received")
+            return
+        }
+
+        // Only update if the event came from another client
+        if senderClientId != clientId {
+            print("Received shuffle data from server: \(sectorsData.count) sectors")
+            // TODO: Implement proper sector creation from dictionary
+        }
+    }
+
+    private func setupSocketEventHandlers() {
+        guard let socket = socket else { return }
+
+        // Handle connect event
+        socket.on(.connect) { data in
+            print("🔌 WheelState: Socket connected, ready to join room")
+        }
+
+        // Handle wheel spin from server
+        socket.on(.wheelSpin) { [weak self] data in
+            print("🔄 WheelState: Received wheelSpin event")
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    DispatchQueue.main.async {
+                        self?.spinWheelFromServer(json)
+                    }
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode spin data: \(error)")
+            }
+        }
+
+        // Handle sectors shuffle from server
+        socket.on(.sectorsShuffle) { [weak self] data in
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    DispatchQueue.main.async {
+                        self?.shuffleSectorsFromServer(json)
+                    }
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode shuffle data: \(error)")
+            }
+        }
+
+        // Handle sectors sync
+        socket.on(.syncSectors) { [weak self] data in
+            do {
+                let sectors = try JSONDecoder().decode([Sector].self, from: data)
+                DispatchQueue.main.async {
+                    self?.setSectors(sectors)
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode sectors data: \(error)")
+            }
+        }
+
+        // Handle sector updates
+        socket.on(.sectorUpdated) { [weak self] data in
+            do {
+                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                DispatchQueue.main.async {
+                    self?.updateSector(sector)
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode sector update: \(error)")
+            }
+        }
+
+        // Handle sector creation
+        socket.on(.sectorCreated) { [weak self] data in
+            do {
+                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                DispatchQueue.main.async {
+                    self?.addSector(sector)
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode sector creation: \(error)")
+            }
+        }
+
+        // Handle sector removal
+        socket.on(.sectorRemoved) { [weak self] data in
+            do {
+                let sectorId = try JSONDecoder().decode(String.self, from: data)
+                DispatchQueue.main.async {
+                    self?.removeSector(id: sectorId)
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode sector removal: \(error)")
+            }
+        }
+
+        // Handle room users
+        socket.on(.roomUsers) { data in
+            print("👥 WheelState: Received room users update")
+
+            do {
+                let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
+                let users = roomUsers.map { $0.toAuthUser() }
+
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .roomUsersUpdated, object: users)
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode room users: \(error)")
+            }
+        }
+
+        // Subscribe to socket authorization errors
+        NotificationCenter.default.addObserver(
+            forName: .socketAuthorizationError,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                print("🔐 WheelState: Socket authorization error detected")
+                self?.isAuthorized = false
+                self?.cleanup()
+            }
+        }
+    }
+
+    // MARK: - Cleanup
     func cleanup() {
         leaveRoom()
         socket = nil
@@ -797,7 +453,9 @@ class WheelState: ObservableObject {
         clientId = nil
         isAuthorized = false
 
-        // Отписываемся от уведомлений
+        // Remove notification observers
+        NotificationCenter.default.removeObserver(self, name: .sectorEliminated, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .wheelCompleted, object: nil)
         NotificationCenter.default.removeObserver(
             self, name: .socketAuthorizationError, object: nil)
     }

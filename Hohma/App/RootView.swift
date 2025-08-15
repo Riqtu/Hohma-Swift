@@ -69,7 +69,9 @@ struct RootView: View {
                 object: nil,
                 queue: .main
             ) { _ in
-                authViewModel.logout()
+                Task { @MainActor in
+                    authViewModel.logout()
+                }
             }
         }
     }

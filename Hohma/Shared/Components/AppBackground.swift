@@ -75,7 +75,7 @@ struct AppBackground: View {
 
     private func setupPlayerObserver(_ player: AVPlayer) {
         // Observer для отслеживания готовности плеера
-        let observer = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
+        _ = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
             DispatchQueue.main.async {
                 self.isPlayerReady = item.status == .readyToPlay
                 if self.isPlayerReady {
@@ -83,9 +83,6 @@ struct AppBackground: View {
                 }
             }
         }
-
-        // Сохраняем observer для очистки
-        // В реальном приложении нужно сохранить observer в @State
     }
 
     private func cleanupVideoBackground() {

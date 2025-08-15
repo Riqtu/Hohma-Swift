@@ -295,7 +295,7 @@ class SocketIOService: ObservableObject {
         // Отправляем connect сообщение
         let connectMessage = "40"
         let wsMessage = URLSessionWebSocketTask.Message.string(connectMessage)
-        webSocket?.send(wsMessage) { [weak self] error in
+        webSocket?.send(wsMessage) { error in
             if let error = error {
                 print("❌ SocketIOService: Failed to send connect: \(error)")
             }

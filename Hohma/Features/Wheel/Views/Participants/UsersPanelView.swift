@@ -35,7 +35,7 @@ struct UsersPanelView: View {
             .onAppear {
                 print("👥 UsersPanelView: Appeared with \(viewModel.roomUsers.count) users")
             }
-            .onChange(of: viewModel.roomUsers.count) { newCount in
+            .onChange(of: viewModel.roomUsers.count) { _, newCount in
                 print("👥 UsersPanelView: Users count changed to \(newCount)")
             }
 
