@@ -61,13 +61,21 @@ struct SectorsTableView: View {
                         .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
                 )
         )
-        .fullScreenCover(isPresented: $showingFullScreen) {
-            SectorsFullScreenView(
-                sectors: sectors,
-                title: title,
-                accentColor: accentColor
-            )
-        }
+        .overlay(
+            Group {
+                if showingFullScreen {
+                    SectorsSlideView(
+                        isPresented: $showingFullScreen,
+                        sectors: sectors,
+                        title: title,
+                        accentColor: accentColor,
+                        dragOffset: 0,
+                        isDragging: false,
+                        isClosing: false
+                    )
+                }
+            }
+        )
     }
 }
 
