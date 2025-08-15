@@ -40,13 +40,13 @@ struct FortuneWheelGameView: View {
                 }
 
                 // Основной контент
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     // Заголовок
                     Text("XOXMA")
                         .font(.custom("Luckiest Guy", size: 32))
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
-                        .padding(.top, 20)
+                        .padding(.top, 16)
                         .padding(.bottom, -10)
 
                     // Основная область с колесом

@@ -24,8 +24,9 @@ struct FortuneWheelView: View {
             Color.clear
                 .frame(width: size, height: size)
             // Фон колеса
+            let mainColor = Color(hex: wheelState.mainColor)
             Circle()
-                .fill(Color(hex: wheelState.mainColor))
+                .fill(mainColor)
                 .frame(width: size + 35, height: size + 35)
                 .overlay(
                     Circle()
