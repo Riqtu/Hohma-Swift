@@ -16,6 +16,15 @@ struct WheelSectorView: View {
     let totalSectors: Int
     let size: CGFloat
 
+    // Вычисляемое свойство для обрезки текста
+    private var truncatedLabel: String {
+        let maxLength = 7
+        if sector.label.count > maxLength {
+            return String(sector.label.prefix(maxLength)) + "..."
+        }
+        return sector.label
+    }
+
     var body: some View {
         let anglePerSector = 360.0 / Double(totalSectors)
         let startAngle = Double(index) * anglePerSector - 90  // Начинаем с -90° чтобы первый сектор был сверху
@@ -118,7 +127,7 @@ struct WheelSectorView: View {
 
             // Текст сектора
             if !sector.labelHidden {
-                Text(sector.label)
+                Text(truncatedLabel)
                     .font(.system(size: min(size / 12, 16), weight: .bold))
                     .foregroundColor(
                         sector.labelColor != nil
@@ -126,6 +135,8 @@ struct WheelSectorView: View {
                             : .white
                     )
                     .multilineTextAlignment(.center)
+                    .lineLimit(2)  // Ограничиваем количество строк
+                    .truncationMode(.tail)  // Обрезаем с конца
                     .rotationEffect(.degrees(textAngle))
                     .offset(x: textOffsetX, y: textOffsetY)
                     .shadow(color: .black, radius: 2, x: 1, y: 1)

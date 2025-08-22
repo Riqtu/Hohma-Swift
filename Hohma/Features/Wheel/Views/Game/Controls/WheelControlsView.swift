@@ -64,21 +64,6 @@ struct WheelControlsView: View {
                 .disabled(wheelState.spinning || !isSocketReady)
                 .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
-                // Кнопка добавления сектора
-                Button(action: {
-                    showingAddSector = true
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-
-                    }
-                    .foregroundColor(.white)
-
-                }
-                .disabled(wheelState.spinning || !isSocketReady)
-                .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
-
                 // Кнопка ставок
                 Button(action: {
                     showingBets = true
@@ -98,6 +83,20 @@ struct WheelControlsView: View {
                         .font(.title2)
                         .foregroundColor(.white)
                 }
+                // Кнопка добавления сектора
+                Button(action: {
+                    showingAddSector = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+
+                    }
+                    .foregroundColor(.white)
+
+                }
+                .disabled(wheelState.spinning || !isSocketReady)
+                .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
             }
 

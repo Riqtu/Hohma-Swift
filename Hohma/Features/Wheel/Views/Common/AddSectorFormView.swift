@@ -109,10 +109,9 @@ struct AddSectorFormView: View {
                         Text("Добавить сектор")
                     }
                     .font(.headline)
-                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(accentColorUI)
+                    .background(Color("AccentColor"))
                     .cornerRadius(12)
                 }
                 .disabled(selectedMovie == nil)
@@ -188,9 +187,9 @@ struct AddSectorFormView: View {
             eliminated: false,
             winner: false,
             description: selectedMovie.description,
-            pattern: nil,
+            pattern: selectedMovie.poster?.bestUrl,  // Добавляем постер в pattern
             patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
-            poster: selectedMovie.poster?.previewUrl,
+            poster: selectedMovie.poster?.bestUrl,
             genre: selectedMovie.genres?.first?.name,
             rating: nil,
             year: String(selectedMovie.year),
@@ -224,7 +223,7 @@ struct MovieSearchResultRow: View {
         Button(action: { onSelect(movie) }) {
             HStack(spacing: 12) {
                 // Постер фильма
-                if let posterUrl = movie.poster?.previewUrl,
+                if let posterUrl = movie.poster?.bestUrl,
                     let url = URL(string: posterUrl)
                 {
                     AsyncImage(url: url) { image in
@@ -294,7 +293,7 @@ struct SelectedMovieCard: View {
     var body: some View {
         HStack(spacing: 12) {
             // Постер фильма
-            if let posterUrl = movie.poster?.previewUrl,
+            if let posterUrl = movie.poster?.bestUrl,
                 let url = URL(string: posterUrl)
             {
                 AsyncImage(url: url) { image in

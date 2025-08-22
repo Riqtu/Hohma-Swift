@@ -111,8 +111,13 @@ struct KinopoiskName: Codable {
 }
 
 struct KinopoiskPoster: Codable {
-    let previewUrl: String?
     let url: String?
+    let previewUrl: String?
+
+    // Приоритет: сначала url, потом previewUrl
+    var bestUrl: String? {
+        return url ?? previewUrl
+    }
 }
 
 struct KinopoiskRating: Codable {
