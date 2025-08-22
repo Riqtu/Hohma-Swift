@@ -1,0 +1,13 @@
+//
+//  Config.xcconfig.example
+//  Hohma
+//
+//  Example configuration file for build settings
+//  Copy this file to Config.xcconfig and set your actual values
+//
+
+// API Keys - Replace with your actual API keys
+KINOPOISK_API_KEY = YOUR_KINOPOISK_API_KEY_HERE
+
+// Other configuration
+// Add other environment-specific settings here

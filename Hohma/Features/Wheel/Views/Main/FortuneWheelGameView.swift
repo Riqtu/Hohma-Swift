@@ -99,6 +99,7 @@ struct FortuneWheelGameView: View {
                             // Управление
                             WheelControlsView(
                                 wheelState: viewModel.wheelState,
+                                viewModel: viewModel,
                                 userCoins: viewModel.currentUserCoins,
                                 isSocketReady: viewModel.isSocketReady
                             )

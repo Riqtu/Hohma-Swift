@@ -31,6 +31,16 @@ class FortuneWheelViewModel: ObservableObject {
     private let wheelData: WheelWithRelations
     private let currentUser: AuthUser?
 
+    // MARK: - Public Properties
+
+    var wheelId: String {
+        return wheelData.id
+    }
+
+    var user: AuthUser? {
+        return currentUser
+    }
+
     init(wheelData: WheelWithRelations, currentUser: AuthUser?) {
         self.wheelData = wheelData
         self.currentUser = currentUser
@@ -331,6 +341,38 @@ class FortuneWheelViewModel: ObservableObject {
                 print(
                     "👥 FortuneWheelViewModel: User \(index + 1): \(user.username) (\(user.firstName ?? "no name"))"
                 )
+            }
+        }
+    }
+
+    // MARK: - Sector Management
+
+    func addSector(_ sector: Sector) {
+        Task {
+            do {
+                let createdSector = try await wheelService.createSector(sector)
+
+                // Отправляем сокет событие
+                let sectorData = try JSONEncoder().encode(createdSector)
+                if let sectorDict = try JSONSerialization.jsonObject(with: sectorData)
+                    as? [String: Any]
+                {
+                    socketService.emitToRoom(.sectorCreated, roomId: wheelData.id, data: sectorDict)
+                }
+
+                // Обновляем состояние колеса
+                wheelState.addSector(createdSector)
+
+            } catch URLError.userAuthenticationRequired {
+                print("🔐 FortuneWheelViewModel: Authorization required for sector creation")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print(
+                    "❌ FortuneWheelViewModel: Decoding error for sector creation: \(decodingError)")
+            } catch {
+                self.error = "Ошибка создания сектора: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Sector creation error: \(error)")
             }
         }
     }

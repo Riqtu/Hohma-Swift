@@ -24,3 +24,16 @@ dist-ssr
 *.sw?
 
 .env
+
+# iOS Configuration
+Hohma/Config.xcconfig
+*.xcconfig
+
+# Xcode
+.DS_Store
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+project.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa

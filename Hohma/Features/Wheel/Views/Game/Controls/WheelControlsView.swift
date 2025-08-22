@@ -11,8 +11,10 @@ import SwiftUI
 struct WheelControlsView: View {
     @ObserveInjection var inject
     @ObservedObject var wheelState: WheelState
+    @ObservedObject var viewModel: FortuneWheelViewModel
     @State private var showingSettings = false
     @State private var showingBets = false
+    @State private var showingAddSector = false
 
     let userCoins: Int
     let isSocketReady: Bool
@@ -62,6 +64,21 @@ struct WheelControlsView: View {
                 .disabled(wheelState.spinning || !isSocketReady)
                 .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
+                // Кнопка добавления сектора
+                Button(action: {
+                    showingAddSector = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+
+                    }
+                    .foregroundColor(.white)
+
+                }
+                .disabled(wheelState.spinning || !isSocketReady)
+                .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
+
                 // Кнопка ставок
                 Button(action: {
                     showingBets = true
@@ -97,6 +114,16 @@ struct WheelControlsView: View {
         }
         .sheet(isPresented: $showingBets) {
             WheelBetsView(wheelState: wheelState, userCoins: userCoins)
+        }
+        .sheet(isPresented: $showingAddSector) {
+            AddSectorFormView(
+                wheelId: viewModel.wheelId,
+                currentUser: viewModel.user,
+                accentColor: wheelState.accentColor,
+                onSectorCreated: { sector in
+                    viewModel.addSector(sector)
+                }
+            )
         }
         .enableInjection()
     }
@@ -238,6 +265,22 @@ struct WheelBetsView: View {
 #Preview {
     WheelControlsView(
         wheelState: WheelState(),
+        viewModel: FortuneWheelViewModel(
+            wheelData: WheelWithRelations(
+                id: "test",
+                name: "Тестовое колесо",
+                status: .active,
+                createdAt: Date(),
+                updatedAt: Date(),
+                themeId: "theme1",
+                userId: "user1",
+                sectors: [Sector.mock, Sector.mock],
+                bets: [],
+                theme: WheelTheme.mock,
+                user: AuthUser.mock
+            ),
+            currentUser: AuthUser.mock
+        ),
         userCoins: 37,
         isSocketReady: true
     )

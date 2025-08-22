@@ -4,6 +4,8 @@
 <dict>
 	<key>API_URL</key>
 	<string>https://hohma.su/api/trpc</string>
+	<key>KINOPOISK_API_KEY</key>
+	<string>$(KINOPOISK_API_KEY)</string>
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
 	<key>UIAppFonts</key>
