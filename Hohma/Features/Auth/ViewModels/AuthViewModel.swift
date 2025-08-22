@@ -60,4 +60,38 @@ final class AuthViewModel: ObservableObject {
             }
         }
     }
+
+    func handleAppleAuth() {
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                if let appleRequest = await AppleAuthService.shared.signInWithApple() {
+                    authService.loginWithApple(appleRequest) { [weak self] result in
+                        DispatchQueue.main.async {
+                            self?.isLoading = false
+                            switch result {
+                            case .success(let user):
+                                self?.user = user
+                                self?.isAuthenticated = true
+                            case .failure(let error):
+                                self?.errorMessage = error.localizedDescription
+                            }
+                        }
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                        self.errorMessage = "Apple авторизация не удалась"
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.errorMessage = "Ошибка Apple авторизации: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
 }

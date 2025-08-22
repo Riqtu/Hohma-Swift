@@ -57,8 +57,8 @@ struct UserRowView: View {
     private func getDisplayName() -> String {
         if let firstName = user.firstName, !firstName.isEmpty {
             return firstName
-        } else if !user.username.isEmpty {
-            return user.username
+        } else if let username = user.username, !username.isEmpty {
+            return username
         } else {
             return "Пользователь"
         }
@@ -72,8 +72,8 @@ struct UserRowView: View {
             return "\(firstName)\(lastName)".uppercased()
         } else if !firstName.isEmpty {
             return firstName.uppercased()
-        } else if !user.username.isEmpty {
-            return String(user.username.prefix(1)).uppercased()
+        } else if let username = user.username, !username.isEmpty {
+            return String(username.prefix(1)).uppercased()
         } else {
             return "?"
         }

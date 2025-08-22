@@ -9,7 +9,7 @@ extension AuthUser {
         } else if let name = name {
             return name
         } else {
-            return username
+            return username ?? "User"
         }
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct ParticipantRowView: View {
     @ObserveInjection var inject
@@ -21,8 +21,8 @@ struct ParticipantRowView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
 
-                if !user.username.isEmpty {
-                    Text("@\(user.username)")
+                if let username = user.username, !username.isEmpty {
+                    Text("@\(username)")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }

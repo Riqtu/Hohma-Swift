@@ -10,5 +10,16 @@
 	<array>
 		<string>LuckiestGuy-Regular.ttf</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Apple Sign In</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>riqtu.Hohma</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

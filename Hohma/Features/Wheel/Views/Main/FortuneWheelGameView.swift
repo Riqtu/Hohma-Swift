@@ -14,9 +14,6 @@ struct FortuneWheelGameView: View {
     @StateObject private var viewModel: FortuneWheelViewModel
     @State private var showingSectorsFullScreen = false
     @State private var swipeAnimation = false
-    @State private var dragOffset: CGFloat = 0
-    @State private var isDragging = false
-    @State private var isClosing = false
 
     init(wheelData: WheelWithRelations, currentUser: AuthUser?) {
         self._viewModel = StateObject(
@@ -66,10 +63,10 @@ struct FortuneWheelGameView: View {
                                     .foregroundColor(
                                         Color(hex: viewModel.wheelState.accentColor).opacity(0.7)
                                     )
-                                    .offset(x: isDragging ? -10 : (swipeAnimation ? -5 : 0))
+                                    .offset(x: swipeAnimation ? -5 : 0)
                                     .animation(
                                         .easeInOut(duration: 0.2),
-                                        value: isDragging || swipeAnimation)
+                                        value: swipeAnimation)
                             }
                         }
                         .scaleEffect(swipeAnimation ? 1.1 : 1.0)
@@ -122,16 +119,6 @@ struct FortuneWheelGameView: View {
                             }
                         }
 
-                        // Панель секторов
-                        VStack(spacing: 16) {
-                            SectorsTableView(
-                                sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
-                                title: "Фильмы",
-                                accentColor: viewModel.wheelState.accentColor
-                            )
-
-                            Spacer()
-                        }
                     }
                     .padding(.horizontal, 20)
 
@@ -160,65 +147,15 @@ struct FortuneWheelGameView: View {
         }
         .gesture(
             DragGesture()
-                .onChanged { value in
-                    // Отслеживаем движение пальца влево
-                    if value.translation.width < 0 && abs(value.translation.height) < 50 {
-                        isDragging = true
-                        isClosing = false
-                        dragOffset = abs(value.translation.width)
-
-                        // Показываем экран только при достаточном свайпе
-                        if abs(value.translation.width) > 30 {
-                            showingSectorsFullScreen = true
-                        }
-                    }
-                    // Отслеживаем движение пальца вправо для закрытия
-                    else if value.translation.width > 0 && abs(value.translation.height) < 50
-                        && showingSectorsFullScreen
-                    {
-                        isDragging = true
-                        isClosing = true
-                        dragOffset = value.translation.width
-                    }
-                }
                 .onEnded { value in
-                    isDragging = false
-
-                    if isClosing {
-                        // Логика для закрытия экрана
-                        if value.translation.width > 100 && abs(value.translation.height) < 50 {
-                            // Полное закрытие
-                            withAnimation(.easeIn(duration: 0.3)) {
-                                showingSectorsFullScreen = false
-                            }
-                        } else {
-                            // Возвращаем экран на место с анимацией фона
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                // Экран остается открытым, фон возвращается к полной прозрачности
-                            }
+                    // Свайп влево для открытия
+                    if value.translation.width < -100 && abs(value.translation.height) < 50 {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            swipeAnimation = true
                         }
-                    } else {
-                        // Логика для открытия экрана
-                        if value.translation.width < -50 && abs(value.translation.height) < 50 {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                swipeAnimation = true
-                            }
-
-                            // Оставляем экран открытым
-                            showingSectorsFullScreen = true
-                            swipeAnimation = false
-                        } else if showingSectorsFullScreen {
-                            // Если экран уже показан, но свайп недостаточный, оставляем его открытым
-                        } else {
-                            // Если экран не показан и свайп недостаточный, скрываем с анимацией
-                            withAnimation(.easeIn(duration: 0.3)) {
-                                showingSectorsFullScreen = false
-                            }
-                        }
+                        showingSectorsFullScreen = true
+                        swipeAnimation = false
                     }
-
-                    dragOffset = 0
-                    isClosing = false
                 }
         )
         .overlay(
@@ -228,10 +165,7 @@ struct FortuneWheelGameView: View {
                         isPresented: $showingSectorsFullScreen,
                         sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
                         title: "Фильмы",
-                        accentColor: viewModel.wheelState.accentColor,
-                        dragOffset: dragOffset,
-                        isDragging: isDragging,
-                        isClosing: isClosing
+                        accentColor: viewModel.wheelState.accentColor
                     )
                 }
             }

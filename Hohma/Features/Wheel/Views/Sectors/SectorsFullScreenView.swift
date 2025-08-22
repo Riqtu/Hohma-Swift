@@ -177,7 +177,7 @@ struct SectorFullScreenRowView: View {
                             .font(.caption)
                             .foregroundColor(.gray)
 
-                        Text(user.username)
+                        Text(user.username ?? "Unknown")
                             .font(.caption)
                             .foregroundColor(.gray)
                     }

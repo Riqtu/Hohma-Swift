@@ -34,6 +34,7 @@ struct RoomUser: Codable {
     let twitterId: String?
     let linkedInId: String?
     let discordId: String?
+    let appleId: String?
     let password: String?
 
     // Конвертер в AuthUser
@@ -58,6 +59,7 @@ struct RoomUser: Codable {
             twitterId: twitterId,
             linkedInId: linkedInId,
             discordId: discordId,
+            appleId: appleId,
             username: username,
             firstName: firstName,
             lastName: lastName,

@@ -91,4 +91,75 @@ final class AuthService {
             }
         }.resume()
     }
+
+    func loginWithApple(
+        _ request: AppleAuthRequest, completion: @escaping (Result<AuthResult, Error>) -> Void
+    ) {
+        guard let url = URL(string: "https://riqtu.ru/api/trpc/auth.appleLogin") else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Сначала кодируем AppleAuthRequest в JSON
+        guard let requestData = try? JSONEncoder().encode(request),
+            let requestDict = try? JSONSerialization.jsonObject(with: requestData) as? [String: Any]
+        else {
+            completion(.failure(NSError(domain: "JSON encoding error", code: -1)))
+            return
+        }
+
+        let body = ["json": requestDict]
+        urlRequest.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let data = data else {
+                completion(.failure(NSError(domain: "No data", code: -1)))
+                return
+            }
+
+            #if DEBUG
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("Apple auth response status: \(httpResponse.statusCode)")
+                }
+                // Выводим тело ответа для отладки
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Apple auth response body: \(responseString)")
+                }
+            #endif
+
+            // Проверяем статус ответа
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
+                completion(.failure(NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])))
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
+                let user = decoded.result.data.json.user
+                let token = decoded.result.data.json.token
+                let authResult = AuthResult(user: user, token: token)
+
+                if let authResultData = try? JSONEncoder().encode(authResult) {
+                    UserDefaults.standard.set(authResultData, forKey: "authResult")
+                }
+
+                completion(.success(authResult))
+            } catch {
+                #if DEBUG
+                    print("Apple auth decode error: \(error)")
+                #endif
+                completion(.failure(error))
+            }
+        }.resume()
+    }
 }

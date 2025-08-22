@@ -27,25 +27,26 @@ struct AuthUser: Codable, Identifiable {
     let twitterId: String?
     let linkedInId: String?
     let discordId: String?
-    let username: String
+    let appleId: String?
+    let username: String?
     let firstName: String?
     let lastName: String?
     let avatarUrl: URL?
     let password: String?
 
     static let mock = AuthUser(
-        id: "6804fc3fd253e514c3fb6ae0",
+        id: "mock_id",
         email: nil,
         name: nil,
-        coins: 9679,
+        coins: 0,
         clicks: 0,
-        createdAt: "2025-04-20T13:53:02.953Z",
-        updatedAt: "2025-06-21T14:39:45.280Z",
-        activeCharacterId: "68472ca4dfca0fda77fe815b",
-        activeBackgroundId: "68472d75cb122154ae21fffc",
+        createdAt: "2025-01-01T00:00:00.000Z",
+        updatedAt: "2025-01-01T00:00:00.000Z",
+        activeCharacterId: nil,
+        activeBackgroundId: nil,
         activeSkinId: nil,
-        role: "ADMIN",
-        telegramId: "195282466",
+        role: "USER",
+        telegramId: "mock_telegram_id",
         googleId: nil,
         githubId: nil,
         facebookId: nil,
@@ -53,10 +54,11 @@ struct AuthUser: Codable, Identifiable {
         twitterId: nil,
         linkedInId: nil,
         discordId: nil,
-        username: "riqtu",
-        firstName: "Artem",
-        lastName: "Vydro",
-        avatarUrl: URL(string: "https://t.me/i/userpic/320/kzsHie85_ysC5uLNAf_9AEsNL6a92L5UzNVOxiE09uE.jpg"),
+        appleId: nil,
+        username: "mock_user",
+        firstName: nil,
+        lastName: nil,
+        avatarUrl: nil,
         password: nil
     )
 }

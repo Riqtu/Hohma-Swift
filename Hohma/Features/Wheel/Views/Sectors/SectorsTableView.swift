@@ -68,10 +68,7 @@ struct SectorsTableView: View {
                         isPresented: $showingFullScreen,
                         sectors: sectors,
                         title: title,
-                        accentColor: accentColor,
-                        dragOffset: 0,
-                        isDragging: false,
-                        isClosing: false
+                        accentColor: accentColor
                     )
                 }
             }

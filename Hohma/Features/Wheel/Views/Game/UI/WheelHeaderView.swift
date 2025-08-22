@@ -20,7 +20,6 @@ struct WheelHeaderView: View {
 
             }
         }
-        .frame(width: .infinity)
         .enableInjection()
     }
 }

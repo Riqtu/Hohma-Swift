@@ -12,16 +12,12 @@ struct SectorsSlideView: View {
     @ObserveInjection var inject
     @Binding var isPresented: Bool
     @State private var slideOffset: CGFloat = UIScreen.main.bounds.width
-    @State private var shouldAnimateDismiss = false
     @State private var backgroundOpacity: Double = 0.0
     @State private var blurRadius: CGFloat = 0.0
 
     let sectors: [Sector]
     let title: String
     let accentColor: String
-    let dragOffset: CGFloat
-    let isDragging: Bool
-    let isClosing: Bool
 
     var body: some View {
         ZStack {
@@ -135,31 +131,8 @@ struct SectorsSlideView: View {
                     )
                 )
 
-                .offset(
-                    x: isDragging
-                        ? (isClosing ? dragOffset : UIScreen.main.bounds.width - dragOffset)
-                        : slideOffset
-                )
-                .onChange(of: dragOffset) { _, newValue in
-                    if isDragging {
-                        // Анимируем прозрачность и размытие фона в зависимости от позиции экрана
-                        let progress =
-                            isClosing
-                            ? min(max(newValue / 100.0, 0), 1)
-                            : min(max(newValue / 100.0, 0), 1)
+                .offset(x: slideOffset)
 
-                        withAnimation(.easeInOut(duration: 0.1)) {
-                            backgroundOpacity =
-                                isClosing
-                                ? 0.7 * (1.0 - progress)
-                                : 0.7 * progress
-                            blurRadius =
-                                isClosing
-                                ? 10.0 * (1.0 - progress)
-                                : 10.0 * progress
-                        }
-                    }
-                }
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -178,7 +151,7 @@ struct SectorsSlideView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.7)) {
+            withAnimation(.easeOut(duration: 0.5)) {
                 slideOffset = 0
                 backgroundOpacity = 0.7
                 blurRadius = 10.0
@@ -246,7 +219,7 @@ struct SectorSlideRowView: View {
                             .font(.caption)
                             .foregroundColor(.gray)
 
-                        Text(user.username)
+                        Text(user.username ?? "Unknown")
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -307,9 +280,6 @@ struct SectorSlideRowView: View {
             Sector.mock,
         ],
         title: "Фильмы",
-        accentColor: "#F8D568",
-        dragOffset: 0,
-        isDragging: false,
-        isClosing: false
+        accentColor: "#F8D568"
     )
 }
