@@ -25,7 +25,7 @@ struct AuthView: View {
                     .foregroundColor(.red)
             }
 
-            Button("Войти через Telegram") {
+            TelegramSignInButton {
                 showTelegramWebView = true
             }
             .sheet(isPresented: $showTelegramWebView) {

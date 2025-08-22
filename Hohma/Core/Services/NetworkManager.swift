@@ -50,8 +50,16 @@ final class NetworkManager {
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode >= 400 {
             #if DEBUG
                 print("❌ NetworkManager: HTTP error \(httpResponse.statusCode)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("❌ NetworkManager: Error response body: \(responseString)")
+                }
             #endif
-            throw URLError(.badServerResponse)
+
+            // Создаем более информативную ошибку
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(
+                domain: "NetworkError", code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
 
         // Пытаемся декодировать как tRPC ответ
@@ -64,17 +72,32 @@ final class NetworkManager {
             #endif
 
             // Проверяем, не является ли это tRPC ответом
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let result = json["result"] as? [String: Any],
-                let resultData = result["data"] as? [String: Any],
-                let jsonData = resultData["json"]
-            {
-                // Это tRPC ответ, извлекаем данные из result.data.json
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 #if DEBUG
-                    print("🔍 NetworkManager: Extracted tRPC data: \(jsonData)")
+                    print("🔍 NetworkManager: Response JSON structure: \(json)")
                 #endif
-                let jsonDataBytes = try JSONSerialization.data(withJSONObject: jsonData)
-                return try customDecoder.decode(T.self, from: jsonDataBytes)
+
+                // Проверяем разные форматы tRPC ответов
+                if let result = json["result"] as? [String: Any],
+                    let resultData = result["data"] as? [String: Any],
+                    let jsonData = resultData["json"]
+                {
+                    // Это tRPC ответ с оберткой result.data.json
+                    #if DEBUG
+                        print(
+                            "🔍 NetworkManager: Extracted tRPC data from result.data.json: \(jsonData)"
+                        )
+                    #endif
+                    let jsonDataBytes = try JSONSerialization.data(withJSONObject: jsonData)
+                    return try customDecoder.decode(T.self, from: jsonDataBytes)
+                } else if let result = json["result"] {
+                    // Это tRPC ответ с прямым result
+                    #if DEBUG
+                        print("🔍 NetworkManager: Extracted tRPC data from result: \(result)")
+                    #endif
+                    let jsonDataBytes = try JSONSerialization.data(withJSONObject: result)
+                    return try customDecoder.decode(T.self, from: jsonDataBytes)
+                }
             }
 
             // Если это не tRPC ответ, пробуем декодировать как есть

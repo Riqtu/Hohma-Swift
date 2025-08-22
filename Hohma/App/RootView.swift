@@ -21,7 +21,7 @@ struct RootView: View {
                             case "wheelList":
                                 WheelListView(user: authViewModel.user)
                             case "profile":
-                                ProfileView()
+                                ProfileView(authViewModel: authViewModel)
                             default:
                                 HomeView()
                             }
@@ -42,7 +42,7 @@ struct RootView: View {
                             }
                             .tag("wheelList")
 
-                        ProfileView()
+                        ProfileView(authViewModel: authViewModel)
                             .tabItem {
                                 Label("Профиль", systemImage: "person")
                             }

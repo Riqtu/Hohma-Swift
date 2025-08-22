@@ -1,5 +1,5 @@
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct PrimaryButton: View {
     @ObserveInjection var inject
@@ -13,7 +13,7 @@ struct PrimaryButton: View {
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity)
                 .background(Color.accentColor)
-                .foregroundColor(.white)
+                .foregroundColor(.black)
                 .cornerRadius(12)
         }
         .enableInjection()

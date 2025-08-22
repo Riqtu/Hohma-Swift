@@ -79,7 +79,7 @@ struct WheelCardView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
         }
-        .background(Color("AccentColor").opacity(0.7))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)

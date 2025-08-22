@@ -24,7 +24,7 @@ class WheelState: ObservableObject {
     @Published var spinning: Bool = false
     @Published var speed: Double = 10
     @Published var autoSpin: Bool = false
-    @Published var accentColor: String = "#F8D568"
+    @Published var accentColor: String = "#ff8181"
     @Published var mainColor: String = "rgba(22, 36, 86, 0.3)"
     @Published var font: String = "pacifico"
     @Published var backVideo: String = "/themeVideo/CLASSIC.mp4"

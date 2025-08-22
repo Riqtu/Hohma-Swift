@@ -23,6 +23,6 @@ struct ResponseRoot: Decodable {
 }
 
 struct AuthResult: Codable {
-    let user: AuthUser
+    var user: AuthUser
     let token: String
 }
