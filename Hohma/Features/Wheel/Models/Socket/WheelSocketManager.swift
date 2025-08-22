@@ -72,7 +72,9 @@ class WheelSocketManager: WheelSocketProtocol {
         // Handle sectors sync
         socket.on(.syncSectors) { [weak self] data in
             do {
-                let sectors = try JSONDecoder().decode([Sector].self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sectors = try decoder.decode([Sector].self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorsSync?(sectors)
                 }
@@ -84,7 +86,9 @@ class WheelSocketManager: WheelSocketProtocol {
         // Handle sector updates
         socket.on(.sectorUpdated) { [weak self] data in
             do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorUpdated?(sector)
                 }
@@ -96,7 +100,9 @@ class WheelSocketManager: WheelSocketProtocol {
         // Handle sector creation
         socket.on(.sectorCreated) { [weak self] data in
             do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorCreated?(sector)
                 }
@@ -142,6 +148,12 @@ class WheelSocketManager: WheelSocketProtocol {
         // Handle sync:sectors
         socket.on(.syncSectors) { data in
             print("📋 WheelSocketManager: Received sync:sectors")
+            // This will be handled by the main WheelState
+        }
+
+        // Handle current:sectors
+        socket.on(.currentSectors) { data in
+            print("📋 WheelSocketManager: Received current:sectors")
             // This will be handled by the main WheelState
         }
 

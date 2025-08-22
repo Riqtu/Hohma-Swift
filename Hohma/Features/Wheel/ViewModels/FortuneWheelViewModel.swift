@@ -24,7 +24,7 @@ class FortuneWheelViewModel: ObservableObject {
     // Services
     private var streamPlayer: StreamPlayer?
     private var streamVideoService = StreamVideoService.shared
-    private var socketService: SocketIOService
+    private var socketService: SocketIOServiceV2
     private var wheelService = FortuneWheelService()
     private var cancellables = Set<AnyCancellable>()
 
@@ -46,7 +46,7 @@ class FortuneWheelViewModel: ObservableObject {
             authToken = savedAuthResult.token
         }
 
-        self.socketService = SocketIOService(baseURL: socketURL, authToken: authToken)
+        self.socketService = SocketIOServiceV2(baseURL: socketURL, authToken: authToken)
 
         setupWheel()
         setupSocket()
@@ -104,20 +104,6 @@ class FortuneWheelViewModel: ObservableObject {
         // Настраиваем сокет для wheelState
         wheelState.setupSocket(socketService, roomId: wheelData.id)
 
-        // Подписываемся на уведомления об ошибках авторизации сокета
-        NotificationCenter.default.addObserver(
-            forName: .socketAuthorizationError,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            print("🔐 FortuneWheelViewModel: Socket authorization error detected")
-            // Сначала отключаем сокет, затем очищаем ресурсы
-            Task { @MainActor in
-                self?.socketService.disconnect()
-                self?.cleanup()
-            }
-        }
-
         // Подписываемся на обновления пользователей комнаты
         NotificationCenter.default.addObserver(
             forName: .roomUsersUpdated,
@@ -136,8 +122,19 @@ class FortuneWheelViewModel: ObservableObject {
             }
         }
 
+        // Запускаем периодическую проверку здоровья сокета
+        startSocketHealthMonitoring()
+
         // Подключаемся к сокету
         socketService.connect()
+    }
+
+    private func startSocketHealthMonitoring() {
+        // Проверяем здоровье сокета каждые 30 секунд
+        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            self?.checkSocketHealth()
+        }
+        print("🏥 FortuneWheelViewModel: Socket health monitoring started")
     }
 
     private func joinRoom() {
@@ -308,6 +305,15 @@ class FortuneWheelViewModel: ObservableObject {
         print("   - Connected: \(socketService.isConnected)")
         print("   - Connecting: \(socketService.isConnecting)")
         print("   - Error: \(socketService.error ?? "none")")
+        print("   - Connection state valid: \(socketService.validateConnectionState())")
+
+        // Если сокет помечен как подключенный, но состояние невалидно, принудительно переподключаемся
+        if socketService.isConnected && !socketService.validateConnectionState() {
+            print(
+                "⚠️ FortuneWheelViewModel: Socket marked as connected but state is invalid, forcing reconnect"
+            )
+            reconnectSocket()
+        }
     }
 
     // MARK: - Room Users Management
@@ -338,6 +344,6 @@ class FortuneWheelViewModel: ObservableObject {
 
         // Отписываемся от уведомлений
         NotificationCenter.default.removeObserver(
-            self, name: .socketAuthorizationError, object: nil)
+            self, name: .roomUsersUpdated, object: nil)
     }
 }

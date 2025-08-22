@@ -35,7 +35,7 @@ class WheelState: ObservableObject {
     var payoutBets: ((String, String) -> Void)?
 
     // MARK: - Socket.IO properties
-    var socket: SocketIOService?
+    var socket: SocketIOServiceV2?
     var roomId: String?
     var clientId: String?
     private var isAuthorized = true
@@ -147,7 +147,50 @@ class WheelState: ObservableObject {
 
         // Emit shuffle event to other clients
         let shuffleData: [String: Any] = [
-            "sectors": createSectorsArray(shuffledSectors),
+            "sectors": shuffledSectors.map { sector in
+                [
+                    "id": sector.id,
+                    "label": sector.label,
+                    "color": [
+                        "h": sector.color.h,
+                        "s": sector.color.s,
+                        "l": sector.color.l,
+                    ],
+                    "name": sector.name,
+                    "eliminated": sector.eliminated,
+                    "winner": sector.winner,
+                    "description": sector.description,
+                    "pattern": sector.pattern,
+                    "patternPosition": sector.patternPosition.map { pos in
+                        [
+                            "x": pos.x,
+                            "y": pos.y,
+                            "z": pos.z,
+                        ]
+                    },
+                    "poster": sector.poster,
+                    "genre": sector.genre,
+                    "rating": sector.rating,
+                    "year": sector.year,
+                    "labelColor": sector.labelColor,
+                    "labelHidden": sector.labelHidden,
+                    "wheelId": sector.wheelId,
+                    "userId": sector.userId,
+                    "user": sector.user.map { user in
+                        [
+                            "id": user.id,
+                            "username": user.username,
+                            "firstName": user.firstName,
+                            "lastName": user.lastName,
+                            "coins": user.coins,
+                            "avatarUrl": user.avatarUrl?.absoluteString,
+                            "role": user.role,
+                        ]
+                    },
+                    "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
+                    "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
+                ]
+            },
             "clientId": clientId ?? "",
         ]
 
@@ -207,7 +250,8 @@ class WheelState: ObservableObject {
     private func emitSpinEvent(_ spinData: [String: Any]) {
         if let socket = socket, socket.isConnected, isAuthorized {
             print("📤 WheelState: Emitting wheel:spin event")
-            socket.emit(.wheelSpin, roomId: roomId ?? "", data: spinData)
+            // Отправляем в том же формате, что и веб-клиент: (roomId, data)
+            socket.emitToRoom(.wheelSpin, roomId: roomId ?? "", data: spinData)
         } else {
             print("⚠️ WheelState: Cannot emit spin event - socket not connected")
         }
@@ -216,14 +260,15 @@ class WheelState: ObservableObject {
     private func emitShuffleEvent(_ shuffleData: [String: Any]) {
         if let socket = socket, socket.isConnected, isAuthorized {
             print("📤 WheelState: Emitting sectors:shuffle event")
-            socket.emit(.sectorsShuffle, roomId: roomId ?? "", data: shuffleData)
+            // Отправляем в том же формате, что и веб-клиент: (roomId, data)
+            socket.emitToRoom(.sectorsShuffle, roomId: roomId ?? "", data: shuffleData)
         } else {
             print("⚠️ WheelState: Cannot emit shuffle event - socket not connected")
         }
     }
 
     // MARK: - Socket Integration (упрощенная версия)
-    func setupSocket(_ socket: SocketIOService, roomId: String) {
+    func setupSocket(_ socket: SocketIOServiceV2, roomId: String) {
         self.socket = socket
         self.roomId = roomId
         self.clientId = socket.clientId
@@ -321,14 +366,33 @@ class WheelState: ObservableObject {
         guard let senderClientId = senderClientId,
             let sectorsData = data["sectors"] as? [[String: Any]]
         else {
-            print("Invalid shuffle data received")
+            print("❌ WheelState: Invalid shuffle data received")
             return
         }
 
         // Only update if the event came from another client
         if senderClientId != clientId {
-            print("Received shuffle data from server: \(sectorsData.count) sectors")
-            // TODO: Implement proper sector creation from dictionary
+            print("🔄 WheelState: Received shuffle data from server: \(sectorsData.count) sectors")
+
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+
+                // Конвертируем обратно в JSON Data для декодирования
+                let sectorsJsonData = try JSONSerialization.data(withJSONObject: sectorsData)
+                let shuffledSectors = try decoder.decode([Sector].self, from: sectorsJsonData)
+
+                DispatchQueue.main.async {
+                    self.sectors = shuffledSectors
+                    print(
+                        "✅ WheelState: Updated sectors from shuffle event (\(shuffledSectors.count) sectors)"
+                    )
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode shuffle sectors: \(error)")
+            }
+        } else {
+            print("🔄 WheelState: Ignoring shuffle event from self")
         }
     }
 
@@ -370,7 +434,9 @@ class WheelState: ObservableObject {
         // Handle sectors sync
         socket.on(.syncSectors) { [weak self] data in
             do {
-                let sectors = try JSONDecoder().decode([Sector].self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sectors = try decoder.decode([Sector].self, from: data)
                 DispatchQueue.main.async {
                     self?.setSectors(sectors)
                 }
@@ -382,7 +448,9 @@ class WheelState: ObservableObject {
         // Handle sector updates
         socket.on(.sectorUpdated) { [weak self] data in
             do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.updateSector(sector)
                 }
@@ -394,7 +462,9 @@ class WheelState: ObservableObject {
         // Handle sector creation
         socket.on(.sectorCreated) { [weak self] data in
             do {
-                let sector = try JSONDecoder().decode(Sector.self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.addSector(sector)
                 }
@@ -428,6 +498,118 @@ class WheelState: ObservableObject {
                 }
             } catch {
                 print("❌ WheelState: Failed to decode room users: \(error)")
+            }
+        }
+
+        // Handle request:sectors - respond with current sectors
+        socket.on(.requestSectors) { [weak self] data in
+            print("📋 WheelState: Received request:sectors, responding with current sectors")
+
+            guard let self = self,
+                let socket = self.socket,
+                socket.isConnected,
+                self.isAuthorized
+            else {
+                print(
+                    "⚠️ WheelState: Cannot respond to sectors request - not connected or not authorized"
+                )
+                return
+            }
+
+            // Отправляем текущие секторы в ответ на запрос
+            // Веб-клиент ожидает массив секторов напрямую
+            let sectorsArray = self.sectors.map { sector in
+                [
+                    "id": sector.id,
+                    "label": sector.label,
+                    "color": [
+                        "h": sector.color.h,
+                        "s": sector.color.s,
+                        "l": sector.color.l,
+                    ],
+                    "name": sector.name,
+                    "eliminated": sector.eliminated,
+                    "winner": sector.winner,
+                    "description": sector.description,
+                    "pattern": sector.pattern,
+                    "patternPosition": sector.patternPosition.map { pos in
+                        [
+                            "x": pos.x,
+                            "y": pos.y,
+                            "z": pos.z,
+                        ]
+                    },
+                    "poster": sector.poster,
+                    "genre": sector.genre,
+                    "rating": sector.rating,
+                    "year": sector.year,
+                    "labelColor": sector.labelColor,
+                    "labelHidden": sector.labelHidden,
+                    "wheelId": sector.wheelId,
+                    "userId": sector.userId,
+                    "user": sector.user.map { user in
+                        [
+                            "id": user.id,
+                            "username": user.username,
+                            "firstName": user.firstName,
+                            "lastName": user.lastName,
+                            "coins": user.coins,
+                            "avatarUrl": user.avatarUrl?.absoluteString,
+                            "role": user.role,
+                        ]
+                    },
+                    "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
+                    "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
+                ]
+            }
+
+            print("📤 WheelState: Sending \(self.sectors.count) sectors in response")
+            // Отправляем массив секторов напрямую, как веб-клиент
+            socket.emit(.currentSectors, data: sectorsArray)
+        }
+
+        // Handle current:sectors - receive sectors from other clients
+        socket.on(.currentSectors) { [weak self] data in
+            print("📋 WheelState: Received current:sectors from another client")
+
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    // Проверяем оба возможных формата
+                    var sectorsArray: [[String: Any]]?
+
+                    if let directSectors = json["sectors"] as? [[String: Any]] {
+                        // Прямой формат: { "sectors": [...] }
+                        sectorsArray = directSectors
+                    } else if let nestedSectors = json["sectors"] as? [String: Any],
+                        let nestedArray = nestedSectors["sectors"] as? [[String: Any]]
+                    {
+                        // Вложенный формат: { "sectors": { "sectors": [...] } }
+                        sectorsArray = nestedArray
+                    } else if let directArray = json as? [[String: Any]] {
+                        // Прямой массив секторов
+                        sectorsArray = directArray
+                    }
+
+                    if let sectorsArray = sectorsArray {
+                        let decoder = JSONDecoder()
+                        decoder.dateDecodingStrategy = .iso8601withMilliseconds
+
+                        // Конвертируем обратно в JSON Data для декодирования
+                        let sectorsData = try JSONSerialization.data(withJSONObject: sectorsArray)
+                        let sectors = try decoder.decode([Sector].self, from: sectorsData)
+
+                        DispatchQueue.main.async {
+                            self?.setSectors(sectors)
+                            print(
+                                "✅ WheelState: Updated sectors from other client (\(sectors.count) sectors)"
+                            )
+                        }
+                    } else {
+                        print("❌ WheelState: Could not find sectors array in response")
+                    }
+                }
+            } catch {
+                print("❌ WheelState: Failed to decode current:sectors data: \(error)")
             }
         }
 

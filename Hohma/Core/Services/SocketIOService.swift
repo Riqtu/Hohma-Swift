@@ -34,7 +34,7 @@ enum SocketIOEvent: String, CaseIterable {
 // MARK: - Socket.IO Data Models (Shared with WheelState)
 
 // MARK: - Socket.IO Service
-class SocketIOService: ObservableObject {
+class SocketIOService: ObservableObject, SocketIOServiceProtocol {
     // MARK: - Properties
     private let baseURL: String
     private let _clientId = UUID().uuidString
@@ -45,13 +45,14 @@ class SocketIOService: ObservableObject {
     private var heartbeatTimer: Timer?
     private var authToken: String?
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 15  // Увеличиваем количество попыток
+    private let maxReconnectAttempts = 10  // Уменьшаем количество попыток
     private var lastReconnectTime: Date?
-    private let minReconnectInterval: TimeInterval = 3.0  // Увеличиваем минимальный интервал
+    private let minReconnectInterval: TimeInterval = 2.0  // Уменьшаем минимальный интервал
     private var connectionTimeoutTimer: Timer?
     private var lastPongTime: Date?
-    private let heartbeatInterval: TimeInterval = 30.0  // Увеличиваем интервал heartbeat
-    private let connectionTimeout: TimeInterval = 60.0  // Таймаут соединения
+    private let heartbeatInterval: TimeInterval = 25.0  // Синхронизируем с сервером (pingInterval)
+    private let connectionTimeout: TimeInterval = 60.0  // Таймаут соединения (pingTimeout)
+    private var isManualDisconnect = false  // Флаг для различения ручного отключения
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -71,8 +72,12 @@ class SocketIOService: ObservableObject {
 
     // MARK: - Connection Management
     func connect() {
-        guard !isConnecting else { return }
+        guard !isConnecting else {
+            print("🔌 SocketIOService: Already connecting, skipping...")
+            return
+        }
 
+        isManualDisconnect = false
         isConnecting = true
         error = nil
 
@@ -95,10 +100,14 @@ class SocketIOService: ObservableObject {
         request.setValue("socket.io", forHTTPHeaderField: "Sec-WebSocket-Protocol")
 
         // Добавляем токен авторизации, если он есть
-        if let authToken = authToken {
+        if let authToken = authToken, !authToken.isEmpty {
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             #if DEBUG
                 print("🔐 SocketIOService: Added authorization token to WebSocket connection")
+            #endif
+        } else {
+            #if DEBUG
+                print("🔐 SocketIOService: No authorization token provided, connecting anonymously")
             #endif
         }
 
@@ -116,10 +125,11 @@ class SocketIOService: ObservableObject {
 
         // Проверяем состояние подключения через 5 секунд
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-            if self?.isConnected == false {
+            guard let self = self else { return }
+            if self.isConnected == false && !self.isManualDisconnect {
                 print(
                     "⚠️ SocketIOService: Connection not established after 5s, attempting reconnect")
-                self?.handleError("Connection timeout")
+                self.handleError("Connection timeout")
             }
         }
 
@@ -133,6 +143,7 @@ class SocketIOService: ObservableObject {
     func disconnect() {
         print("🔌 SocketIOService: Disconnecting...")
 
+        isManualDisconnect = true
         isConnecting = false
         isConnected = false
 
@@ -209,14 +220,26 @@ class SocketIOService: ObservableObject {
             print("   - Error description: \(error.localizedDescription)")
 
             // Проверяем, не является ли это ошибкой отключения
-            if (error as NSError).code == 57 || (error as NSError).domain == "NSPOSIXErrorDomain" {
-                print("🔌 SocketIOService: WebSocket connection lost, marking as disconnected")
+            let nsError = error as NSError
+            if nsError.code == 57 || nsError.domain == "NSPOSIXErrorDomain" || nsError.code == 54
+                || nsError.code == 53
+            {  // Дополнительные коды ошибок соединения
+                print(
+                    "🔌 SocketIOService: WebSocket connection lost (code: \(nsError.code), domain: \(nsError.domain)), marking as disconnected"
+                )
                 DispatchQueue.main.async {
                     self.isConnected = false
+                    self.isConnecting = false
+                }
+
+                // Не переподключаемся, если это было ручное отключение
+                if isManualDisconnect {
+                    print("🔌 SocketIOService: Manual disconnect detected, skipping reconnect")
+                    return
                 }
 
                 // Пытаемся переподключиться с экспоненциальной задержкой
-                let delay = min(60.0, pow(2.0, Double(self.reconnectAttempts)))  // Увеличиваем максимум до 60 сек
+                let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Уменьшаем максимум до 30 сек
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     // Проверяем, прошло ли достаточно времени с последней попытки
@@ -227,7 +250,7 @@ class SocketIOService: ObservableObject {
                         return
                     }
 
-                    if !self.isConnected && !self.isConnecting
+                    if !self.isConnected && !self.isConnecting && !self.isManualDisconnect
                         && self.reconnectAttempts < self.maxReconnectAttempts
                     {
                         self.reconnectAttempts += 1
@@ -249,7 +272,7 @@ class SocketIOService: ObservableObject {
                         }
                     } else {
                         print(
-                            "🔄 SocketIOService: Skipping reconnect - already connected or connecting"
+                            "🔄 SocketIOService: Skipping reconnect - already connected, connecting, or manual disconnect"
                         )
                     }
                 }
@@ -277,19 +300,26 @@ class SocketIOService: ObservableObject {
         // Обрабатываем Socket.IO сообщения
         if text.hasPrefix("0{") {
             // Socket.IO handshake
+            print("🤝 SocketIOService: Processing handshake message")
             handleHandshake(text)
         } else if text.hasPrefix("40") {
             // Socket.IO connect
+            print("✅ SocketIOService: Processing connect message")
             handleConnect()
         } else if text.hasPrefix("42") {
             // Socket.IO event
+            print("📨 SocketIOService: Processing event message")
             handleSocketIOEvent(text)
         } else if text.hasPrefix("2") {
             // Socket.IO ping
+            print("🏓 SocketIOService: Processing ping message")
             handlePing()
         } else if text.hasPrefix("3") {
             // Socket.IO pong
+            print("🏓 SocketIOService: Processing pong message")
             handlePong()
+        } else {
+            print("❓ SocketIOService: Unknown message format: \(text)")
         }
     }
 
@@ -313,13 +343,32 @@ class SocketIOService: ObservableObject {
     }
 
     private func handleHandshake(_ text: String) {
-        print("🤝 SocketIOService: Handling handshake")
-        // Отправляем connect сообщение
+        print("🤝 SocketIOService: Handling handshake: \(text)")
+
+        // Парсим handshake данные для получения sessionId
+        if let startIndex = text.firstIndex(of: "{"),
+            let endIndex = text.lastIndex(of: "}")
+        {
+            let jsonString = String(text[startIndex...endIndex])
+            if let data = jsonString.data(using: .utf8),
+                let handshake = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let sid = handshake["sid"] as? String
+            {
+                print("🤝 SocketIOService: Session ID from handshake: \(sid)")
+            }
+        }
+
+        // Отправляем connect сообщение для Socket.IO v4
         let connectMessage = "40"
         let wsMessage = URLSessionWebSocketTask.Message.string(connectMessage)
-        webSocket?.send(wsMessage) { error in
+        webSocket?.send(wsMessage) { [weak self] error in
             if let error = error {
                 print("❌ SocketIOService: Failed to send connect: \(error)")
+                DispatchQueue.main.async {
+                    self?.handleError("Failed to complete handshake: \(error.localizedDescription)")
+                }
+            } else {
+                print("✅ SocketIOService: Connect message sent successfully")
             }
         }
     }
@@ -333,6 +382,10 @@ class SocketIOService: ObservableObject {
 
         // Уведомляем о подключении
         notifyEventHandlers(for: .connect, data: Data())
+
+        // Перезапускаем heartbeat и таймеры
+        startHeartbeat()
+        startConnectionTimeoutTimer()
 
         // Добавляем небольшую задержку перед установкой готовности
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -371,15 +424,15 @@ class SocketIOService: ObservableObject {
             return
         }
 
-        // Проверяем, не является ли это событие ошибкой авторизации
+        // Проверяем, не является ли это событие ошибки авторизации
         if eventName == "error" || eventName == "unauthorized" {
             if let errorData = json[1] as? [String: Any],
                 let message = errorData["message"] as? String
             {
-                print("🔐 SocketIOService: Authorization error received: \(message)")
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
-                }
+                print(
+                    "🔐 SocketIOService: Authorization error received: \(message), but continuing connection"
+                )
+                // Больше не вызываем logout, так как авторизация опциональна
                 return
             }
         }
@@ -400,10 +453,10 @@ class SocketIOService: ObservableObject {
             if let error = eventDataDict["error"] as? String,
                 error.lowercased().contains("unauthorized") || error.lowercased().contains("401")
             {
-                print("🔐 SocketIOService: Authorization error in event data: \(error)")
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
-                }
+                print(
+                    "🔐 SocketIOService: Authorization error in event data: \(error), but continuing connection"
+                )
+                // Больше не вызываем logout, так как авторизация опциональна
                 return
             }
 
@@ -427,12 +480,18 @@ class SocketIOService: ObservableObject {
     }
 
     private func handlePing() {
-        // Отвечаем на ping
+        // Отвечаем на ping для Socket.IO v4
         let pongMessage = "3"
         let wsMessage = URLSessionWebSocketTask.Message.string(pongMessage)
-        webSocket?.send(wsMessage) { error in
+        webSocket?.send(wsMessage) { [weak self] error in
             if let error = error {
                 print("❌ SocketIOService: Failed to send pong: \(error)")
+                // Если не можем отправить pong, соединение проблемное
+                DispatchQueue.main.async {
+                    self?.handleError("Failed to respond to ping: \(error.localizedDescription)")
+                }
+            } else {
+                print("🏓 SocketIOService: Pong sent successfully")
             }
         }
     }
@@ -444,6 +503,12 @@ class SocketIOService: ObservableObject {
 
         // Перезапускаем таймер таймаута
         startConnectionTimeoutTimer()
+
+        // Сбрасываем счетчик попыток переподключения при успешном pong
+        if reconnectAttempts > 0 {
+            reconnectAttempts = 0
+            print("🔄 SocketIOService: Reset reconnect attempts after successful pong")
+        }
     }
 
     private func notifyEventHandlers(for event: SocketIOEvent, data: Data) {
@@ -467,12 +532,9 @@ class SocketIOService: ObservableObject {
         // Проверяем, не является ли ошибка связанной с авторизацией
         if message.lowercased().contains("unauthorized") || message.lowercased().contains("401") {
             #if DEBUG
-                print("🔐 SocketIOService: Authorization error detected, triggering logout")
+                print("🔐 SocketIOService: Authorization error detected, but continuing connection")
             #endif
-            // Уведомляем о необходимости logout через NotificationCenter
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
-            }
+            // Больше не вызываем logout, так как авторизация опциональна
             return
         }
 
@@ -483,17 +545,19 @@ class SocketIOService: ObservableObject {
             #if DEBUG
                 print("🔌 SocketIOService: Connection lost, will attempt to reconnect")
             #endif
-            // Пытаемся переподключиться через задержку
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                if !self.isConnected && !self.isConnecting {
-                    print("🔄 SocketIOService: Attempting to reconnect after error")
-                    self.connect()
+            // Пытаемся переподключиться через задержку, только если это не ручное отключение
+            if !isManualDisconnect {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    if !self.isConnected && !self.isConnecting && !self.isManualDisconnect {
+                        print("🔄 SocketIOService: Attempting to reconnect after error")
+                        self.connect()
+                    }
                 }
             }
             return
         }
 
-        // Attempt to reconnect after a delay, but only if not already connected/connecting
+        // Attempt to reconnect after a delay, but only if not already connected/connecting and not manual disconnect
         reconnectTimer?.invalidate()
         let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Экспоненциальная задержка
 
@@ -509,7 +573,7 @@ class SocketIOService: ObservableObject {
                 return
             }
 
-            if !self.isConnected && !self.isConnecting
+            if !self.isConnected && !self.isConnecting && !self.isManualDisconnect
                 && self.reconnectAttempts < self.maxReconnectAttempts
             {
                 self.reconnectAttempts += 1
@@ -521,7 +585,9 @@ class SocketIOService: ObservableObject {
             } else if self.reconnectAttempts >= self.maxReconnectAttempts {
                 print("❌ SocketIOService: Max reconnect attempts reached, stopping reconnection")
             } else {
-                print("🔄 SocketIOService: Skipping reconnect - already connected or connecting")
+                print(
+                    "🔄 SocketIOService: Skipping reconnect - already connected, connecting, or manual disconnect"
+                )
             }
         }
     }
@@ -554,13 +620,22 @@ class SocketIOService: ObservableObject {
     }
 
     private func sendHeartbeat() {
-        guard isConnected else { return }
+        guard isConnected else {
+            print("⚠️ SocketIOService: Cannot send heartbeat - not connected")
+            return
+        }
 
         let heartbeatMessage = "2"
         let wsMessage = URLSessionWebSocketTask.Message.string(heartbeatMessage)
-        webSocket?.send(wsMessage) { error in
+        webSocket?.send(wsMessage) { [weak self] error in
             if let error = error {
                 print("❌ SocketIOService: Failed to send heartbeat: \(error)")
+                // Если не можем отправить heartbeat, соединение проблемное
+                DispatchQueue.main.async {
+                    self?.handleError("Failed to send heartbeat: \(error.localizedDescription)")
+                }
+            } else {
+                print("💓 SocketIOService: Heartbeat sent successfully")
             }
         }
     }
@@ -679,6 +754,7 @@ class SocketIOService: ObservableObject {
         disconnect()
         resetReconnectAttempts()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.isManualDisconnect = false  // Сбрасываем флаг для принудительного переподключения
             self.connect()
         }
     }
@@ -733,16 +809,93 @@ class SocketIOService: ObservableObject {
 
     // MARK: - Connection Health Check
     func performHealthCheck() {
-        guard isConnected else { return }
+        guard isConnected else {
+            print("🏥 SocketIOService: Health check skipped - not connected")
+            return
+        }
 
         // Проверяем, когда был последний pong
-        if let lastPong = lastPongTime,
-            Date().timeIntervalSince(lastPong) > connectionTimeout
-        {
-            print("🏥 SocketIOService: Health check failed - no recent pong")
-            handleError("Health check failed - connection appears dead")
+        if let lastPong = lastPongTime {
+            let timeSinceLastPong = Date().timeIntervalSince(lastPong)
+            print(
+                "🏥 SocketIOService: Time since last pong: \(String(format: "%.1f", timeSinceLastPong))s"
+            )
+
+            if timeSinceLastPong > connectionTimeout {
+                print("🏥 SocketIOService: Health check failed - no recent pong")
+                handleError("Health check failed - connection appears dead")
+            } else {
+                print("🏥 SocketIOService: Health check passed")
+            }
         } else {
-            print("🏥 SocketIOService: Health check passed")
+            print("🏥 SocketIOService: Health check failed - no pong received yet")
+            handleError("Health check failed - no pong received")
         }
+    }
+
+    // MARK: - Force Connection Check
+    func forceConnectionCheck() {
+        print("🔍 SocketIOService: Force connection check")
+
+        if !validateConnectionState() {
+            print("⚠️ SocketIOService: Connection validation failed, attempting reconnect")
+            forceReconnect()
+        } else {
+            print("✅ SocketIOService: Connection validation passed")
+        }
+    }
+
+    // MARK: - Connection State Validation
+    func validateConnectionState() -> Bool {
+        guard let webSocket = webSocket else {
+            print("🔍 SocketIOService: No WebSocket instance")
+            return false
+        }
+
+        // Проверяем состояние WebSocket
+        let state = webSocket.state
+        print("🔍 SocketIOService: WebSocket state: \(state.rawValue), isConnected: \(isConnected)")
+
+        switch state {
+        case .running:
+            // Дополнительно проверяем, был ли недавно pong
+            if let lastPong = lastPongTime {
+                let timeSinceLastPong = Date().timeIntervalSince(lastPong)
+                print(
+                    "🔍 SocketIOService: Time since last pong: \(String(format: "%.1f", timeSinceLastPong))s"
+                )
+                return isConnected && timeSinceLastPong < connectionTimeout
+            } else {
+                print("⚠️ SocketIOService: No pong received yet")
+                return isConnected
+            }
+        case .suspended:
+            print("⚠️ SocketIOService: WebSocket is suspended")
+            return false
+        case .canceling:
+            print("⚠️ SocketIOService: WebSocket is canceling")
+            return false
+        case .completed:
+            print("⚠️ SocketIOService: WebSocket is completed")
+            return false
+        @unknown default:
+            print("⚠️ SocketIOService: Unknown WebSocket state")
+            return false
+        }
+    }
+
+    // MARK: - Debug Info
+    func printDebugInfo() {
+        print("🔍 SocketIOService Debug Info:")
+        print("   - Base URL: \(baseURL)")
+        print("   - Client ID: \(clientId)")
+        print("   - Is Connected: \(isConnected)")
+        print("   - Is Connecting: \(isConnecting)")
+        print("   - Error: \(error ?? "None")")
+        print("   - Reconnect Attempts: \(reconnectAttempts)/\(maxReconnectAttempts)")
+        print("   - Last Pong Time: \(lastPongTime?.description ?? "None")")
+        print("   - WebSocket State: \(webSocket?.state.rawValue ?? -1)")
+        print("   - Heartbeat Interval: \(heartbeatInterval)s")
+        print("   - Connection Timeout: \(connectionTimeout)s")
     }
 }

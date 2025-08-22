@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		987FCED02E45FFF300AAB2F3 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 987FCECF2E45FFF300AAB2F3 /* Inject */; };
+		98E3942D2E59038300F2616A /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 987FCED22E460D4500AAB2F4 /* SocketIO */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98E3942D2E59038300F2616A /* SocketIO in Frameworks */,
 				987FCED02E45FFF300AAB2F3 /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -85,6 +87,7 @@
 			name = Hohma;
 			packageProductDependencies = (
 				987FCECF2E45FFF300AAB2F3 /* Inject */,
+				987FCED22E460D4500AAB2F4 /* SocketIO */,
 			);
 			productName = Hohma;
 			productReference = 98FE9B0C2E3FA8EC004AEED5 /* Hohma.app */;
@@ -116,6 +119,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				987FCECE2E45FFF300AAB2F3 /* XCRemoteSwiftPackageReference "Inject" */,
+				987FCED12E460D4500AAB2F4 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 98FE9B0D2E3FA8EC004AEED5 /* Products */;
@@ -404,6 +408,14 @@
 				minimumVersion = 1.5.2;
 			};
 		};
+		987FCED12E460D4500AAB2F4 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 16.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -411,6 +423,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 987FCECE2E45FFF300AAB2F3 /* XCRemoteSwiftPackageReference "Inject" */;
 			productName = Inject;
+		};
+		987FCED22E460D4500AAB2F4 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 987FCED12E460D4500AAB2F4 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */;
+			productName = SocketIO;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
