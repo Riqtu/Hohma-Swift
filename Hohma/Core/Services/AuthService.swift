@@ -139,7 +139,11 @@ final class AuthService {
             // Проверяем статус ответа
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
-                completion(.failure(NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])))
+                completion(
+                    .failure(
+                        NSError(
+                            domain: "Server Error", code: httpResponse.statusCode,
+                            userInfo: [NSLocalizedDescriptionKey: errorMessage])))
                 return
             }
 
