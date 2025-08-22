@@ -52,12 +52,23 @@ struct EditProfilePopup: View {
                             icon: "person.text.rectangle"
                         )
 
-                        ProfileTextField(
-                            title: "URL аватара",
-                            placeholder: "Введите URL аватара",
-                            text: $viewModel.avatarUrl,
-                            icon: "photo"
-                        )
+                        // Загрузка аватара
+                        VStack(spacing: 12) {
+                            HStack {
+                                Image(systemName: "photo")
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 24)
+
+                                Text("Аватар")
+                                    .font(.headline)
+
+                                Spacer()
+                            }
+
+                            ImageUploadButton { fileURL in
+                                viewModel.avatarUrl = fileURL
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
 

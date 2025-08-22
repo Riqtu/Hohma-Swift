@@ -12,8 +12,7 @@ struct PrimaryButton: View {
                 .fontWeight(.semibold)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity)
-                .background(Color.accentColor)
-                .foregroundColor(.black)
+                .background(Color("AccentColor"))
                 .cornerRadius(12)
         }
         .enableInjection()

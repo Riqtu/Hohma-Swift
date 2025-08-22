@@ -71,7 +71,7 @@ struct WheelCardView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.blue)
+                    .background(Color("AccentColor"))
                     .cornerRadius(8)
                 }
                 .padding(.top, 10)
