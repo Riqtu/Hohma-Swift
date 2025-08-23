@@ -20,7 +20,18 @@ struct WheelListView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            PaginatedScrollView(
+                isLoadingMore: viewModel.isLoadingMore,
+                hasMoreData: viewModel.paginationInfo?.hasNextPage ?? false,
+                isRefreshing: viewModel.isRefreshing,
+                hasData: !viewModel.wheels.isEmpty,
+                onLoadMore: {
+                    await viewModel.loadMoreWheels()
+                },
+                onRefresh: {
+                    await viewModel.refreshWheels()
+                }
+            ) {
                 VStack(spacing: 20) {
                     Text("Колесо фортуны")
                         .font(.title)
@@ -28,9 +39,11 @@ struct WheelListView: View {
 
                     if viewModel.isLoading {
                         ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 200)
                     } else if let error = viewModel.error, error.lowercased() != "cancelled" {
                         Text("Ошибка: \(error)")
                             .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, minHeight: 200)
                     } else {
                         ForEach(viewModel.wheels, id: \.id) { wheel in
                             WheelCardView(
@@ -50,24 +63,19 @@ struct WheelListView: View {
                         }
                         .padding(.top, 10)
                     }
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
-                    .onAppear {
-                        Task {
-                            // Загружаем данные только если список пустой
-                            if viewModel.wheels.isEmpty {
-                                await viewModel.loadWheels()
-                            }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+                .onAppear {
+                    Task {
+                        // Загружаем данные только если список пустой
+                        if viewModel.wheels.isEmpty {
+                            await viewModel.loadWheels()
                         }
                     }
+                }
             }
             .appBackground()
-            .refreshable {
-                print("⚡️ refreshable вызван")
-                await Task {
-                    await viewModel.refreshWheels()
-                }.value
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Обновляем данные при изменении колеса (например, после игры)
