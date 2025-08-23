@@ -2,7 +2,7 @@ import Inject
 import SwiftUI
 
 struct SettingsView: View {
-    @StateObject private var viewModel = SettingsViewModel()
+    @ObservedObject var viewModel: SettingsViewModel
     @ObserveInjection var inject
 
     var body: some View {
@@ -117,5 +117,5 @@ struct SettingsRow: View {
 }
 
 #Preview {
-    SettingsView()
+    SettingsView(viewModel: SettingsViewModel())
 }

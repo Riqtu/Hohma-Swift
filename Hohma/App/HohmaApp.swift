@@ -13,6 +13,7 @@ import SwiftUI
 struct hohmaApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let videoManager = VideoPlayerManager.shared
+    @StateObject private var settingsViewModel = SettingsViewModel()
 
     init() {
         #if DEBUG
@@ -75,8 +76,9 @@ struct hohmaApp: App {
     private func handleScenePhaseChange(_ newPhase: ScenePhase) {
         switch newPhase {
         case .active:
-            // Приложение стало активным - возобновляем видео
+            // Приложение стало активным - возобновляем видео и применяем сохраненную тему
             videoManager.resumeAllPlayers()
+            settingsViewModel.applySavedTheme()
         case .inactive:
             // Приложение стало неактивным - приостанавливаем видео
             videoManager.pauseAllPlayers()

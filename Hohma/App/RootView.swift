@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @State private var selection: String = "home"
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel()
     @ObserveInjection var inject
 
     var body: some View {
@@ -23,7 +24,7 @@ struct RootView: View {
                             case "profile":
                                 ProfileView(authViewModel: authViewModel)
                             case "settings":
-                                SettingsView()
+                                SettingsView(viewModel: settingsViewModel)
                             default:
                                 HomeView()
                             }
@@ -50,7 +51,7 @@ struct RootView: View {
                             }
                             .tag("profile")
 
-                        SettingsView()
+                        SettingsView(viewModel: settingsViewModel)
                             .tabItem {
                                 Label("Настройки", systemImage: "gearshape")
                             }
