@@ -20,6 +20,7 @@ class FortuneWheelViewModel: ObservableObject {
     @Published var isVideoReady: Bool = false
     @Published var hasError: Bool = false
     @Published var isSocketReady = false
+    @Published var successMessage: String?
 
     // Services
     private var streamPlayer: StreamPlayer?
@@ -375,6 +376,42 @@ class FortuneWheelViewModel: ObservableObject {
             } catch {
                 self.error = "Ошибка создания сектора: \(error.localizedDescription)"
                 print("❌ FortuneWheelViewModel: Sector creation error: \(error)")
+            }
+        }
+    }
+
+    func deleteSector(_ sector: Sector) {
+        // Проверяем, что текущий пользователь является владельцем сектора
+        guard let currentUser = currentUser,
+            sector.userId == currentUser.id
+        else {
+            self.error = "Вы можете удалять только свои секторы"
+            return
+        }
+
+        Task {
+            do {
+                _ = try await wheelService.deleteSector(sector.id)
+
+                // Отправляем сокет событие
+                socketService.emitToRoom(.sectorRemoved, roomId: wheelData.id, data: sector.id)
+
+                // Обновляем состояние колеса
+                wheelState.removeSector(id: sector.id)
+
+                // Показываем уведомление об успехе
+                self.successMessage = "Сектор успешно удален"
+
+            } catch URLError.userAuthenticationRequired {
+                print("🔐 FortuneWheelViewModel: Authorization required for sector deletion")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print(
+                    "❌ FortuneWheelViewModel: Decoding error for sector deletion: \(decodingError)")
+            } catch {
+                self.error = "Ошибка удаления сектора: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Sector deletion error: \(error)")
             }
         }
     }

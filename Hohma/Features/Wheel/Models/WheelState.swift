@@ -101,6 +101,7 @@ class WheelState: ObservableObject {
     func removeSector(id: String) {
         print("🗑️ WheelState: Removing sector \(id) from server")
         sectors = sectors.filter { $0.id != id }
+        losers = losers.filter { $0.id != id }
     }
 
     // MARK: - Wheel Actions
@@ -482,12 +483,19 @@ class WheelState: ObservableObject {
         // Handle sector removal
         socket.on(.sectorRemoved) { [weak self] data in
             do {
+                // Сервер отправляет простую строку с ID сектора
                 let sectorId = try JSONDecoder().decode(String.self, from: data)
                 DispatchQueue.main.async {
                     self?.removeSector(id: sectorId)
                 }
             } catch {
                 print("❌ WheelState: Failed to decode sector removal: \(error)")
+                // Попробуем как простую строку в случае ошибки
+                if let sectorId = String(data: data, encoding: .utf8) {
+                    DispatchQueue.main.async {
+                        self?.removeSector(id: sectorId)
+                    }
+                }
             }
         }
 

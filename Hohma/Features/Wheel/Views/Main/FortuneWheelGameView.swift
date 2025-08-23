@@ -166,7 +166,8 @@ struct FortuneWheelGameView: View {
                         isPresented: $showingSectorsFullScreen,
                         sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
                         title: "Фильмы",
-                        accentColor: viewModel.wheelState.accentColor
+                        accentColor: viewModel.wheelState.accentColor,
+                        viewModel: viewModel
                     )
                 }
             }
@@ -177,6 +178,35 @@ struct FortuneWheelGameView: View {
         .onDisappear {
             viewModel.cleanup()
         }
+        .overlay(
+            Group {
+                if let error = viewModel.error {
+                    VStack {
+                        NotificationView(
+                            message: error,
+                            type: .error
+                        ) {
+                            viewModel.error = nil
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 50)
+                }
+
+                if let successMessage = viewModel.successMessage {
+                    VStack {
+                        NotificationView(
+                            message: successMessage,
+                            type: .success
+                        ) {
+                            viewModel.successMessage = nil
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 50)
+                }
+            }
+        )
         .enableInjection()
     }
 }

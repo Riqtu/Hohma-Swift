@@ -15,6 +15,7 @@ struct SectorsTableView: View {
     let sectors: [Sector]
     let title: String
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -47,7 +48,11 @@ struct SectorsTableView: View {
             } else {
                 LazyVStack(spacing: 8) {
                     ForEach(sectors) { sector in
-                        SectorRowView(sector: sector, accentColor: accentColor)
+                        SectorRowView(
+                            sector: sector, 
+                            accentColor: accentColor,
+                            viewModel: viewModel
+                        )
                     }
                 }
             }
@@ -68,7 +73,8 @@ struct SectorsTableView: View {
                         isPresented: $showingFullScreen,
                         sectors: sectors,
                         title: title,
-                        accentColor: accentColor
+                        accentColor: accentColor,
+                        viewModel: viewModel
                     )
                 }
             }
@@ -80,6 +86,7 @@ struct SectorRowView: View {
     @ObserveInjection var inject
     let sector: Sector
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -108,6 +115,20 @@ struct SectorRowView: View {
 
             Spacer()
 
+            // Кнопка удаления (только для владельца сектора)
+            if let viewModel = viewModel,
+               let currentUser = viewModel.user,
+               sector.userId == currentUser.id {
+                Button(action: {
+                    viewModel.deleteSector(sector)
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
             // Статус
             if sector.eliminated {
                 Image(systemName: "xmark.circle.fill")
@@ -134,7 +155,8 @@ struct SectorRowView: View {
             Sector.mock,
         ],
         title: "Фильмы",
-        accentColor: "#F8D568"
+        accentColor: "#F8D568",
+        viewModel: nil
     )
     .background(Color.black)
 }

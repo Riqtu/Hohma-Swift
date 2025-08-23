@@ -82,45 +82,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                 self?.error = nil
             }
 
-            // Безопасная обработка данных подключения
-            var connectData = Data()
-            if let firstData = data.first {
-                // Проверяем тип данных и обрабатываем соответственно
-                if let arrayData = firstData as? [Any] {
-                    // Если это массив, сериализуем его
-                    if let jsonData = try? JSONSerialization.data(
-                        withJSONObject: arrayData, options: [])
-                    {
-                        connectData = jsonData
-                    } else {
-                        print("⚠️ SocketIOServiceV2: Could not serialize connect array data")
-                        connectData = Data()
-                    }
-                } else if let dictData = firstData as? [String: Any] {
-                    // Если это словарь, сериализуем его
-                    if let jsonData = try? JSONSerialization.data(
-                        withJSONObject: dictData, options: [])
-                    {
-                        connectData = jsonData
-                    } else {
-                        print("⚠️ SocketIOServiceV2: Could not serialize connect dict data")
-                        connectData = Data()
-                    }
-                } else if let stringData = firstData as? String {
-                    // Если это строка, конвертируем в Data
-                    if let data = stringData.data(using: .utf8) {
-                        connectData = data
-                    } else {
-                        print("⚠️ SocketIOServiceV2: Could not convert connect string data")
-                        connectData = Data()
-                    }
-                } else {
-                    print("⚠️ SocketIOServiceV2: Unknown connect data type: \(type(of: firstData))")
-                    connectData = Data()
-                }
-            }
-
-            // Обработчики событий теперь регистрируются напрямую через метод on()
+            // Обработчики событий регистрируются напрямую через метод on()
         }
 
         // Обработка отключения
@@ -342,6 +304,28 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         print(
             "📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(data)"
+        )
+
+        // Отправляем в формате (roomId, data) как ожидает сервер
+        socket.emit(event.rawValue, roomId, data)
+    }
+
+    // Перегрузка для отправки строки
+    func emitToRoom(_ event: SocketIOEvent, roomId: String, data: String) {
+        guard let socket = socket else {
+            print(
+                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
+            )
+            return
+        }
+
+        guard isConnected else {
+            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            return
+        }
+
+        print(
+            "📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' to room '\(roomId)' with string data: \(data)"
         )
 
         // Отправляем в формате (roomId, data) как ожидает сервер

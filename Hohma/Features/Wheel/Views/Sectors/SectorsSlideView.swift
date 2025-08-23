@@ -18,6 +18,7 @@ struct SectorsSlideView: View {
     let sectors: [Sector]
     let title: String
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         ZStack {
@@ -111,7 +112,11 @@ struct SectorsSlideView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(sectors) { sector in
-                                SectorSlideRowView(sector: sector, accentColor: accentColor)
+                                SectorSlideRowView(
+                                    sector: sector, 
+                                    accentColor: accentColor,
+                                    viewModel: viewModel
+                                )
                             }
                         }
                         .padding(.horizontal, 24)
@@ -184,6 +189,7 @@ struct SectorSlideRowView: View {
     @ObserveInjection var inject
     let sector: Sector
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -227,6 +233,20 @@ struct SectorSlideRowView: View {
             }
 
             Spacer()
+
+            // Кнопка удаления (только для владельца сектора)
+            if let viewModel = viewModel,
+               let currentUser = viewModel.user,
+               sector.userId == currentUser.id {
+                Button(action: {
+                    viewModel.deleteSector(sector)
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.title3)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
 
             // Статус
             VStack(spacing: 4) {
@@ -280,6 +300,7 @@ struct SectorSlideRowView: View {
             Sector.mock,
         ],
         title: "Фильмы",
-        accentColor: "#F8D568"
+        accentColor: "#F8D568",
+        viewModel: nil
     )
 }

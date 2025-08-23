@@ -15,6 +15,7 @@ struct SectorsFullScreenView: View {
     let sectors: [Sector]
     let title: String
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         NavigationView {
@@ -90,7 +91,11 @@ struct SectorsFullScreenView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(sectors) { sector in
-                                SectorFullScreenRowView(sector: sector, accentColor: accentColor)
+                                SectorFullScreenRowView(
+                                    sector: sector,
+                                    accentColor: accentColor,
+                                    viewModel: viewModel
+                                )
                             }
                         }
                         .padding(.horizontal, 20)
@@ -142,6 +147,7 @@ struct SectorFullScreenRowView: View {
     @ObserveInjection var inject
     let sector: Sector
     let accentColor: String
+    let viewModel: FortuneWheelViewModel?
 
     var body: some View {
         HStack(spacing: 16) {
@@ -185,6 +191,21 @@ struct SectorFullScreenRowView: View {
             }
 
             Spacer()
+
+            // Кнопка удаления (только для владельца сектора)
+            if let viewModel = viewModel,
+                let currentUser = viewModel.user,
+                sector.userId == currentUser.id
+            {
+                Button(action: {
+                    viewModel.deleteSector(sector)
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.title2)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
 
             // Статус
             VStack(spacing: 6) {
@@ -237,6 +258,7 @@ struct SectorFullScreenRowView: View {
             Sector.mock,
         ],
         title: "Фильмы",
-        accentColor: "#F8D568"
+        accentColor: "#F8D568",
+        viewModel: nil
     )
 }
