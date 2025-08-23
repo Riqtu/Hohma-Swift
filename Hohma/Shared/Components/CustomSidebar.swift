@@ -83,8 +83,8 @@ struct CustomSidebar: View {
                 SidebarButton(
                     title: "Настройки",
                     icon: "gearshape",
-                    isSelected: false
-                ) { /* Тут действия для настроек */  }
+                    isSelected: selection == "settings"
+                ) { selection = "settings" }
             }
             .padding(.horizontal, 8)
         }

@@ -18,13 +18,26 @@ struct FortuneWheelView: View {
         Color(hex: wheelState.accentColor)
     }
 
+    private var mainColor: Color {
+        extractHexFromColorMix(wheelState.mainColor) ?? Color(hex: wheelState.mainColor)
+    }
+
+    private func extractHexFromColorMix(_ colorString: String) -> Color? {
+        // Ищем hex цвет в строке color-mix
+        let pattern = "#[0-9A-Fa-f]{6}"
+        if let range = colorString.range(of: pattern, options: .regularExpression) {
+            let hexColor = String(colorString[range])
+            return Color(hex: hexColor)
+        }
+        return nil
+    }
+
     var body: some View {
         ZStack {
             // Контейнер для правильного центрирования
             Color.clear
                 .frame(width: size, height: size)
             // Фон колеса
-            let mainColor = Color(hex: wheelState.mainColor)
             Circle()
                 .fill(mainColor)
                 .frame(width: size + 35, height: size + 35)
@@ -84,7 +97,8 @@ struct FortuneWheelView: View {
 
             // Экран победителя
             if wheelState.losers.count > 0 && wheelState.sectors.count == 1 {
-                WinnerOverlayView(sector: wheelState.sectors[0])
+                WinnerOverlayView(
+                    sector: wheelState.sectors[0], size: size + 35, mainColor: mainColor)
             }
         }
         .padding(.top, 20)

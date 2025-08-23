@@ -61,10 +61,10 @@ struct AnimatedGradientBackground: View {
             ]
         } else {
             return [
-                [SIMD3(0.93, 0.93, 0.95), applyOpacity(accentColorComponents, opacity: 0.2)],
-                [applyOpacity(accentColorComponents, opacity: 0.1), SIMD3(0.95, 0.95, 0.97)],
-                [SIMD3(0.82, 0.82, 0.85), applyOpacity(accentColorComponents, opacity: 0.3)],
-                [applyOpacity(accentColorComponents, opacity: 0.15), SIMD3(0.97, 0.97, 1)],
+                [SIMD3(0.98, 0.98, 0.99), SIMD3(0.99, 0.99, 1.0)],
+                [SIMD3(0.95, 0.95, 0.97), SIMD3(0.99, 0.99, 1.0)],
+                [SIMD3(0.97, 0.97, 0.99), SIMD3(0.98, 0.98, 1.0)],
+                [SIMD3(0.99, 0.99, 1.0), SIMD3(0.96, 0.96, 0.98)],
             ]
         }
     }
@@ -76,10 +76,13 @@ struct AnimatedGradientBackground: View {
     let animationDuration: Double = 3
 
     var body: some View {
+        let safeCurrentIndex = min(currentIndex, gradients.count - 1)
+        let safeNextIndex = min(nextIndex, gradients.count - 1)
+
         LinearGradient(
             colors: interpolatedColors(
-                from: gradients[currentIndex],
-                to: gradients[nextIndex],
+                from: gradients[safeCurrentIndex],
+                to: gradients[safeNextIndex],
                 progress: progress
             ),
             startPoint: .topLeading,
@@ -97,8 +100,16 @@ struct AnimatedGradientBackground: View {
             progress = 1.0
         }
         Timer.scheduledTimer(withTimeInterval: animationDuration, repeats: true) { _ in
+            let gradientsCount = gradients.count
+            guard gradientsCount > 0 else { return }
+
             currentIndex = nextIndex
-            nextIndex = (nextIndex + 1) % gradients.count
+            nextIndex = (nextIndex + 1) % gradientsCount
+
+            // Дополнительная проверка безопасности
+            currentIndex = min(currentIndex, gradientsCount - 1)
+            nextIndex = min(nextIndex, gradientsCount - 1)
+
             progress = 0.0
             withAnimation(.linear(duration: animationDuration)) {
                 progress = 1.0

@@ -5,8 +5,8 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
@@ -22,6 +22,8 @@ struct Triangle: Shape {
 struct WinnerOverlayView: View {
     @ObserveInjection var inject
     let sector: Sector
+    let size: CGFloat
+    let mainColor: Color
 
     var body: some View {
         VStack(spacing: 20) {
@@ -50,17 +52,20 @@ struct WinnerOverlayView: View {
                     .foregroundColor(.white.opacity(0.8))
             }
         }
-        .padding(40)
+        .frame(width: size, height: size)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.black.opacity(0.8))
-                .blur(radius: 10)
+            LinearGradient(
+                gradient: Gradient(colors: [mainColor, Color.gray.opacity(0.8)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         )
+        .clipShape(Circle())
         .transition(.opacity.combined(with: .scale))
         .enableInjection()
     }
 }
 
 #Preview {
-    WinnerOverlayView(sector: Sector.mock)
+    return WinnerOverlayView(sector: Sector.mock, size: 235, mainColor: .purple)
 }

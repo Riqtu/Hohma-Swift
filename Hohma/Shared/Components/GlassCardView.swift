@@ -5,8 +5,8 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct GlassCardView<Content: View>: View {
     @ObserveInjection var inject
@@ -28,8 +28,8 @@ struct GlassCardView<Content: View>: View {
         content
             .background(.ultraThinMaterial)
             .cornerRadius(16)
-            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-        .enableInjection()
+            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            .enableInjection()
     }
 }
 

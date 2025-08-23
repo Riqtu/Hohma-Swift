@@ -34,8 +34,9 @@ struct AppBackground: View {
                     .ignoresSafeArea()
 
                 // Полупрозрачный оверлей для лучшей читаемости
-                Color.black.opacity(0.3)
+                Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15)
                     .ignoresSafeArea()
+
             } else if useVideoBackground {
                 // Показываем градиент пока видео загружается
                 AnimatedGradientBackground()
@@ -46,6 +47,7 @@ struct AppBackground: View {
                     .ignoresSafeArea()
             }
         }
+
         .onAppear {
             if useVideoBackground {
                 setupVideoBackground()

@@ -106,7 +106,10 @@ class WheelState: ObservableObject {
 
     // MARK: - Wheel Actions
     func spinWheel() {
-        guard !spinning && sectors.count > 1 else { return }
+        guard !spinning && sectors.count > 1 else {
+            print("⚠️ WheelState: Cannot spin - spinning: \(spinning), sectors: \(sectors.count)")
+            return
+        }
 
         let totalSectors = sectors.count
         let anglePerSector = 360.0 / Double(totalSectors)
@@ -117,9 +120,18 @@ class WheelState: ObservableObject {
         var delta = -targetAngle - currentRotation
         delta = delta.truncatingRemainder(dividingBy: 360)
         if delta < 0 { delta += 360 }
-        let extraSpins = 360.0 * 5
+
+        print(
+            "🎯 WheelState: Target angle: \(targetAngle), current rotation: \(currentRotation), delta: \(delta)"
+        )
+        // Уменьшаем количество дополнительных оборотов для более плавной анимации
+        let extraSpins = 360.0 * 3
         let finalDelta = extraSpins + delta
         let newRotation = rotation + finalDelta
+
+        print(
+            "🎲 WheelState: Spinning wheel - current: \(rotation), target: \(newRotation), delta: \(finalDelta)"
+        )
 
         // Emit spin event to other clients
         let spinData: [String: Any] = [
@@ -133,6 +145,7 @@ class WheelState: ObservableObject {
 
         spinning = true
         rotation = newRotation
+        print("🔄 WheelState: Started spinning - rotation: \(rotation)")
 
         handleSpinResult(winningIndex: winningIndex, rotation: newRotation, speed: speed)
 
@@ -168,6 +181,9 @@ class WheelState: ObservableObject {
 
     // MARK: - Private Methods
     private func handleSpinResult(winningIndex: Int, rotation: Double, speed: Double) {
+        print(
+            "🎯 WheelState: Handling spin result - winningIndex: \(winningIndex), rotation: \(rotation), speed: \(speed)"
+        )
         DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
             let eliminatedSector = self.sectors[winningIndex]
 
@@ -181,8 +197,16 @@ class WheelState: ObservableObject {
                 self.setWheelStatus?(.active, self.sectors[0].wheelId)
             }
 
-            self.rotation = rotation.truncatingRemainder(dividingBy: 360)
-            self.spinning = false
+            // Проверяем, что колесо все еще вращается
+            guard self.spinning else { return }
+
+            // Оставляем колесо на той позиции, где оно остановилось
+            print("🔄 WheelState: Wheel stopped at rotation: \(self.rotation)")
+
+            // Небольшая задержка для завершения анимации
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.spinning = false
+            }
 
             self.setEliminated?(eliminatedSector.id)
         }

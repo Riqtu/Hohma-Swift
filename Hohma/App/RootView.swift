@@ -22,6 +22,8 @@ struct RootView: View {
                                 WheelListView(user: authViewModel.user)
                             case "profile":
                                 ProfileView(authViewModel: authViewModel)
+                            case "settings":
+                                SettingsView()
                             default:
                                 HomeView()
                             }
@@ -48,11 +50,11 @@ struct RootView: View {
                             }
                             .tag("profile")
 
-                        MenuView()
+                        SettingsView()
                             .tabItem {
-                                Label("Меню", systemImage: "filemenu.and.selection")
+                                Label("Настройки", systemImage: "gearshape")
                             }
-                            .tag("menu")
+                            .tag("settings")
                     }
                     .tint(Color.primary)
                 }

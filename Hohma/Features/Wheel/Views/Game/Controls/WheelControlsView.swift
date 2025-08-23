@@ -100,13 +100,6 @@ struct WheelControlsView: View {
 
             }
 
-            // Информация о монетах
-            if userCoins > 0 {
-                Text("Ваши монеты: \(userCoins)")
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .padding(.top, 10)
-            }
         }
         .sheet(isPresented: $showingSettings) {
             WheelSettingsView(wheelState: wheelState)
@@ -240,13 +233,8 @@ struct WheelBetsView: View {
                 Spacer()
             }
             .padding(20)
-            .background(
-                LinearGradient(
-                    colors: [Color.black.opacity(0.9), Color.black.opacity(0.7)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .appBackground()
             .navigationTitle("Ставки")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

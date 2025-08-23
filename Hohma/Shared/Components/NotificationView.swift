@@ -5,8 +5,8 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct NotificationView: View {
     @ObserveInjection var inject
@@ -63,7 +63,7 @@ struct NotificationView: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(type.backgroundColor)
-                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
         )
         .offset(y: isVisible ? 0 : -100)
         .opacity(isVisible ? 1 : 0)
