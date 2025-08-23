@@ -4,8 +4,11 @@ final class ProfileService {
     static let shared = ProfileService()
     private init() {}
 
-    private let networkManager = NetworkManager.shared
-    private let baseURL = "https://riqtu.ru/api/trpc"
+    @MainActor private let networkManager = NetworkManager.shared
+    private let baseURL: String = {
+        return Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String
+            ?? "https://hohma.su/api/trpc"
+    }()
 
     func getProfile() async throws -> AuthUser {
         guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),

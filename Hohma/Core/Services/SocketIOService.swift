@@ -65,8 +65,11 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
     }
 
     // MARK: - Initialization
-    init(baseURL: String = "https://ws.hohma.su", authToken: String? = nil) {
-        self.baseURL = baseURL
+    init(baseURL: String? = nil, authToken: String? = nil) {
+        let wsURL =
+            baseURL ?? Bundle.main.object(forInfoDictionaryKey: "WS_URL") as? String
+            ?? "https://ws.hohma.su"
+        self.baseURL = wsURL
         self.authToken = authToken
     }
 

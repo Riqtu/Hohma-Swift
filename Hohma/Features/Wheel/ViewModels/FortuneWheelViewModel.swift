@@ -142,7 +142,9 @@ class FortuneWheelViewModel: ObservableObject {
     private func startSocketHealthMonitoring() {
         // Проверяем здоровье сокета каждые 30 секунд
         Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            self?.checkSocketHealth()
+            Task { @MainActor in
+                self?.checkSocketHealth()
+            }
         }
         print("🏥 FortuneWheelViewModel: Socket health monitoring started")
     }
@@ -339,7 +341,7 @@ class FortuneWheelViewModel: ObservableObject {
             // Выводим имена пользователей для отладки
             for (index, user) in users.enumerated() {
                 print(
-                    "👥 FortuneWheelViewModel: User \(index + 1): \(user.username) (\(user.firstName ?? "no name"))"
+                    "👥 FortuneWheelViewModel: User \(index + 1): \(String(describing: user.username)) (\(user.firstName ?? "no name"))"
                 )
             }
         }

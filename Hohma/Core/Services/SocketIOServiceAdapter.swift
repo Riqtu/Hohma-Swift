@@ -26,7 +26,7 @@ protocol SocketIOServiceProtocol: ObservableObject {
 // MARK: - Socket.IO Service Adapter
 class SocketIOServiceAdapter: ObservableObject {
     // MARK: - Properties
-    private var socketService: SocketIOServiceProtocol
+    private var socketService: any SocketIOServiceProtocol
     private let useNewImplementation: Bool
 
     // MARK: - Published Properties (delegated)
@@ -41,15 +41,18 @@ class SocketIOServiceAdapter: ObservableObject {
 
     // MARK: - Initialization
     init(
-        baseURL: String = "https://ws.hohma.su", authToken: String? = nil,
+        baseURL: String? = nil, authToken: String? = nil,
         useNewImplementation: Bool = true
     ) {
+        let wsURL =
+            baseURL ?? Bundle.main.object(forInfoDictionaryKey: "WS_URL") as? String
+            ?? "https://ws.hohma.su"
         self.useNewImplementation = useNewImplementation
 
         if useNewImplementation {
-            self.socketService = SocketIOServiceV2(baseURL: baseURL, authToken: authToken)
+            self.socketService = SocketIOServiceV2(baseURL: wsURL, authToken: authToken)
         } else {
-            self.socketService = SocketIOService(baseURL: baseURL, authToken: authToken)
+            self.socketService = SocketIOService(baseURL: wsURL, authToken: authToken)
         }
 
         setupBindings()

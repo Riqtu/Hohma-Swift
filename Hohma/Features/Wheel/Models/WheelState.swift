@@ -146,51 +146,12 @@ class WheelState: ObservableObject {
         let shuffledSectors = sectors.shuffled()
 
         // Emit shuffle event to other clients
+        let sectorsData = shuffledSectors.map { sector in
+            createSectorDictionaryForShuffle(sector)
+        }
+
         let shuffleData: [String: Any] = [
-            "sectors": shuffledSectors.map { sector in
-                [
-                    "id": sector.id,
-                    "label": sector.label,
-                    "color": [
-                        "h": sector.color.h,
-                        "s": sector.color.s,
-                        "l": sector.color.l,
-                    ],
-                    "name": sector.name,
-                    "eliminated": sector.eliminated,
-                    "winner": sector.winner,
-                    "description": sector.description,
-                    "pattern": sector.pattern,
-                    "patternPosition": sector.patternPosition.map { pos in
-                        [
-                            "x": pos.x,
-                            "y": pos.y,
-                            "z": pos.z,
-                        ]
-                    },
-                    "poster": sector.poster,
-                    "genre": sector.genre,
-                    "rating": sector.rating,
-                    "year": sector.year,
-                    "labelColor": sector.labelColor,
-                    "labelHidden": sector.labelHidden,
-                    "wheelId": sector.wheelId,
-                    "userId": sector.userId,
-                    "user": sector.user.map { user in
-                        [
-                            "id": user.id,
-                            "username": user.username,
-                            "firstName": user.firstName,
-                            "lastName": user.lastName,
-                            "coins": user.coins,
-                            "avatarUrl": user.avatarUrl?.absoluteString,
-                            "role": user.role,
-                        ]
-                    },
-                    "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
-                    "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
-                ]
-            },
+            "sectors": sectorsData,
             "clientId": clientId ?? "",
         ]
 
@@ -243,6 +204,51 @@ class WheelState: ObservableObject {
         ]
     }
 
+    private func createSectorDictionaryForShuffle(_ sector: Sector) -> [String: Any] {
+        return [
+            "id": sector.id,
+            "label": sector.label,
+            "color": [
+                "h": sector.color.h,
+                "s": sector.color.s,
+                "l": sector.color.l,
+            ],
+            "name": sector.name,
+            "eliminated": sector.eliminated,
+            "winner": sector.winner,
+            "description": sector.description ?? "",
+            "pattern": sector.pattern ?? "",
+            "patternPosition": sector.patternPosition.map { pos in
+                [
+                    "x": pos.x,
+                    "y": pos.y,
+                    "z": pos.z,
+                ]
+            } ?? [],
+            "poster": sector.poster ?? "",
+            "genre": sector.genre ?? "",
+            "rating": sector.rating ?? 0,
+            "year": sector.year ?? 0,
+            "labelColor": sector.labelColor ?? "",
+            "labelHidden": sector.labelHidden,
+            "wheelId": sector.wheelId,
+            "userId": sector.userId ?? "",
+            "user": sector.user.map { user in
+                [
+                    "id": user.id,
+                    "username": user.username ?? "",
+                    "firstName": user.firstName ?? "",
+                    "lastName": user.lastName ?? "",
+                    "coins": user.coins,
+                    "avatarUrl": user.avatarUrl?.absoluteString ?? "",
+                    "role": user.role,
+                ]
+            } ?? [],
+            "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
+            "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
+        ]
+    }
+
     private func createSectorsArray(_ sectors: [Sector]) -> [[String: Any]] {
         return sectors.map { createSectorDictionary($0) }
     }
@@ -281,7 +287,7 @@ class WheelState: ObservableObject {
         if let user = userId {
             userData = [
                 "id": user.id,
-                "username": user.username,
+                "username": user.username ?? "",
                 "firstName": user.firstName ?? "",
                 "lastName": user.lastName ?? "",
                 "coins": user.coins,
@@ -519,48 +525,7 @@ class WheelState: ObservableObject {
             // Отправляем текущие секторы в ответ на запрос
             // Веб-клиент ожидает массив секторов напрямую
             let sectorsArray = self.sectors.map { sector in
-                [
-                    "id": sector.id,
-                    "label": sector.label,
-                    "color": [
-                        "h": sector.color.h,
-                        "s": sector.color.s,
-                        "l": sector.color.l,
-                    ],
-                    "name": sector.name,
-                    "eliminated": sector.eliminated,
-                    "winner": sector.winner,
-                    "description": sector.description,
-                    "pattern": sector.pattern,
-                    "patternPosition": sector.patternPosition.map { pos in
-                        [
-                            "x": pos.x,
-                            "y": pos.y,
-                            "z": pos.z,
-                        ]
-                    },
-                    "poster": sector.poster,
-                    "genre": sector.genre,
-                    "rating": sector.rating,
-                    "year": sector.year,
-                    "labelColor": sector.labelColor,
-                    "labelHidden": sector.labelHidden,
-                    "wheelId": sector.wheelId,
-                    "userId": sector.userId,
-                    "user": sector.user.map { user in
-                        [
-                            "id": user.id,
-                            "username": user.username,
-                            "firstName": user.firstName,
-                            "lastName": user.lastName,
-                            "coins": user.coins,
-                            "avatarUrl": user.avatarUrl?.absoluteString,
-                            "role": user.role,
-                        ]
-                    },
-                    "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
-                    "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
-                ]
+                self.createSectorDictionaryForShuffle(sector)
             }
 
             print("📤 WheelState: Sending \(self.sectors.count) sectors in response")
@@ -585,7 +550,9 @@ class WheelState: ObservableObject {
                     {
                         // Вложенный формат: { "sectors": { "sectors": [...] } }
                         sectorsArray = nestedArray
-                    } else if let directArray = json as? [[String: Any]] {
+                    } else if let directArray = try? JSONSerialization.jsonObject(with: data)
+                        as? [[String: Any]]
+                    {
                         // Прямой массив секторов
                         sectorsArray = directArray
                     }

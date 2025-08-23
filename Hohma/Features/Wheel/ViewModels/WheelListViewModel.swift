@@ -53,7 +53,9 @@ class WheelListViewModel: ObservableObject {
 
         do {
             let newWheels = try await fetchWheels()
-            self.wheels = newWheels
+
+            // Обновляем существующие карточки вместо полной замены
+            updateWheelsList(with: newWheels)
 
         } catch is CancellationError {
             #if DEBUG
@@ -71,6 +73,63 @@ class WheelListViewModel: ObservableObject {
                 print(error)
             #endif
         }
+    }
+
+    // MARK: - Private Methods
+
+    private func updateWheelsList(with newWheels: [WheelWithRelations]) {
+        // Создаем словарь новых колес для быстрого поиска
+        let newWheelsDict = Dictionary(uniqueKeysWithValues: newWheels.map { ($0.id, $0) })
+
+        // Обновляем существующие колеса и добавляем новые
+        var updatedWheels = wheels
+
+        for (index, existingWheel) in wheels.enumerated() {
+            if let updatedWheel = newWheelsDict[existingWheel.id] {
+                // Обновляем существующее колесо
+                updatedWheels[index] = updatedWheel
+            }
+        }
+
+        // Добавляем новые колеса, которых не было в списке
+        for newWheel in newWheels {
+            if !wheels.contains(where: { $0.id == newWheel.id }) {
+                updatedWheels.append(newWheel)
+            }
+        }
+
+        // Удаляем колеса, которых больше нет на сервере
+        updatedWheels = updatedWheels.filter { existingWheel in
+            newWheels.contains { $0.id == existingWheel.id }
+        }
+
+        // Сортируем по дате создания (новые сверху)
+        updatedWheels.sort { $0.createdAt > $1.createdAt }
+
+        self.wheels = updatedWheels
+    }
+
+    // MARK: - Public Methods
+
+    /// Обновляет конкретное колесо в списке
+    func updateWheel(_ updatedWheel: WheelWithRelations) {
+        if let index = wheels.firstIndex(where: { $0.id == updatedWheel.id }) {
+            wheels[index] = updatedWheel
+        }
+    }
+
+    /// Добавляет новое колесо в список
+    func addWheel(_ newWheel: WheelWithRelations) {
+        if !wheels.contains(where: { $0.id == newWheel.id }) {
+            wheels.append(newWheel)
+            // Сортируем по дате создания (новые сверху)
+            wheels.sort { $0.createdAt > $1.createdAt }
+        }
+    }
+
+    /// Удаляет колесо из списка
+    func removeWheel(withId id: String) {
+        wheels.removeAll { $0.id == id }
     }
 
     private func fetchWheels() async throws -> [WheelWithRelations] {

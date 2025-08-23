@@ -12,8 +12,11 @@ final class FileUploadService {
     static let shared = FileUploadService()
     private init() {}
 
-    private let networkManager = NetworkManager.shared
-    private let baseURL = "https://riqtu.ru/api/trpc"
+    @MainActor private let networkManager = NetworkManager.shared
+    private let baseURL: String = {
+        return Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String
+            ?? "https://hohma.su/api/trpc"
+    }()
 
     // MARK: - Get Presigned URL
     func getPresignedUrl(fileName: String, fileType: String) async throws -> PresignedUrlResponse {

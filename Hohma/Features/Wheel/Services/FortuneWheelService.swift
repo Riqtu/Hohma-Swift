@@ -206,8 +206,8 @@ class FortuneWheelService: ObservableObject {
     // MARK: - Socket Configuration
 
     func getSocketURL() -> String {
-        // В реальном приложении это должно приходить с сервера
-        return "https://ws.hohma.su"
+        return Bundle.main.object(forInfoDictionaryKey: "WS_URL") as? String
+            ?? "https://ws.hohma.su"
     }
 }
 

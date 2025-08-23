@@ -174,7 +174,7 @@ class WheelSocketManager: WheelSocketProtocol {
         if let user = userId {
             userData = [
                 "id": user.id,
-                "username": user.username,
+                "username": user.username ?? "",
                 "firstName": user.firstName ?? "",
                 "lastName": user.lastName ?? "",
                 "coins": user.coins,

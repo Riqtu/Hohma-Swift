@@ -14,7 +14,9 @@ final class AuthService {
     func loginWithTelegramToken(
         _ token: String, completion: @escaping (Result<AuthResult, Error>) -> Void
     ) {
-        guard let url = URL(string: "https://riqtu.ru/api/trpc/auth.telegramLogin") else {
+        guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
+            let url = URL(string: "\(apiURL)/auth.telegramLogin")
+        else {
             completion(.failure(NSError(domain: "Invalid URL", code: -1)))
             return
         }
@@ -95,7 +97,9 @@ final class AuthService {
     func loginWithApple(
         _ request: AppleAuthRequest, completion: @escaping (Result<AuthResult, Error>) -> Void
     ) {
-        guard let url = URL(string: "https://riqtu.ru/api/trpc/auth.appleLogin") else {
+        guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
+            let url = URL(string: "\(apiURL)/auth.appleLogin")
+        else {
             completion(.failure(NSError(domain: "Invalid URL", code: -1)))
             return
         }

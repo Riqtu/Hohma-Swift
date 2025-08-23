@@ -30,8 +30,11 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     }
 
     // MARK: - Initialization
-    init(baseURL: String = "https://ws.hohma.su", authToken: String? = nil) {
-        self.baseURL = baseURL
+    init(baseURL: String? = nil, authToken: String? = nil) {
+        let wsURL =
+            baseURL ?? Bundle.main.object(forInfoDictionaryKey: "WS_URL") as? String
+            ?? "https://ws.hohma.su"
+        self.baseURL = wsURL
         self.authToken = authToken
         setupSocketManager()
     }
@@ -150,7 +153,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
             }
         }
 
-        socket.on(clientEvent: .reconnectAttempt) { [weak self] data, ack in
+        socket.on(clientEvent: .reconnectAttempt) { data, ack in
             if let attempt = data.first as? Int {
                 print("🔄 SocketIOServiceV2: Reconnect attempt \(attempt)")
             }
@@ -204,7 +207,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
         }
 
         // Регистрируем обработчик напрямую в сокете
-        socket.on(event.rawValue) { [weak self] data, ack in
+        socket.on(event.rawValue) { data, ack in
             print("📨 SocketIOServiceV2: Received event: \(event.rawValue)")
             print("📊 SocketIOServiceV2: Event data: \(data)")
 
