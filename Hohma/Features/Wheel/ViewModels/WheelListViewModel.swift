@@ -35,7 +35,12 @@ class WheelListViewModel: ObservableObject {
 
         do {
             let response = try await fetchWheelsWithPagination(page: 1)
-            self.wheels = response.data
+
+            // Обновляем список с анимацией
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.wheels = response.data
+            }
+
             self.paginationInfo = response.pagination
             self.currentPage = 1
             self.hasMorePages = response.pagination.hasNextPage
@@ -61,7 +66,10 @@ class WheelListViewModel: ObservableObject {
             let response = try await fetchWheelsWithPagination(page: nextPage)
 
             // Добавляем новые колеса к существующим
-            self.wheels.append(contentsOf: response.data)
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.wheels.append(contentsOf: response.data)
+            }
+
             self.paginationInfo = response.pagination
             self.currentPage = nextPage
             self.hasMorePages = response.pagination.hasNextPage
@@ -85,10 +93,14 @@ class WheelListViewModel: ObservableObject {
         defer { isRefreshing = false }
 
         do {
-            let response = try await fetchWheelsWithPagination(page: 1)
+            // Используем Task.detached для изоляции запроса от отмены
+            let response = try await Task.detached(priority: .userInitiated) {
+                return try await self.fetchWheelsWithPaginationDirect(page: 1)
+            }.value
 
-            // Полностью заменяем список новыми данными
-            self.wheels = response.data
+            // Обновляем список с анимацией
+            updateWheelsList(with: response.data)
+
             self.paginationInfo = response.pagination
             self.currentPage = 1
             self.hasMorePages = response.pagination.hasNextPage
@@ -134,7 +146,6 @@ class WheelListViewModel: ObservableObject {
         updatedWheels.sort { $0.createdAt > $1.createdAt }
 
         // Принудительно обновляем UI с анимацией
-        print("🔄 Обновляем список колес: \(updatedWheels.count) элементов")
         withAnimation(.easeInOut(duration: 0.3)) {
             self.wheels = updatedWheels
         }
@@ -187,19 +198,8 @@ class WheelListViewModel: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
-        #if DEBUG
-            // В DEBUG режиме сначала получаем сырые данные для логирования
-            let (data, _) = try await URLSession.shared.data(for: request)
-            if let rawString = String(data: data, encoding: .utf8) {
-                print("Raw server response:", rawString)
-            }
-            // Затем используем NetworkManager для правильной обработки ошибок
-            let response: WheelListResponse = try await NetworkManager.shared.request(
-                request, decoder: decoder)
-        #else
-            let response: WheelListResponse = try await NetworkManager.shared.request(
-                request, decoder: decoder)
-        #endif
+        let response: WheelListResponse = try await NetworkManager.shared.request(
+            request, decoder: decoder)
 
         return response.result.data.json
     }
@@ -255,20 +255,66 @@ class WheelListViewModel: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
-        #if DEBUG
-            // В DEBUG режиме сначала получаем сырые данные для логирования
-            let (data, _) = try await URLSession.shared.data(for: request)
-            if let rawString = String(data: data, encoding: .utf8) {
-                print("Raw server response for page \(page):", rawString)
-            }
-            // Затем используем NetworkManager для правильной обработки ошибок
-            let response: WheelListPaginationResponse = try await NetworkManager.shared.request(
-                request, decoder: decoder)
-        #else
-            let response: WheelListPaginationResponse = try await NetworkManager.shared.request(
-                request, decoder: decoder)
-        #endif
+        let response: WheelListPaginationResponse = try await NetworkManager.shared.request(
+            request, decoder: decoder)
 
         return response.result.data.json
+    }
+
+    // Альтернативный метод для тестирования
+    private func fetchWheelsWithPaginationDirect(page: Int) async throws
+        -> WheelListPaginationContent
+    {
+        guard let apiURL = apiURL else {
+            throw NSError(
+                domain: "NetworkError", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
+        }
+
+        guard let url = URL(string: "\(apiURL)/wheelList.getAllWithPagination") else {
+            throw NSError(
+                domain: "NetworkError", code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
+        }
+
+        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        let inputData = ["json": ["page": page, "limit": pageSize]]
+
+        do {
+            let inputJSONData = try JSONSerialization.data(withJSONObject: inputData)
+            let inputString = String(data: inputJSONData, encoding: .utf8)!
+            urlComponents.queryItems = [URLQueryItem(name: "input", value: inputString)]
+        } catch {
+            throw NSError(
+                domain: "NetworkError", code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Ошибка сериализации JSON"])
+        }
+
+        guard let finalURL = urlComponents.url else {
+            throw NSError(
+                domain: "NetworkError", code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
+        }
+
+        var request = URLRequest(url: finalURL)
+        request.httpMethod = "GET"
+
+        if let user = user {
+            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601withMilliseconds
+
+        // Создаем отдельную URLSession конфигурацию
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        let session = URLSession(configuration: config)
+
+        let (data, response) = try await session.data(for: request)
+
+        let responseObject = try decoder.decode(WheelListPaginationResponse.self, from: data)
+        return responseObject.result.data.json
     }
 }

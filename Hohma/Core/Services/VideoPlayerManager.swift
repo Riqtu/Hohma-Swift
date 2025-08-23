@@ -40,41 +40,23 @@ final class VideoPlayerManager: ObservableObject {
             player.currentItem?.publisher(for: \.status)
                 .sink { [weak self] status in
                     DispatchQueue.main.async {
-                        print("🎬 CachedPlayer: Статус изменился на \(status.rawValue)")
 
                         switch status {
                         case .readyToPlay:
                             self?.isReady = true
                             self?.isLoading = false
-                            print("✅ CachedPlayer: Плеер готов к воспроизведению")
-
-                            // Дополнительная диагностика
-                            if let player = self?.player {
-                                print(
-                                    "🎬 CachedPlayer: currentTime: \(player.currentTime().seconds)"
-                                )
-                                print(
-                                    "🎬 CachedPlayer: duration: \(player.currentItem?.duration.seconds ?? 0)"
-                                )
-                                print("🎬 CachedPlayer: isPlaying: \(player.rate > 0)")
-                            }
 
                         case .failed:
                             self?.isReady = false
                             self?.isLoading = false
-                            print(
-                                "❌ CachedPlayer: Ошибка загрузки плеера: \(self?.player.currentItem?.error?.localizedDescription ?? "неизвестная ошибка")"
-                            )
 
                         case .unknown:
                             self?.isReady = false
                             self?.isLoading = true
-                            print("🔄 CachedPlayer: Плеер загружается...")
 
                         @unknown default:
                             self?.isReady = false
                             self?.isLoading = false
-                            print("❓ CachedPlayer: Неизвестный статус плеера: \(status.rawValue)")
                         }
                     }
                 }
@@ -94,9 +76,6 @@ final class VideoPlayerManager: ObservableObject {
                         let maxRestarts = self.player.currentItem?.asset is AVURLAsset ? 2 : 10
 
                         if self.restartCount <= maxRestarts {
-                            print(
-                                "🎬 CachedPlayer: Видео закончилось, перезапускаем (попытка \(self.restartCount)/\(maxRestarts))"
-                            )
 
                             // Добавляем задержку перед перезапуском для внешних URL
                             let delay = self.player.currentItem?.asset is AVURLAsset ? 1.0 : 0.1
@@ -106,15 +85,12 @@ final class VideoPlayerManager: ObservableObject {
                                 self.player.play()
                             }
                         } else {
-                            print("⏹️ CachedPlayer: Достигнут лимит перезапусков, останавливаем")
                             self.player.pause()
 
                             // Для внешних URL после достижения лимита перезапусков
                             // помечаем плеер как не готовый, чтобы он был заменен
                             if self.player.currentItem?.asset is AVURLAsset {
                                 self.isReady = false
-                                print(
-                                    "🔄 CachedPlayer: Внешний URL помечен как не готовый для замены")
                             }
                         }
                     }
@@ -127,7 +103,6 @@ final class VideoPlayerManager: ObservableObject {
                 .sink { rate in
                     DispatchQueue.main.async {
                         if rate == 0 {
-                            print("🎬 CachedPlayer: Плеер приостановлен")
                         }
                     }
                 }
@@ -248,34 +223,26 @@ final class VideoPlayerManager: ObservableObject {
     func player(resourceName: String, resourceExtension: String = "mp4") -> AVPlayer? {
         let key = "\(resourceName).\(resourceExtension)"
 
-        print("🎬 VideoPlayerManager: Запрос плеера для \(key)")
 
         // Проверяем кэш
         if let cachedPlayer = cache[key] {
             cachedPlayer.updateLastUsed()
-            print(
-                "🎬 VideoPlayerManager: Найден кэшированный плеер для \(key), готов: \(cachedPlayer.isReady), загружается: \(cachedPlayer.isLoading)"
-            )
 
             // Если плеер готов, возвращаем его
             if cachedPlayer.isReady {
-                print("✅ VideoPlayerManager: Возвращаем готовый плеер для \(key)")
                 return cachedPlayer.player
             }
 
             // Если плеер загружается, ждем
             if cachedPlayer.isLoading {
-                print("🔄 VideoPlayerManager: Плеер \(key) все еще загружается, возвращаем его")
                 return cachedPlayer.player
             }
 
             // Если плеер в плохом состоянии (failed), удаляем его
             if cachedPlayer.player.currentItem?.status == .failed {
-                print("❌ VideoPlayerManager: Удаляем плохой плеер для \(key)")
                 removePlayer(for: key)
             } else {
                 // Если плеер в unknown состоянии, даем ему время
-                print("⏳ VideoPlayerManager: Плеер \(key) в unknown состоянии, даем время")
                 return cachedPlayer.player
             }
         }
@@ -283,10 +250,7 @@ final class VideoPlayerManager: ObservableObject {
         // Создаем новый плеер
         guard let url = Bundle.main.url(forResource: resourceName, withExtension: resourceExtension)
         else {
-            print(
-                "❌ VideoPlayerManager: Видео не найдено в Bundle: \(resourceName).\(resourceExtension)"
-            )
-            print("📁 Доступные ресурсы в Bundle:")
+
             if let resourcePath = Bundle.main.resourcePath {
                 do {
                     let contents = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
@@ -298,23 +262,17 @@ final class VideoPlayerManager: ObservableObject {
             return nil
         }
 
-        print("✅ VideoPlayerManager: Создаем новый плеер для \(url)")
         return createPlayer(for: url, key: key)
     }
 
     func player(url: URL) -> AVPlayer {
         let key = url.absoluteString
-        print("🎬 VideoPlayerManager: Запрос плеера для URL: \(key)")
 
         // Проверяем кэш
         if let cachedPlayer = cache[key] {
-            print(
-                "🎬 VideoPlayerManager: Найден кэшированный плеер для URL, готов: \(cachedPlayer.isReady)"
-            )
 
             // Если плеер готов, возвращаем его
             if cachedPlayer.isReady {
-                print("✅ VideoPlayerManager: Возвращаем готовый кэшированный плеер")
                 cachedPlayer.lastUsed = Date()
                 return cachedPlayer.player
             }
@@ -324,33 +282,27 @@ final class VideoPlayerManager: ObservableObject {
             let maxWaitTime = url.scheme == "http" || url.scheme == "https" ? 5.0 : 10.0
 
             if timeSinceCreation < maxWaitTime {
-                print(
-                    "🔄 VideoPlayerManager: Плеер еще загружается, даем время (\(Int(maxWaitTime - timeSinceCreation))с)"
-                )
+
                 cachedPlayer.lastUsed = Date()
                 return cachedPlayer.player
             }
 
             // Если плеер не готов слишком долго, удаляем его
-            print("⏰ VideoPlayerManager: Плеер не готов слишком долго, удаляем")
             cache.removeValue(forKey: key)
         }
 
         // Создаем новый плеер
-        print("✅ VideoPlayerManager: Создаем новый плеер для URL: \(key)")
         return createPlayer(for: url, key: key)
     }
 
     // MARK: - Private Methods
     private func createPlayer(for url: URL, key: String) -> AVPlayer {
-        print("🎬 VideoPlayerManager: Создание плеера для \(url)")
 
         let player: AVPlayer
 
         // Проверяем, является ли URL внешним
         if url.scheme == "http" || url.scheme == "https" {
             // Для внешних URL используем потоковое воспроизведение
-            print("🎬 VideoPlayerManager: Внешний URL, настраиваем потоковое воспроизведение")
 
             // Создаем AVPlayerItem с настройками для потокового воспроизведения
             let playerItem = AVPlayerItem(url: url)
@@ -378,16 +330,12 @@ final class VideoPlayerManager: ObservableObject {
         player.isMuted = true
         player.actionAtItemEnd = .none
 
-        print(
-            "🎬 VideoPlayerManager: Плеер создан, currentItem: \(player.currentItem?.description ?? "nil")"
-        )
 
         // Создаем cached player
         let cachedPlayer = CachedPlayer(player: player)
         cache[key] = cachedPlayer
 
         // Начинаем воспроизведение
-        print("🎬 VideoPlayerManager: Запускаем воспроизведение")
         player.play()
 
         return player

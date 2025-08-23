@@ -98,7 +98,6 @@ struct WheelCardView: View {
         }
         .onChange(of: cardData.id) { _, _ in
             // Обновляем viewModel при изменении cardData
-            print("🔄 Обновляем карточку: \(cardData.name)")
             viewModel.updateCardData(cardData)
         }
         .navigationDestination(isPresented: $showingGame) {

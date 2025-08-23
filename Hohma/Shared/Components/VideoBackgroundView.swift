@@ -28,12 +28,10 @@ import SwiftUI
             }
 
             setupPlayerObservers()
-            print("🎬 VideoPlayerView: Создан для плеера \(player)")
 
             // Принудительно запускаем воспроизведение
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if player.currentItem?.status == .readyToPlay {
-                    print("✅ VideoPlayerView: Принудительно запускаем воспроизведение")
                     player.play()
                 }
             }
@@ -60,9 +58,7 @@ import SwiftUI
             {
                 [weak self] item, _ in
                 DispatchQueue.main.async {
-                    print("🎬 VideoPlayerView: Статус playerItem: \(item.status.rawValue)")
                     if item.status == .readyToPlay {
-                        print("✅ VideoPlayerView: Плеер готов, запускаем воспроизведение")
                         self?.playerLayer.player?.play()
 
                         // Принудительно обновляем layout
@@ -78,21 +74,18 @@ import SwiftUI
                 object: playerLayer.player?.currentItem,
                 queue: .main
             ) { [weak self] _ in
-                print("🎬 VideoPlayerView: Видео закончилось, перезапускаем")
                 self?.playerLayer.player?.seek(to: .zero)
                 self?.playerLayer.player?.play()
             }
 
             // Проверяем текущий статус
             if let player = playerLayer.player, player.currentItem?.status == .readyToPlay {
-                print("✅ VideoPlayerView: Плеер уже готов, запускаем воспроизведение")
                 player.play()
             }
         }
 
         override func layoutSubviews() {
             super.layoutSubviews()
-            print("🎬 VideoPlayerView: layoutSubviews вызван, bounds: \(bounds)")
             playerLayer.frame = bounds
             playerLayer.setNeedsDisplay()
         }
@@ -112,7 +105,6 @@ import SwiftUI
 
         func makeUIView(context: Context) -> VideoPlayerView {
             let view = VideoPlayerView(player: player)
-            print("🎬 VideoBackgroundView: Создан UIViewRepresentable")
             return view
         }
 
@@ -120,14 +112,10 @@ import SwiftUI
             // Обновляем плеер если нужно
             if uiView.playerLayer.player !== player {
                 uiView.playerLayer.player = player
-                print("🎬 VideoBackgroundView: Обновлен плеер")
 
                 // Принудительно запускаем воспроизведение
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if player.currentItem?.status == .readyToPlay {
-                        print(
-                            "✅ VideoBackgroundView: Принудительно запускаем воспроизведение после обновления"
-                        )
                         player.play()
                     }
                 }
@@ -166,12 +154,10 @@ import SwiftUI
             layer?.addSublayer(playerLayer)
 
             setupPlayerObservers()
-            print("🎬 VideoPlayerView (macOS): Создан для плеера \(player)")
 
             // Принудительно запускаем воспроизведение
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if player.currentItem?.status == .readyToPlay {
-                    print("✅ VideoPlayerView (macOS): Принудительно запускаем воспроизведение")
                     player.play()
                 }
             }
@@ -194,9 +180,7 @@ import SwiftUI
             {
                 [weak self] item, _ in
                 DispatchQueue.main.async {
-                    print("🎬 VideoPlayerView (macOS): Статус playerItem: \(item.status.rawValue)")
                     if item.status == .readyToPlay {
-                        print("✅ VideoPlayerView (macOS): Плеер готов, запускаем воспроизведение")
                         self?.playerLayer.player?.play()
 
                         // Принудительно обновляем layout
@@ -211,21 +195,18 @@ import SwiftUI
                 object: playerLayer.player?.currentItem,
                 queue: .main
             ) { [weak self] _ in
-                print("🎬 VideoPlayerView (macOS): Видео закончилось, перезапускаем")
                 self?.playerLayer.player?.seek(to: .zero)
                 self?.playerLayer.player?.play()
             }
 
             // Проверяем текущий статус
             if let player = playerLayer.player, player.currentItem?.status == .readyToPlay {
-                print("✅ VideoPlayerView (macOS): Плеер уже готов, запускаем воспроизведение")
                 player.play()
             }
         }
 
         override func layout() {
             super.layout()
-            print("🎬 VideoPlayerView (macOS): layout вызван, bounds: \(bounds)")
             playerLayer.frame = bounds
             playerLayer.setNeedsDisplay()
         }
@@ -245,7 +226,6 @@ import SwiftUI
 
         func makeNSView(context: Context) -> VideoPlayerView {
             let view = VideoPlayerView(player: player)
-            print("🎬 VideoBackgroundView (macOS): Создан NSViewRepresentable")
             return view
         }
 
@@ -253,14 +233,10 @@ import SwiftUI
             // Обновляем плеер если нужно
             if nsView.playerLayer.player !== player {
                 nsView.playerLayer.player = player
-                print("🎬 VideoBackgroundView (macOS): Обновлен плеер")
 
                 // Принудительно запускаем воспроизведение
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if player.currentItem?.status == .readyToPlay {
-                        print(
-                            "✅ VideoBackgroundView (macOS): Принудительно запускаем воспроизведение после обновления"
-                        )
                         player.play()
                     }
                 }

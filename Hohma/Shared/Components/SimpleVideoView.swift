@@ -17,7 +17,6 @@ import SwiftUI
         }
 
         func setPlayer(_ player: AVPlayer) {
-            print("🎬 SimpleVideoPlayerView: Устанавливаем плеер")
 
             // Удаляем старый layer если есть
             playerLayer?.removeFromSuperlayer()
@@ -34,13 +33,11 @@ import SwiftUI
             // Устанавливаем frame
             DispatchQueue.main.async {
                 layer.frame = self.bounds
-                print("🎬 SimpleVideoPlayerView: Frame установлен: \(self.bounds)")
             }
 
             // Запускаем воспроизведение
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if player.currentItem?.status == .readyToPlay {
-                    print("🎬 SimpleVideoPlayerView: Запускаем воспроизведение")
                     player.play()
                 }
             }
@@ -48,7 +45,6 @@ import SwiftUI
 
         override func layoutSubviews() {
             super.layoutSubviews()
-            print("🎬 SimpleVideoPlayerView: layoutSubviews, bounds: \(bounds)")
             playerLayer?.frame = bounds
         }
     }
@@ -85,7 +81,6 @@ import SwiftUI
         }
 
         func setPlayer(_ player: AVPlayer) {
-            print("🎬 SimpleVideoPlayerView (macOS): Устанавливаем плеер")
 
             // Удаляем старый layer если есть
             playerLayer?.removeFromSuperlayer()
@@ -102,13 +97,11 @@ import SwiftUI
             // Устанавливаем frame
             DispatchQueue.main.async {
                 layer.frame = self.bounds
-                print("🎬 SimpleVideoPlayerView (macOS): Frame установлен: \(self.bounds)")
             }
 
             // Запускаем воспроизведение
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 if player.currentItem?.status == .readyToPlay {
-                    print("🎬 SimpleVideoPlayerView (macOS): Запускаем воспроизведение")
                     player.play()
                 }
             }
@@ -116,7 +109,6 @@ import SwiftUI
 
         override func layout() {
             super.layout()
-            print("🎬 SimpleVideoPlayerView (macOS): layout, bounds: \(bounds)")
             playerLayer?.frame = bounds
         }
     }

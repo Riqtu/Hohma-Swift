@@ -21,17 +21,6 @@ final class NetworkManager {
 
         let (data, response) = try await URLSession.shared.data(for: endpoint)
 
-        #if DEBUG
-            // Логируем ответ сервера для отладки
-            if let httpResponse = response as? HTTPURLResponse {
-                print("🔍 NetworkManager: Response status: \(httpResponse.statusCode)")
-                print("🔍 NetworkManager: Response headers: \(httpResponse.allHeaderFields)")
-            }
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("🔍 NetworkManager: Response body: \(responseString)")
-            }
-        #endif
-
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
             #if DEBUG
                 print("🔐 NetworkManager: Received 401 error, logging out user")

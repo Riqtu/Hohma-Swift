@@ -32,7 +32,6 @@ final class WheelCardViewModel: ObservableObject {
     // MARK: - Public Methods
 
     func updateCardData(_ newCardData: WheelWithRelations) {
-        print("🔄 WheelCardViewModel: обновляем данные для \(newCardData.name)")
 
         // Очищаем старый плеер перед обновлением
         cleanupPlayer()
@@ -65,16 +64,13 @@ final class WheelCardViewModel: ObservableObject {
     // MARK: - Private Methods
 
     private func setupPlayer() {
-        print("🎬 Настраиваем плеер для \(cardData.name)")
 
         // Сначала пробуем внешний URL (если есть)
         if let urlString = cardData.theme?.backgroundVideoURL,
             let url = URL(string: urlString)
         {
-            print("🎬 Используем внешний URL: \(urlString)")
             setupStreamPlayer(with: url)
         } else {
-            print("🎬 Используем локальное видео")
             // Fallback на локальное видео только если нет внешнего URL
             setupLocalVideo()
         }
@@ -140,7 +136,6 @@ final class WheelCardViewModel: ObservableObject {
     }
 
     private func cleanupPlayer() {
-        print("🧹 Очищаем плеер для \(cardData.name)")
 
         // Очищаем потоковый плеер
         if let url = URL(string: cardData.theme?.backgroundVideoURL ?? "") {
