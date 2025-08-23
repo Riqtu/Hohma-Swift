@@ -45,10 +45,13 @@ struct AddSectorFormView: View {
                         .foregroundColor(.white)
 
                     TextField("Введите название фильма", text: $movieTitle)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        // .textFieldStyle(RoundedBorderTextFieldStyle())
                         .onChange(of: movieTitle) { _, newValue in
                             searchMovies(query: newValue)
                         }
+                        .padding()
+                        .background(.thickMaterial)
+                        .cornerRadius(12)
 
                     if isLoading {
                         HStack {
@@ -118,13 +121,7 @@ struct AddSectorFormView: View {
                 .opacity(selectedMovie == nil ? 0.5 : 1.0)
             }
             .padding(20)
-            .background(
-                LinearGradient(
-                    colors: [Color.black.opacity(0.9), Color.black.opacity(0.7)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .appBackground(useVideo: false)
             .navigationTitle("Добавить сектор")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

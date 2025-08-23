@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct NotificationView: View {
+    @ObserveInjection var inject
     let message: String
     let type: NotificationType
     let onDismiss: () -> Void
@@ -81,6 +83,7 @@ struct NotificationView: View {
                 }
             }
         }
+        .enableInjection()
     }
 }
 

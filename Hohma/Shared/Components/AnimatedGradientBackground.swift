@@ -5,28 +5,66 @@
 //  Created by Artem Vydro on 04.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
+
+#if os(macOS)
+    import AppKit
+#else
+    import UIKit
+#endif
 
 struct AnimatedGradientBackground: View {
     @ObserveInjection var inject
     @Environment(\.colorScheme) private var colorScheme
 
+    // Получаем компоненты AccentColor
+    private var accentColorComponents: SIMD3<Double> {
+        #if os(macOS)
+            // Для macOS используем NSColor
+            if let nsColor = NSColor(named: "AccentColor") {
+                var red: CGFloat = 0
+                var green: CGFloat = 0
+                var blue: CGFloat = 0
+                var alpha: CGFloat = 0
+                nsColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+                return SIMD3(Double(red), Double(green), Double(blue))
+            }
+        #else
+            // Для iOS используем UIColor
+            if let uiColor = UIColor(named: "AccentColor") {
+                var red: CGFloat = 0
+                var green: CGFloat = 0
+                var blue: CGFloat = 0
+                var alpha: CGFloat = 0
+                uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+                return SIMD3(Double(red), Double(green), Double(blue))
+            }
+        #endif
+
+        return SIMD3(1.0, 0.5, 0.5)  // Розовый fallback
+    }
+
+    // Функция для применения прозрачности к SIMD3
+    private func applyOpacity(_ color: SIMD3<Double>, opacity: Double) -> SIMD3<Double> {
+        return color * opacity
+    }
+
     // Теперь массив rgb для каждого цвета
     var gradients: [[SIMD3<Double>]] {
         if colorScheme == .dark {
             return [
-                [SIMD3(0.12, 0.12, 0.13), SIMD3(0.17, 0.17, 0.19)],
-                [SIMD3(0.09, 0.09, 0.12), SIMD3(0.22, 0.22, 0.25)],
-                [SIMD3(0.05, 0.05, 0.08), SIMD3(0.18, 0.18, 0.22)],
-                [SIMD3(0.08, 0.08, 0.12), SIMD3(0.15, 0.15, 0.17)],
+                [SIMD3(0.12, 0.12, 0.13), applyOpacity(accentColorComponents, opacity: 0.3)],
+                [applyOpacity(accentColorComponents, opacity: 0.2), SIMD3(0.22, 0.22, 0.25)],
+                [SIMD3(0.05, 0.05, 0.08), applyOpacity(accentColorComponents, opacity: 0.4)],
+                [applyOpacity(accentColorComponents, opacity: 0.1), SIMD3(0.15, 0.15, 0.17)],
             ]
         } else {
             return [
-                [SIMD3(0.93, 0.93, 0.95), SIMD3(1, 1, 1)],
-                [SIMD3(0.85, 0.85, 0.89), SIMD3(0.95, 0.95, 0.97)],
-                [SIMD3(0.82, 0.82, 0.85), SIMD3(0.99, 0.99, 0.99)],
-                [SIMD3(0.90, 0.90, 0.94), SIMD3(0.97, 0.97, 1)],
+                [SIMD3(0.93, 0.93, 0.95), applyOpacity(accentColorComponents, opacity: 0.2)],
+                [applyOpacity(accentColorComponents, opacity: 0.1), SIMD3(0.95, 0.95, 0.97)],
+                [SIMD3(0.82, 0.82, 0.85), applyOpacity(accentColorComponents, opacity: 0.3)],
+                [applyOpacity(accentColorComponents, opacity: 0.15), SIMD3(0.97, 0.97, 1)],
             ]
         }
     }
@@ -35,7 +73,7 @@ struct AnimatedGradientBackground: View {
     @State private var nextIndex = 1
     @State private var progress: CGFloat = 0.0
 
-    let animationDuration: Double = 1
+    let animationDuration: Double = 3
 
     var body: some View {
         LinearGradient(

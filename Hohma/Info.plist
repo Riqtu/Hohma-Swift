@@ -4,20 +4,8 @@
 <dict>
 	<key>API_URL</key>
 	<string>https://hohma.su/api/trpc</string>
-	<key>WS_URL</key>
-	<string>https://ws.hohma.su</string>
-	<key>TELEGRAM_BOT_ID</key>
-	<string>7708867557</string>
-	<key>TELEGRAM_DOMAIN</key>
-	<string>https://hohma.su</string>
-	<key>KINOPOISK_API_KEY</key>
-	<string>$(KINOPOISK_API_KEY)</string>
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>LuckiestGuy-Regular.ttf</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -29,7 +17,17 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Приложению необходим доступ к фотографиям для загрузки аватара профиля</string>
+	<key>KINOPOISK_API_KEY</key>
+	<string>$(KINOPOISK_API_KEY)</string>
+	<key>TELEGRAM_BOT_ID</key>
+	<string>7708867557</string>
+	<key>TELEGRAM_DOMAIN</key>
+	<string>https://hohma.su</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>LuckiestGuy-Regular.ttf</string>
+	</array>
+	<key>WS_URL</key>
+	<string>https://ws.hohma.su</string>
 </dict>
 </plist>

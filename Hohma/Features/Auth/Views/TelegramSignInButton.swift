@@ -15,8 +15,10 @@ struct TelegramSignInButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Image(systemName: "message.fill")
-                    .font(.title2)
+                Image("telegram")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 24)
                     .foregroundColor(.white)
 
                 Text("Войти через Telegram")

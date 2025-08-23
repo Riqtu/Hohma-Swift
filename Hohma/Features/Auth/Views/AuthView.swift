@@ -15,35 +15,50 @@ struct AuthView: View {
     @State private var showTelegramWebView = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Войти в Hohma")
-                .font(.largeTitle)
-                .bold()
+        ZStack(alignment: .top) {
+            // Background image at the very top
+            Image("bulb")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .ignoresSafeArea(.all, edges: .top)
 
-            if let error = viewModel.errorMessage {
-                Text(error)
-                    .foregroundColor(.red)
-            }
+            // Main content
+            VStack(spacing: 20) {
+                Spacer()
+                Text("XOXMA")
+                    .font(.custom("Luckiest Guy", size: 40))
+                    .bold()
+                Text("Добро пожаловать!")
+                    .font(.title2)
+                    .bold()
 
-            TelegramSignInButton {
-                showTelegramWebView = true
-            }
-            .sheet(isPresented: $showTelegramWebView) {
-                TelegramLoginWebView { token in
-                    showTelegramWebView = false
-                    viewModel.handleTelegramAuth(token: token)
+                Spacer()
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .foregroundColor(.red)
                 }
-                #if os(macOS)
-                    .frame(width: 800, height: 600)
-                #endif
-            }
 
-            AppleSignInButton {
-                viewModel.handleAppleAuth()
-            }
+                TelegramSignInButton {
+                    showTelegramWebView = true
+                }
+                .sheet(isPresented: $showTelegramWebView) {
+                    TelegramLoginWebView { token in
+                        showTelegramWebView = false
+                        viewModel.handleTelegramAuth(token: token)
+                    }
+                    #if os(macOS)
+                        .frame(width: 800, height: 600)
+                    #endif
+                }
 
+                AppleSignInButton {
+                    viewModel.handleAppleAuth()
+                }
+
+            }
+            .padding()
         }
-        .padding()
         .enableInjection()
     }
 }

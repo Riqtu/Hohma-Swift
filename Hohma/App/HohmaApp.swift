@@ -21,6 +21,7 @@ struct hohmaApp: App {
 
         setupAudioSession()
         preloadCommonVideos()
+        setupOrientation()
     }
 
     private func setupAudioSession() {
@@ -44,6 +45,16 @@ struct hohmaApp: App {
         videoManager.preloadVideo(resourceName: "affirmation")
         videoManager.preloadVideo(resourceName: "movie")
         videoManager.preloadVideo(resourceName: "persons")
+    }
+
+    private func setupOrientation() {
+        #if os(iOS)
+            // Блокируем поворот экрана для iPhone
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                UIDevice.current.setValue(
+                    UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+            }
+        #endif
     }
 
     var body: some Scene {
