@@ -14,6 +14,7 @@ struct PrimaryButton: View {
                 .frame(maxWidth: .infinity)
                 .background(Color("AccentColor"))
                 .cornerRadius(12)
+                .foregroundColor(.white)
         }
         .enableInjection()
     }

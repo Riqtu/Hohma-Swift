@@ -88,7 +88,7 @@ struct ProfileView: View {
             }
 
             VStack(spacing: 12) {
-                infoRow(title: "Монеты", value: "\(user.coins)", icon: "dollarsign.circle.fill")
+                infoRow(title: "Хохмокоины", value: "\(user.coins)", icon: "dollarsign.circle.fill")
                 infoRow(title: "Клики", value: "\(user.clicks)", icon: "hand.tap.fill")
                 infoRow(
                     title: "Дата регистрации", value: formatDate(user.createdAt), icon: "calendar")
@@ -106,7 +106,6 @@ struct ProfileView: View {
                 .frame(width: 24)
 
             Text(title)
-                .foregroundColor(.white.opacity(0.8))
 
             Spacer()
 
