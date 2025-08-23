@@ -157,6 +157,7 @@ struct FortuneWheelGameView: View {
                 NotificationCenter.default.post(name: .wheelDataUpdated, object: nil)
             }
         }
+
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("XOXMA")

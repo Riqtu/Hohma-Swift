@@ -4,14 +4,16 @@ import SwiftUI
 
 struct WheelCardView: View {
     @ObserveInjection var inject
-    @StateObject private var viewModel: WheelCardViewModel
+    @ObservedObject private var viewModel: WheelCardViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingGame = false
 
+    let cardData: WheelWithRelations
     let currentUser: AuthUser?
 
     init(cardData: WheelWithRelations, currentUser: AuthUser? = nil) {
-        self._viewModel = StateObject(wrappedValue: WheelCardViewModel(cardData: cardData))
+        self.cardData = cardData
+        self.viewModel = WheelCardViewModel(cardData: cardData)
         self.currentUser = currentUser
     }
 
@@ -19,13 +21,14 @@ struct WheelCardView: View {
         VStack(alignment: .leading, spacing: 16) {
             // Видео фон с заголовком
             ZStack {
-                if let urlString = viewModel.cardData.theme?.backgroundVideoURL,
+                if let urlString = cardData.theme?.backgroundVideoURL,
                     let url = URL(string: urlString)
                 {
                     // Используем новый StreamVideoView для внешних URL
                     StreamVideoView(url: url)
                         .frame(width: 380, height: 200)
                         .clipped()
+                        .id(urlString)  // Принудительно пересоздаем при изменении URL
                 } else if viewModel.isVideoReady {
                     // Используем старый VideoBackgroundView для локального видео
                     if let player = viewModel.player {
@@ -46,7 +49,7 @@ struct WheelCardView: View {
 
             // Информация о колесе
             VStack(alignment: .leading, spacing: 10) {
-                Text(viewModel.cardData.name)
+                Text(cardData.name)
                     .font(.system(size: 20))
                     .fontWeight(.bold)
                     .padding(.bottom)
@@ -93,9 +96,15 @@ struct WheelCardView: View {
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.onScenePhaseChanged(newPhase)
         }
+        .onChange(of: cardData.id) { _, _ in
+            // Обновляем viewModel при изменении cardData
+            print("🔄 Обновляем карточку: \(cardData.name)")
+            viewModel.updateCardData(cardData)
+        }
         .navigationDestination(isPresented: $showingGame) {
-            FortuneWheelGameView(wheelData: viewModel.cardData, currentUser: currentUser)
+            FortuneWheelGameView(wheelData: cardData, currentUser: currentUser)
                 .navigationBarTitleDisplayMode(.inline)
+
                 .toolbar(.hidden, for: .tabBar)  // Скрываем TabBar в игре
             // .navigationBarBackButtonHidden(true)
         }

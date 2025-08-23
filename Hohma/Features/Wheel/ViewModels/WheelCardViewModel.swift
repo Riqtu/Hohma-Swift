@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 final class WheelCardViewModel: ObservableObject {
     // MARK: - Properties
-    let cardData: WheelWithRelations
+    @Published var cardData: WheelWithRelations
     @Published var isVideoReady: Bool = false
     @Published var isLoading: Bool = true
     @Published var hasError: Bool = false
@@ -31,6 +31,17 @@ final class WheelCardViewModel: ObservableObject {
 
     // MARK: - Public Methods
 
+    func updateCardData(_ newCardData: WheelWithRelations) {
+        print("🔄 WheelCardViewModel: обновляем данные для \(newCardData.name)")
+
+        // Очищаем старый плеер перед обновлением
+        cleanupPlayer()
+
+        self.cardData = newCardData
+        processUsers()
+        setupPlayer()
+    }
+
     func onAppear() {
         streamPlayer?.resume()
     }
@@ -54,12 +65,16 @@ final class WheelCardViewModel: ObservableObject {
     // MARK: - Private Methods
 
     private func setupPlayer() {
+        print("🎬 Настраиваем плеер для \(cardData.name)")
+
         // Сначала пробуем внешний URL (если есть)
         if let urlString = cardData.theme?.backgroundVideoURL,
             let url = URL(string: urlString)
         {
+            print("🎬 Используем внешний URL: \(urlString)")
             setupStreamPlayer(with: url)
         } else {
+            print("🎬 Используем локальное видео")
             // Fallback на локальное видео только если нет внешнего URL
             setupLocalVideo()
         }
@@ -125,6 +140,8 @@ final class WheelCardViewModel: ObservableObject {
     }
 
     private func cleanupPlayer() {
+        print("🧹 Очищаем плеер для \(cardData.name)")
+
         // Очищаем потоковый плеер
         if let url = URL(string: cardData.theme?.backgroundVideoURL ?? "") {
             streamVideoService.removePlayer(for: url)
@@ -136,6 +153,11 @@ final class WheelCardViewModel: ObservableObject {
         playerObserver = nil
         _player = nil
         playerKey = nil
+
+        // Сбрасываем состояния
+        isVideoReady = false
+        isLoading = true
+        hasError = false
     }
 
     // MARK: - Legacy Support (для локального видео)
@@ -210,6 +232,11 @@ final class WheelCardViewModel: ObservableObject {
 
     var hasParticipants: Bool {
         !cardData.sectors.isEmpty
+    }
+
+    // Метод для получения актуальных данных
+    func getCurrentCardData() -> WheelWithRelations {
+        return cardData
     }
 
     var participantsCount: Int {

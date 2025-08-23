@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 @MainActor
 class WheelListViewModel: ObservableObject {
@@ -111,7 +112,11 @@ class WheelListViewModel: ObservableObject {
         // Сортируем по дате создания (новые сверху)
         updatedWheels.sort { $0.createdAt > $1.createdAt }
 
-        self.wheels = updatedWheels
+        // Принудительно обновляем UI с анимацией
+        print("🔄 Обновляем список колес: \(updatedWheels.count) элементов")
+        withAnimation(.easeInOut(duration: 0.3)) {
+            self.wheels = updatedWheels
+        }
     }
 
     // MARK: - Public Methods
