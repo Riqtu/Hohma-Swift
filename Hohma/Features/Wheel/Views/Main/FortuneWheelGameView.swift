@@ -43,83 +43,62 @@ struct FortuneWheelGameView: View {
 
                 // Основной контент
                 VStack(spacing: 16) {
-                    // Заголовок
-                    HStack {
-                        Spacer()
-
-                        VStack(spacing: 4) {
-                            Text("XOXMA")
-                                .font(.custom("Luckiest Guy", size: 32))
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-
-                            HStack(spacing: 4) {
-                                Text("Свайп для фильмов")
-                                    .font(.caption2)
-                                    .foregroundColor(
-                                        Color(hex: viewModel.wheelState.accentColor).opacity(0.7))
-                                Image(systemName: "arrow.left")
-                                    .font(.caption)
-                                    .foregroundColor(
-                                        Color(hex: viewModel.wheelState.accentColor).opacity(0.7)
-                                    )
-                                    .offset(x: swipeAnimation ? -5 : 0)
-                                    .animation(
-                                        .easeInOut(duration: 0.2),
-                                        value: swipeAnimation)
-                            }
-                        }
-                        .scaleEffect(swipeAnimation ? 1.1 : 1.0)
-                        .animation(.easeInOut(duration: 0.3), value: swipeAnimation)
-
-                        Spacer()
+                    // Подсказка о свайпе
+                    HStack(spacing: 4) {
+                        Text("Свайп для фильмов")
+                            .font(.caption2)
+                            .foregroundColor(
+                                Color(hex: viewModel.wheelState.accentColor).opacity(0.8))
+                        Image(systemName: "arrow.left")
+                            .font(.caption2)
+                            .foregroundColor(
+                                Color(hex: viewModel.wheelState.accentColor).opacity(0.8)
+                            )
+                            .offset(x: swipeAnimation ? -2 : 0)
+                            .animation(.easeInOut(duration: 0.2), value: swipeAnimation)
                     }
-                    .padding(.top, 16)
-                    .padding(.bottom, -10)
+                    .padding(.top, 8)
 
                     // Основная область с колесом
-                    ScrollView(showsIndicators: false) {
-                        // Панель пользователей
-                        VStack {
-                            UsersPanelView(
-                                viewModel: viewModel,
-                                accentColor: viewModel.wheelState.accentColor
-                            )
-                            Spacer()
-                        }
+                    // Панель пользователей
+                    VStack {
+                        UsersPanelView(
+                            viewModel: viewModel,
+                            accentColor: viewModel.wheelState.accentColor
+                        )
+                    }
+                    .padding(.horizontal, 20)
 
-                        // Центральная область с колесом
-                        VStack(spacing: 16) {
-                            // Колесо фортуны
-                            FortuneWheelView(
-                                wheelState: viewModel.wheelState,
-                                size: viewModel.calculateWheelSize(for: geometry) + 120
-                            )
+                    // Центральная область с колесом
+                    VStack(spacing: 16) {
+                        // Колесо фортуны
+                        FortuneWheelView(
+                            wheelState: viewModel.wheelState,
+                            size: viewModel.calculateWheelSize(for: geometry) + 120
+                        )
 
-                            // Управление
-                            WheelControlsView(
-                                wheelState: viewModel.wheelState,
-                                viewModel: viewModel,
-                                userCoins: viewModel.currentUserCoins,
-                                isSocketReady: viewModel.isSocketReady
-                            )
+                        // Управление
+                        WheelControlsView(
+                            wheelState: viewModel.wheelState,
+                            viewModel: viewModel,
+                            userCoins: viewModel.currentUserCoins,
+                            isSocketReady: viewModel.isSocketReady
+                        )
 
-                            // Индикатор подключения
-                            if !viewModel.isSocketReady {
-                                HStack {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("Подключение к игре...")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.black.opacity(0.6))
-                                .cornerRadius(8)
+                        // Индикатор подключения
+                        if !viewModel.isSocketReady {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Подключение к игре...")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(8)
                         }
-
                     }
                     .padding(.horizontal, 20)
 
@@ -159,24 +138,35 @@ struct FortuneWheelGameView: View {
                     }
                 }
         )
-        .overlay(
-            Group {
-                if showingSectorsFullScreen {
-                    SectorsSlideView(
-                        isPresented: $showingSectorsFullScreen,
-                        sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
-                        title: "Фильмы",
-                        accentColor: viewModel.wheelState.accentColor,
-                        viewModel: viewModel
-                    )
-                }
-            }
-        )
+        .navigationDestination(isPresented: $showingSectorsFullScreen) {
+            SectorsSlideView(
+                isPresented: $showingSectorsFullScreen,
+                sectors: viewModel.wheelState.sectors + viewModel.wheelState.losers,
+                title: "Фильмы",
+                accentColor: viewModel.wheelState.accentColor,
+                viewModel: viewModel
+            )
+        }
         .onAppear {
             viewModel.setupVideoBackground()
         }
         .onDisappear {
             viewModel.cleanup()
+            // Уведомляем об обновлении данных колеса только если были изменения
+            if viewModel.wheelState.sectors.count > 0 || viewModel.wheelState.losers.count > 0 {
+                NotificationCenter.default.post(name: .wheelDataUpdated, object: nil)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("XOXMA")
+                    .font(.custom("Luckiest Guy", size: 26))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .scaleEffect(swipeAnimation ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 0.3), value: swipeAnimation)
+                    .padding(.top, 10)
+            }
         }
         .overlay(
             Group {

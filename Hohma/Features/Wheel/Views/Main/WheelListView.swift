@@ -19,50 +19,61 @@ struct WheelListView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                Text("Колесо фортуны")
-                    .font(.title)
-                    .fontWeight(.semibold)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Колесо фортуны")
+                        .font(.title)
+                        .fontWeight(.semibold)
 
-                if viewModel.isLoading {
-                    ProgressView()
-                } else if let error = viewModel.error, error.lowercased() != "cancelled" {
-                    Text("Ошибка: \(error)")
-                        .foregroundColor(.red)
-                } else {
-                    ForEach(viewModel.wheels, id: \.id) { wheel in
-                        WheelCardView(
-                            cardData: wheel,
-                            currentUser: user?.user
-                        )
-                    }
-                }
-
-                if viewModel.isRefreshing {
-                    HStack {
+                    if viewModel.isLoading {
                         ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Обновление...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    } else if let error = viewModel.error, error.lowercased() != "cancelled" {
+                        Text("Ошибка: \(error)")
+                            .foregroundColor(.red)
+                    } else {
+                        ForEach(viewModel.wheels, id: \.id) { wheel in
+                            WheelCardView(
+                                cardData: wheel,
+                                currentUser: user?.user
+                            )
+                        }
                     }
-                    .padding(.top, 10)
-                }
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding()
-                .onAppear {
-                    Task {
-                        await viewModel.loadWheels()
-                    }
-                }
-        }
 
-        .refreshable {
-            print("⚡️ refreshable вызван")
-            await Task {
+                    if viewModel.isRefreshing {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Обновление...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 10)
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                    .onAppear {
+                        Task {
+                            // Загружаем данные только если список пустой
+                            if viewModel.wheels.isEmpty {
+                                await viewModel.loadWheels()
+                            }
+                        }
+                    }
+            }
+            .appBackground()
+            .refreshable {
+                print("⚡️ refreshable вызван")
+                await Task {
+                    await viewModel.refreshWheels()
+                }.value
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
+            // Обновляем данные при изменении колеса (например, после игры)
+            Task {
                 await viewModel.refreshWheels()
-            }.value
+            }
         }
         .enableInjection()
     }

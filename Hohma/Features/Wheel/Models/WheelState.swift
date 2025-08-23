@@ -12,6 +12,7 @@ import SwiftUI
 extension Notification.Name {
     static let sectorEliminated = Notification.Name("sectorEliminated")
     static let wheelCompleted = Notification.Name("wheelCompleted")
+    static let wheelDataUpdated = Notification.Name("wheelDataUpdated")
 }
 
 @MainActor

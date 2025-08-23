@@ -93,11 +93,11 @@ struct WheelCardView: View {
         .onChange(of: scenePhase) { _, newPhase in
             viewModel.onScenePhaseChanged(newPhase)
         }
-        .sheet(isPresented: $showingGame) {
-            FortuneWheelGameView(
-                wheelData: viewModel.cardData,
-                currentUser: currentUser
-            )
+        .navigationDestination(isPresented: $showingGame) {
+            FortuneWheelGameView(wheelData: viewModel.cardData, currentUser: currentUser)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .tabBar)  // Скрываем TabBar в игре
+            // .navigationBarBackButtonHidden(true)
         }
         .enableInjection()
     }

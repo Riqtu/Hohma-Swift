@@ -49,7 +49,7 @@ struct SectorsTableView: View {
                 LazyVStack(spacing: 8) {
                     ForEach(sectors) { sector in
                         SectorRowView(
-                            sector: sector, 
+                            sector: sector,
                             accentColor: accentColor,
                             viewModel: viewModel
                         )
@@ -66,19 +66,15 @@ struct SectorsTableView: View {
                         .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
                 )
         )
-        .overlay(
-            Group {
-                if showingFullScreen {
-                    SectorsSlideView(
-                        isPresented: $showingFullScreen,
-                        sectors: sectors,
-                        title: title,
-                        accentColor: accentColor,
-                        viewModel: viewModel
-                    )
-                }
-            }
-        )
+        .navigationDestination(isPresented: $showingFullScreen) {
+            SectorsSlideView(
+                isPresented: $showingFullScreen,
+                sectors: sectors,
+                title: title,
+                accentColor: accentColor,
+                viewModel: viewModel
+            )
+        }
     }
 }
 
@@ -117,8 +113,9 @@ struct SectorRowView: View {
 
             // Кнопка удаления (только для владельца сектора)
             if let viewModel = viewModel,
-               let currentUser = viewModel.user,
-               sector.userId == currentUser.id {
+                let currentUser = viewModel.user,
+                sector.userId == currentUser.id
+            {
                 Button(action: {
                     viewModel.deleteSector(sector)
                 }) {

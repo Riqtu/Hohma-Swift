@@ -47,6 +47,11 @@ class WheelListViewModel: ObservableObject {
         }
     }
 
+    /// Принудительно загружает данные, даже если список не пустой
+    func forceLoadWheels() async {
+        await loadWheels()
+    }
+
     func refreshWheels() async {
         isRefreshing = true
         defer { isRefreshing = false }

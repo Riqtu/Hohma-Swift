@@ -52,7 +52,6 @@ struct UsersPanelView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 20)
             } else {
                 LazyHStack(spacing: 8) {
                     ForEach(viewModel.roomUsers.prefix(8)) { user in
@@ -70,6 +69,7 @@ struct UsersPanelView: View {
             }
         }
         .padding(16)
+        .frame(maxHeight: 100)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.black.opacity(0.3))
