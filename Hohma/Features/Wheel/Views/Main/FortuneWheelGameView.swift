@@ -61,29 +61,65 @@ struct FortuneWheelGameView: View {
 
                     // Основная область с колесом
                     // Панель пользователей
-                    VStack {
-                        UsersPanelView(
-                            viewModel: viewModel,
-                            accentColor: viewModel.wheelState.accentColor
-                        )
-                    }
-                    .padding(.horizontal, 20)
 
                     // Центральная область с колесом
                     VStack(spacing: 16) {
                         // Колесо фортуны
-                        FortuneWheelView(
-                            wheelState: viewModel.wheelState,
-                            size: viewModel.calculateWheelSize(for: geometry) + 120
-                        )
+                        Group {
+                            if geometry.size.height > geometry.size.width {
+                                // Вертикальная ориентация - VStack
+                                VStack(spacing: 16) {
+                                    UsersPanelView(
+                                        viewModel: viewModel,
+                                        accentColor: viewModel.wheelState.accentColor
+                                    )
+                                    FortuneWheelView(
+                                        wheelState: viewModel.wheelState,
+                                        size: viewModel.calculateWheelSize(for: geometry)
+                                    )
+                                    .frame(maxWidth: .infinity)
 
-                        // Управление
-                        WheelControlsView(
-                            wheelState: viewModel.wheelState,
-                            viewModel: viewModel,
-                            userCoins: viewModel.currentUserCoins,
-                            isSocketReady: viewModel.isSocketReady
-                        )
+                                    // Управление
+                                    WheelControlsView(
+                                        wheelState: viewModel.wheelState,
+                                        viewModel: viewModel,
+                                        userCoins: viewModel.currentUserCoins,
+                                        isSocketReady: viewModel.isSocketReady
+                                    )
+                                }
+                            } else {
+                                // Горизонтальная ориентация - HStack
+                                HStack(spacing: 16) {
+                                    UsersPanelView(
+                                        viewModel: viewModel,
+                                        accentColor: viewModel.wheelState.accentColor
+                                    )
+
+                                    GeometryReader { wheelGeometry in
+                                        FortuneWheelView(
+                                            wheelState: viewModel.wheelState,
+                                            size: viewModel.calculateWheelSize(
+                                                for: geometry,
+                                                availableWidth: wheelGeometry.size.width
+                                            )
+                                        )
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .position(
+                                            x: wheelGeometry.size.width / 2,
+                                            y: wheelGeometry.size.height / 2
+                                        )
+                                    }
+
+                                    // Управление
+                                    WheelControlsView(
+                                        wheelState: viewModel.wheelState,
+                                        viewModel: viewModel,
+                                        userCoins: viewModel.currentUserCoins,
+                                        isSocketReady: viewModel.isSocketReady
+                                    )
+                                }
+                            }
+                        }
 
                         // Индикатор подключения
                         if !viewModel.isSocketReady {

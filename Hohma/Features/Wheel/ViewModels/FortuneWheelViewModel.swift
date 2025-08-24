@@ -200,10 +200,24 @@ class FortuneWheelViewModel: ObservableObject {
         streamPlayer?.resume()
     }
 
-    func calculateWheelSize(for geometry: GeometryProxy) -> CGFloat {
-        let minDimension = min(geometry.size.width, geometry.size.height)
-        let wheelSize = minDimension * 0.35  // 35% от меньшей стороны экрана
-        return max(200, min(wheelSize, 300))  // Ограничиваем размер
+    func calculateWheelSize(for geometry: GeometryProxy, availableWidth: CGFloat? = nil) -> CGFloat
+    {
+        _ = min(geometry.size.width, geometry.size.height)
+        _ = max(geometry.size.width, geometry.size.height)
+
+        // Определяем ориентацию
+        let isLandscape = geometry.size.width > geometry.size.height
+
+        if isLandscape {
+            // В альбомной ориентации используем доступную ширину или высоту
+            let availableSpace = availableWidth ?? geometry.size.width
+            let wheelSize = min(geometry.size.height * 0.9, availableSpace * 0.7)
+            return max(250, min(wheelSize, 700))
+        } else {
+            // В портретной ориентации используем ширину как основу
+            let wheelSize = geometry.size.width * 0.8  // 70% от ширины
+            return max(250, min(wheelSize, 500))  // Минимум 250, максимум 500
+        }
     }
 
     // MARK: - Callbacks

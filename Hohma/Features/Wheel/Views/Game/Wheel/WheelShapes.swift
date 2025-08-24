@@ -55,7 +55,7 @@ struct WinnerOverlayView: View {
         .frame(width: size, height: size)
         .background(
             LinearGradient(
-                gradient: Gradient(colors: [mainColor, Color.gray.opacity(0.8)]),
+                gradient: Gradient(colors: [mainColor, Color.gray]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

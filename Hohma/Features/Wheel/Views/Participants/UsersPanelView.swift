@@ -12,6 +12,8 @@ struct UsersPanelView: View {
     @ObserveInjection var inject
     @ObservedObject var viewModel: FortuneWheelViewModel
     let accentColor: String
+    @State private var orientation = UIDevice.current.orientation
+    @State private var screenSize: CGSize = .zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -53,7 +55,11 @@ struct UsersPanelView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             } else {
-                LazyHStack(spacing: 8) {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.adaptive(minimum: 44, maximum: 44), spacing: 8)
+                    ], spacing: 8
+                ) {
                     ForEach(viewModel.roomUsers.prefix(8)) { user in
                         UserRowView(user: user, accentColor: accentColor)
                     }
@@ -69,7 +75,15 @@ struct UsersPanelView: View {
             }
         }
         .padding(16)
-        .frame(maxHeight: 100)
+        .frame(
+            maxWidth: orientation.isLandscape ? 200 : nil,
+            maxHeight: orientation.isPortrait ? 100 : nil
+        )
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)
+        ) { _ in
+            orientation = UIDevice.current.orientation
+        }
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.black.opacity(0.3))

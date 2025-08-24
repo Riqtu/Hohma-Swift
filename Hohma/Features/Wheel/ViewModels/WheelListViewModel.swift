@@ -312,7 +312,7 @@ class WheelListViewModel: ObservableObject {
         config.timeoutIntervalForResource = 60
         let session = URLSession(configuration: config)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, _) = try await session.data(for: request)
 
         let responseObject = try decoder.decode(WheelListPaginationResponse.self, from: data)
         return responseObject.result.data.json

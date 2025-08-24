@@ -45,11 +45,15 @@ struct WheelListView: View {
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, minHeight: 200)
                     } else {
-                        ForEach(viewModel.wheels, id: \.id) { wheel in
-                            WheelCardView(
-                                cardData: wheel,
-                                currentUser: user?.user
-                            )
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 375), spacing: 20)], spacing: 20
+                        ) {
+                            ForEach(viewModel.wheels, id: \.id) { wheel in
+                                WheelCardView(
+                                    cardData: wheel,
+                                    currentUser: user?.user
+                                )
+                            }
                         }
                     }
 

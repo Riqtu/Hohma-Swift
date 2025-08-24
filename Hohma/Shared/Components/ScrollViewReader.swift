@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import Inject
 
 struct ScrollViewReader<Content: View>: View {
+    @ObserveInjection var inject
     let content: Content
     let onLoadMore: () async -> Void
     let isLoadingMore: Bool
@@ -93,6 +95,7 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 // MARK: - Улучшенный ScrollView с пагинацией
 
 struct PaginatedScrollView<Content: View>: View {
+    @ObserveInjection var inject
     let content: Content
     let onLoadMore: () async -> Void
     let isLoadingMore: Bool
