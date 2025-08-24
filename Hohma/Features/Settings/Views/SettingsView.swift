@@ -4,6 +4,9 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObserveInjection var inject
+    @State private var showingWebView = false
+    @State private var webViewURL: URL?
+    @State private var webViewTitle = ""
 
     var body: some View {
         NavigationStack {
@@ -46,16 +49,64 @@ struct SettingsView: View {
                                 title: "О приложении",
                                 subtitle: "Версия 1.0.0",
                                 action: {
-                                    // Действие для информации о приложении
+                                    webViewURL = URL(string: "https://hohma.su/about")
+                                    webViewTitle = "О приложении"
+                                    showingWebView = true
                                 }
                             )
 
                             SettingsRow(
                                 icon: "questionmark.circle",
                                 title: "Помощь",
-                                subtitle: "FAQ и поддержка",
+                                subtitle: "Связаться с поддержкой",
                                 action: {
-                                    // Действие для помощи
+                                    if let url = URL(string: "mailto:xxx-zet@mail.ru") {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }
+                            )
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // Правовая информация
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Правовая информация")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal)
+
+                        VStack(spacing: 12) {
+                            SettingsRow(
+                                icon: "doc.text",
+                                title: "Политика конфиденциальности",
+                                subtitle: "Как мы используем ваши данные",
+                                action: {
+                                    webViewURL = URL(string: "https://hohma.su/privacy-policy")
+                                    webViewTitle = "Политика конфиденциальности"
+                                    showingWebView = true
+                                }
+                            )
+
+                            SettingsRow(
+                                icon: "doc.text.fill",
+                                title: "Условия использования",
+                                subtitle: "Правила использования приложения",
+                                action: {
+                                    webViewURL = URL(string: "https://hohma.su/terms-of-service")
+                                    webViewTitle = "Условия использования"
+                                    showingWebView = true
+                                }
+                            )
+
+                            SettingsRow(
+                                icon: "person.text.rectangle",
+                                title: "Пользовательское соглашение",
+                                subtitle: "Краткие правила",
+                                action: {
+                                    webViewURL = URL(string: "https://hohma.su/user-agreement")
+                                    webViewTitle = "Пользовательское соглашение"
+                                    showingWebView = true
                                 }
                             )
                         }
@@ -70,6 +121,11 @@ struct SettingsView: View {
             .navigationBarHidden(true)
             .animation(nil, value: UUID())
             .scrollIndicators(.hidden)
+        }
+        .sheet(isPresented: $showingWebView) {
+            if let url = webViewURL {
+                WebViewSheet(url: url, title: webViewTitle)
+            }
         }
         .enableInjection()
     }
