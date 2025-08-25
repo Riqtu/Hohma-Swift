@@ -49,9 +49,11 @@ struct SettingsView: View {
                                 title: "О приложении",
                                 subtitle: "Версия 1.0.0",
                                 action: {
-                                    webViewURL = URL(string: "https://hohma.su/about")
-                                    webViewTitle = "О приложении"
-                                    showingWebView = true
+                                    if let url = URL(string: "https://hohma.su/about") {
+                                        webViewURL = url
+                                        webViewTitle = "О приложении"
+                                        showingWebView = true
+                                    }
                                 }
                             )
 
@@ -82,9 +84,11 @@ struct SettingsView: View {
                                 title: "Политика конфиденциальности",
                                 subtitle: "Как мы используем ваши данные",
                                 action: {
-                                    webViewURL = URL(string: "https://hohma.su/privacy-policy")
-                                    webViewTitle = "Политика конфиденциальности"
-                                    showingWebView = true
+                                    if let url = URL(string: "https://hohma.su/privacy-policy") {
+                                        webViewURL = url
+                                        webViewTitle = "Политика конфиденциальности"
+                                        showingWebView = true
+                                    }
                                 }
                             )
 
@@ -93,9 +97,11 @@ struct SettingsView: View {
                                 title: "Условия использования",
                                 subtitle: "Правила использования приложения",
                                 action: {
-                                    webViewURL = URL(string: "https://hohma.su/terms-of-service")
-                                    webViewTitle = "Условия использования"
-                                    showingWebView = true
+                                    if let url = URL(string: "https://hohma.su/terms-of-service") {
+                                        webViewURL = url
+                                        webViewTitle = "Условия использования"
+                                        showingWebView = true
+                                    }
                                 }
                             )
 
@@ -104,9 +110,11 @@ struct SettingsView: View {
                                 title: "Пользовательское соглашение",
                                 subtitle: "Краткие правила",
                                 action: {
-                                    webViewURL = URL(string: "https://hohma.su/user-agreement")
-                                    webViewTitle = "Пользовательское соглашение"
-                                    showingWebView = true
+                                    if let url = URL(string: "https://hohma.su/user-agreement") {
+                                        webViewURL = url
+                                        webViewTitle = "Пользовательское соглашение"
+                                        showingWebView = true
+                                    }
                                 }
                             )
                         }
@@ -125,6 +133,13 @@ struct SettingsView: View {
         .sheet(isPresented: $showingWebView) {
             if let url = webViewURL {
                 WebViewSheet(url: url, title: webViewTitle)
+            }
+        }
+        .onChange(of: showingWebView) { _, newValue in
+            if !newValue {
+                // Сбросить URL при закрытии
+                webViewURL = nil
+                webViewTitle = ""
             }
         }
         .enableInjection()

@@ -60,12 +60,6 @@ struct CustomSidebar: View {
                 ) { selection = "wheelList" }
 
                 SidebarButton(
-                    title: "Тест видео",
-                    icon: "video",
-                    isSelected: selection == "videoTest"
-                ) { selection = "videoTest" }
-
-                SidebarButton(
                     title: "Профиль",
                     icon: "person",
                     isSelected: selection == "profile"
