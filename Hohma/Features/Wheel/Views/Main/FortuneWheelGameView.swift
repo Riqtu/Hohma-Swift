@@ -80,8 +80,7 @@ struct FortuneWheelGameView: View {
                                     .frame(maxWidth: .infinity)
 
                                     // Управление (скрываем если есть победитель)
-                                    if !(viewModel.wheelState.losers.count > 0
-                                        && viewModel.wheelState.sectors.count == 1)
+                                    if !viewModel.wheelState.sectors.contains(where: { $0.winner })
                                     {
                                         WheelControlsView(
                                             wheelState: viewModel.wheelState,
@@ -115,8 +114,7 @@ struct FortuneWheelGameView: View {
                                     }
 
                                     // Управление (скрываем если есть победитель)
-                                    if !(viewModel.wheelState.losers.count > 0
-                                        && viewModel.wheelState.sectors.count == 1)
+                                    if !viewModel.wheelState.sectors.contains(where: { $0.winner })
                                     {
                                         WheelControlsView(
                                             wheelState: viewModel.wheelState,

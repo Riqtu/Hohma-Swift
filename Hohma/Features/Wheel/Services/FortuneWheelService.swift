@@ -67,7 +67,7 @@ class FortuneWheelService: ObservableObject {
 
     // MARK: - Sector Operations
 
-    func updateSector(_ id: String, eliminated: Bool) async throws -> Sector {
+    func updateSector(_ id: String, eliminated: Bool, winner: Bool? = nil) async throws -> Sector {
         guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
             let url = URL(string: "\(apiURL)/sector.update")
         else {
@@ -79,7 +79,13 @@ class FortuneWheelService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = wrapInTRPCFormat(["id": id, "eliminated": eliminated])
+
+        var bodyData: [String: Any] = ["id": id, "eliminated": eliminated]
+        if let winner = winner {
+            bodyData["winner"] = winner
+        }
+
+        let body = wrapInTRPCFormat(bodyData)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         addAuthorizationHeader(to: &request)

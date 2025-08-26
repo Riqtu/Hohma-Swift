@@ -80,6 +80,10 @@ class FortuneWheelViewModel: ObservableObject {
             self?.handleSectorEliminated(sectorId)
         }
 
+        wheelState.setWinner = { [weak self] sectorId in
+            self?.handleSectorWinner(sectorId)
+        }
+
         wheelState.setWheelStatus = { [weak self] status, wheelId in
             self?.handleWheelStatusChange(status, wheelId: wheelId)
         }
@@ -237,6 +241,26 @@ class FortuneWheelViewModel: ObservableObject {
             } catch {
                 self.error = "Ошибка обновления сектора: \(error.localizedDescription)"
                 print("❌ FortuneWheelViewModel: Sector update error: \(error)")
+            }
+        }
+    }
+
+    private func handleSectorWinner(_ sectorId: String) {
+        Task {
+            do {
+                let updatedSector = try await wheelService.updateSector(
+                    sectorId, eliminated: false, winner: true)
+                wheelState.updateSector(updatedSector)
+            } catch URLError.userAuthenticationRequired {
+                // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+                print("🔐 FortuneWheelViewModel: Authorization required for winner update")
+            } catch let decodingError as DecodingError {
+                self.error =
+                    "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Decoding error for winner update: \(decodingError)")
+            } catch {
+                self.error = "Ошибка обновления победителя: \(error.localizedDescription)"
+                print("❌ FortuneWheelViewModel: Winner update error: \(error)")
             }
         }
     }

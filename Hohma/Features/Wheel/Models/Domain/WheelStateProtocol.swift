@@ -24,6 +24,7 @@ protocol WheelStateProtocol: ObservableObject {
 
     // MARK: - Callbacks
     var setEliminated: ((String) -> Void)? { get set }
+    var setWinner: ((String) -> Void)? { get set }
     var setWheelStatus: ((WheelStatus, String) -> Void)? { get set }
     var payoutBets: ((String, String) -> Void)? { get set }
 

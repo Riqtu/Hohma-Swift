@@ -96,9 +96,9 @@ struct FortuneWheelView: View {
             }
 
             // Экран победителя
-            if wheelState.losers.count > 0 && wheelState.sectors.count == 1 {
+            if let winningSector = wheelState.sectors.first(where: { $0.winner }) {
                 WinnerOverlayView(
-                    sector: wheelState.sectors[0], size: size + 35, mainColor: mainColor)
+                    sector: winningSector, size: size + 35, mainColor: mainColor)
             }
         }
         .padding(.top, 20)

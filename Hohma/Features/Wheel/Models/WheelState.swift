@@ -32,6 +32,7 @@ class WheelState: ObservableObject {
 
     // MARK: - Callbacks
     var setEliminated: ((String) -> Void)?
+    var setWinner: ((String) -> Void)?
     var setWheelStatus: ((WheelStatus, String) -> Void)?
     var payoutBets: ((String, String) -> Void)?
 
@@ -192,6 +193,32 @@ class WheelState: ObservableObject {
             self.losers.insert(eliminatedSector, at: 0)
 
             if self.sectors.count == 1 && self.losers.count > 0 {
+                // Устанавливаем winner = true для оставшегося сектора
+                let winningSector = self.sectors[0]
+                let updatedSector = Sector(
+                    id: winningSector.id,
+                    label: winningSector.label,
+                    color: winningSector.color,
+                    name: winningSector.name,
+                    eliminated: winningSector.eliminated,
+                    winner: true,  // Устанавливаем winner = true
+                    description: winningSector.description,
+                    pattern: winningSector.pattern,
+                    patternPosition: winningSector.patternPosition,
+                    poster: winningSector.poster,
+                    genre: winningSector.genre,
+                    rating: winningSector.rating,
+                    year: winningSector.year,
+                    labelColor: winningSector.labelColor,
+                    labelHidden: winningSector.labelHidden,
+                    wheelId: winningSector.wheelId,
+                    userId: winningSector.userId,
+                    user: winningSector.user,
+                    createdAt: winningSector.createdAt,
+                    updatedAt: winningSector.updatedAt
+                )
+                self.sectors[0] = updatedSector
+                self.setWinner?(self.sectors[0].id)
                 self.setWheelStatus?(.completed, self.sectors[0].wheelId)
                 self.payoutBets?(self.sectors[0].wheelId, self.sectors[0].id)
             } else {
