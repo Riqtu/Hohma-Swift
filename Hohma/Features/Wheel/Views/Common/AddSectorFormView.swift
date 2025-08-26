@@ -36,13 +36,11 @@ struct AddSectorFormView: View {
                 Text("Добавить фильм")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
 
                 // Поле поиска фильма
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Название фильма")
                         .font(.headline)
-                        .foregroundColor(.white)
 
                     TextField("Введите название фильма", text: $movieTitle)
                         // .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -109,7 +107,9 @@ struct AddSectorFormView: View {
                 Button(action: addSector) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.white)
                         Text("Добавить сектор")
+                            .foregroundColor(.white)
                     }
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -248,7 +248,6 @@ struct MovieSearchResultRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(movie.name)
                         .font(.headline)
-                        .foregroundColor(.white)
                         .lineLimit(2)
 
                     Text("\(movie.year)")
@@ -320,7 +319,6 @@ struct SelectedMovieCard: View {
                 Text(movie.name)
                     .font(.title3)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
                     .lineLimit(2)
 
                 Text("\(movie.year)")
