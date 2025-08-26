@@ -79,13 +79,17 @@ struct FortuneWheelGameView: View {
                                     )
                                     .frame(maxWidth: .infinity)
 
-                                    // Управление
-                                    WheelControlsView(
-                                        wheelState: viewModel.wheelState,
-                                        viewModel: viewModel,
-                                        userCoins: viewModel.currentUserCoins,
-                                        isSocketReady: viewModel.isSocketReady
-                                    )
+                                    // Управление (скрываем если есть победитель)
+                                    if !(viewModel.wheelState.losers.count > 0
+                                        && viewModel.wheelState.sectors.count == 1)
+                                    {
+                                        WheelControlsView(
+                                            wheelState: viewModel.wheelState,
+                                            viewModel: viewModel,
+                                            userCoins: viewModel.currentUserCoins,
+                                            isSocketReady: viewModel.isSocketReady
+                                        )
+                                    }
                                 }
                             } else {
                                 // Горизонтальная ориентация - HStack
@@ -110,13 +114,17 @@ struct FortuneWheelGameView: View {
                                         )
                                     }
 
-                                    // Управление
-                                    WheelControlsView(
-                                        wheelState: viewModel.wheelState,
-                                        viewModel: viewModel,
-                                        userCoins: viewModel.currentUserCoins,
-                                        isSocketReady: viewModel.isSocketReady
-                                    )
+                                    // Управление (скрываем если есть победитель)
+                                    if !(viewModel.wheelState.losers.count > 0
+                                        && viewModel.wheelState.sectors.count == 1)
+                                    {
+                                        WheelControlsView(
+                                            wheelState: viewModel.wheelState,
+                                            viewModel: viewModel,
+                                            userCoins: viewModel.currentUserCoins,
+                                            isSocketReady: viewModel.isSocketReady
+                                        )
+                                    }
                                 }
                             }
                         }
