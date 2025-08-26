@@ -26,7 +26,7 @@ class FortuneWheelViewModel: ObservableObject {
     private var streamPlayer: StreamPlayer?
     private var streamVideoService = StreamVideoService.shared
     private var socketService: SocketIOServiceV2
-    private var wheelService = FortuneWheelService()
+    private var wheelService = FortuneWheelService.shared
     private var cancellables = Set<AnyCancellable>()
 
     private let wheelData: WheelWithRelations

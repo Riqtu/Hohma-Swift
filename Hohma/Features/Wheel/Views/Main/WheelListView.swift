@@ -12,6 +12,7 @@ struct WheelListView: View {
     let user: AuthResult?
     @ObserveInjection var inject
     @StateObject private var viewModel: WheelListViewModel
+    @State private var showingCreateForm = false
 
     init(user: AuthResult?) {
         self.user = user
@@ -33,9 +34,21 @@ struct WheelListView: View {
                 }
             ) {
                 VStack(spacing: 20) {
-                    Text("Колесо фортуны")
-                        .font(.title)
-                        .fontWeight(.semibold)
+                    HStack {
+                        Text("Колесо фортуны")
+                            .font(.title)
+                            .fontWeight(.semibold)
+
+                        Spacer()
+
+                        Button(action: {
+                            showingCreateForm = true
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(Color("AccentColor"))
+                        }
+                    }
 
                     if viewModel.isLoading {
                         ProgressView()
@@ -86,6 +99,10 @@ struct WheelListView: View {
             Task {
                 await viewModel.refreshWheels()
             }
+        }
+        .sheet(isPresented: $showingCreateForm) {
+            CreateWheelFormView()
+                .presentationDragIndicator(.visible)
         }
         .enableInjection()
     }

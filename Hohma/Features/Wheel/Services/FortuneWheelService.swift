@@ -10,6 +10,9 @@ import Foundation
 
 @MainActor
 class FortuneWheelService: ObservableObject {
+    static let shared = FortuneWheelService()
+    private init() {}
+
     private let networkManager = NetworkManager.shared
     private var cancellables = Set<AnyCancellable>()
 
@@ -158,6 +161,44 @@ class FortuneWheelService: ObservableObject {
         addAuthorizationHeader(to: &request)
 
         let _: SuccessResponse = try await networkManager.request(request)
+    }
+
+    // MARK: - Wheel Creation
+
+    func createWheel(_ wheelRequest: WheelCreateRequest) async throws -> WheelWithRelations {
+        guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
+            let url = URL(string: "\(apiURL)/wheelList.create")
+        else {
+            throw NSError(
+                domain: "NetworkError", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = wrapInTRPCFormat(wheelRequest.dictionary)
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        addAuthorizationHeader(to: &urlRequest)
+
+        return try await networkManager.request(urlRequest)
+    }
+
+    func getAllThemes() async throws -> [WheelTheme] {
+        guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
+            let url = URL(string: "\(apiURL)/wheelTheme.getAllExpress")
+        else {
+            throw NSError(
+                domain: "NetworkError", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addAuthorizationHeader(to: &request)
+
+        return try await networkManager.request(request)
     }
 
     // MARK: - User Operations
