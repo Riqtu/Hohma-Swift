@@ -212,8 +212,6 @@ class FortuneWheelService: ObservableObject {
 }
 
 // MARK: - Response Models
-struct EmptyResponse: Codable {}
-
 struct SuccessResponse: Codable {
     let success: Bool
 }

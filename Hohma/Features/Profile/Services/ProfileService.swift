@@ -62,4 +62,36 @@ final class ProfileService {
 
         return try await networkManager.request(urlRequest)
     }
+
+    func deleteAccount() async throws {
+        guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),
+            let authResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
+        else {
+            throw NSError(
+                domain: "AuthError", code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "Не авторизован"])
+        }
+
+        guard let url = URL(string: "\(baseURL)/user.delete") else {
+            throw NSError(
+                domain: "URLError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Неверный URL"])
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("Bearer \(authResult.token)", forHTTPHeaderField: "Authorization")
+
+        // Формируем tRPC запрос в правильном формате
+        let trpcBody = ["json": ["id": authResult.user.id]]
+        guard let requestData = try? JSONSerialization.data(withJSONObject: trpcBody) else {
+            throw NSError(
+                domain: "JSONError", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Ошибка кодирования запроса"])
+        }
+
+        urlRequest.httpBody = requestData
+
+        let _: EmptyResponse = try await networkManager.request(urlRequest)
+    }
 }

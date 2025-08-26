@@ -43,6 +43,35 @@ struct ProfileView: View {
             EditProfilePopup(viewModel: viewModel, isPresented: $showEditProfile)
                 .presentationDragIndicator(.visible)
         }
+        .overlay(
+            Group {
+                if let errorMessage = viewModel.errorMessage {
+                    VStack {
+                        NotificationView(
+                            message: errorMessage,
+                            type: .error
+                        ) {
+                            viewModel.clearMessages()
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 60)
+                }
+
+                if let successMessage = viewModel.successMessage {
+                    VStack {
+                        NotificationView(
+                            message: successMessage,
+                            type: .success
+                        ) {
+                            viewModel.clearMessages()
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 60)
+                }
+            }
+        )
         .enableInjection()
     }
 
@@ -140,6 +169,14 @@ struct ProfileView: View {
             LogoutButton {
                 viewModel.logout()
             }
+
+            // Кнопка удаления аккаунта
+            DeleteAccountButton(
+                action: {
+                    viewModel.deleteAccount()
+                },
+                isLoading: viewModel.isDeleting
+            )
         }
     }
 

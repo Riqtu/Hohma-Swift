@@ -64,18 +64,6 @@ struct WheelControlsView: View {
                 .disabled(wheelState.spinning || !isSocketReady)
                 .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
-                // Кнопка ставок
-                Button(action: {
-                    showingBets = true
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "eye.fill")
-                            .font(.title2)
-
-                    }
-                    .foregroundColor(.white)
-
-                }
                 Button(action: {
                     showingSettings = true
                 }) {

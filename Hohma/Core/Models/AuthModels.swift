@@ -26,3 +26,6 @@ struct AuthResult: Codable {
     var user: AuthUser
     let token: String
 }
+
+// Структура для пустого ответа от tRPC
+struct EmptyResponse: Codable {}
