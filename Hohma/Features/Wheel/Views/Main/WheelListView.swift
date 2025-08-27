@@ -100,10 +100,19 @@ struct WheelListView: View {
             }
             .appBackground()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
-            // Обновляем данные при изменении колеса (например, после игры)
-            Task {
-                await viewModel.refreshWheels()
+        .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { notification in
+            // ИСПРАВЛЕНИЕ: Умное обновление данных без потери позиции в списке
+            // Получаем ID обновленного колеса из уведомления, если оно есть
+            if let wheelId = notification.userInfo?["wheelId"] as? String {
+                // Обновляем только конкретное колесо
+                Task {
+                    await viewModel.updateSpecificWheel(wheelId: wheelId)
+                }
+            } else {
+                // Если ID нет, обновляем только видимые колеса без полной перезагрузки
+                Task {
+                    await viewModel.refreshVisibleWheels()
+                }
             }
         }
         .sheet(isPresented: $showingCreateForm) {

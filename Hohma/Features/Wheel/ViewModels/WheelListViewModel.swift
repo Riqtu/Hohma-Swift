@@ -192,6 +192,52 @@ class WheelListViewModel: ObservableObject {
         }
     }
 
+    /// Обновляет конкретное колесо по ID
+    /// ИСПРАВЛЕНИЕ: Этот метод обновляет только одно колесо, не затрагивая остальные,
+    /// что позволяет сохранить позицию пользователя в списке
+    func updateSpecificWheel(wheelId: String) async {
+        do {
+            let response = try await fetchWheelsWithPagination(page: 1)
+
+            // Ищем обновленное колесо в ответе
+            if let updatedWheel = response.data.first(where: { $0.id == wheelId }) {
+                // Обновляем только это колесо в списке
+                if let index = wheels.firstIndex(where: { $0.id == wheelId }) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        wheels[index] = updatedWheel
+                    }
+                }
+            }
+        } catch {
+            // Игнорируем ошибки при обновлении конкретного колеса
+            print("Ошибка обновления колеса \(wheelId): \(error.localizedDescription)")
+        }
+    }
+
+    /// Обновляет только видимые колеса без полной перезагрузки
+    /// ИСПРАВЛЕНИЕ: Этот метод обновляет только первые колеса в списке,
+    /// сохраняя остальные загруженные страницы, что предотвращает потерю позиции
+    func refreshVisibleWheels() async {
+        do {
+            // Загружаем только первую страницу для обновления видимых колес
+            let response = try await fetchWheelsWithPagination(page: 1)
+
+            // Обновляем только первые колеса (видимые), сохраняя остальные
+            let visibleCount = min(wheels.count, response.data.count)
+
+            withAnimation(.easeInOut(duration: 0.3)) {
+                for i in 0..<visibleCount {
+                    if i < wheels.count && i < response.data.count {
+                        wheels[i] = response.data[i]
+                    }
+                }
+            }
+        } catch {
+            // Игнорируем ошибки при обновлении видимых колес
+            print("Ошибка обновления видимых колес: \(error.localizedDescription)")
+        }
+    }
+
     private func deleteWheelFromAPI(_ id: String) async throws -> Wheel {
         guard let apiURL = apiURL else {
             throw NSError(
