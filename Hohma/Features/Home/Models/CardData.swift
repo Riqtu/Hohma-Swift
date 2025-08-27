@@ -12,4 +12,5 @@ struct CardData: Identifiable {
     let description: String
     let imageName: String?
     let videoName: String?
+    let action: (() -> Void)?
 }

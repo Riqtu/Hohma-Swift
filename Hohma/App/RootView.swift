@@ -48,10 +48,10 @@ struct RootView: View {
                     TabView(selection: $selection) {
 
                         HomeView().withAppBackground()
-
                             .tabItem {
                                 Label("Главная", systemImage: "house")
                             }
+                            .tag("home")
                         WheelListView(user: authViewModel.user)
                             .withAppBackground()
                             .tabItem {
