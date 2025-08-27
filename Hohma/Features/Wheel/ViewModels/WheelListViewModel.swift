@@ -174,6 +174,62 @@ class WheelListViewModel: ObservableObject {
         wheels.removeAll { $0.id == id }
     }
 
+    /// Удаляет колесо через API
+    func deleteWheel(withId id: String) async {
+        do {
+            _ = try await deleteWheelFromAPI(id)
+
+            // Удаляем из локального списка
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.removeWheel(withId: id)
+            }
+        } catch is CancellationError {
+            // Удаление отменено
+        } catch URLError.userAuthenticationRequired {
+            // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+        } catch {
+            self.error = "Ошибка удаления колеса: \(error.localizedDescription)"
+        }
+    }
+
+    private func deleteWheelFromAPI(_ id: String) async throws -> Wheel {
+        guard let apiURL = apiURL else {
+            throw NSError(
+                domain: "NetworkError", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
+        }
+
+        guard let url = URL(string: "\(apiURL)/wheelList.delete") else {
+            throw NSError(
+                domain: "NetworkError", code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = wrapInTRPCFormat(["id": id])
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        // Передаём токен
+        if let user = user {
+            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601withMilliseconds
+
+        let response: WheelDeleteResponse = try await NetworkManager.shared.request(
+            request, decoder: decoder)
+
+        return response.result.data.json
+    }
+
+    private func wrapInTRPCFormat(_ data: [String: Any]) -> [String: Any] {
+        return ["json": data]
+    }
+
     private func fetchWheels() async throws -> [WheelWithRelations] {
         guard let apiURL = apiURL else {
             throw NSError(

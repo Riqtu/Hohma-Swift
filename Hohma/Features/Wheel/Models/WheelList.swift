@@ -46,6 +46,20 @@ struct PaginationInfo: Codable {
     let nextCursor: String?
 }
 
+// MARK: - Удаление колеса
+
+struct WheelDeleteResponse: Codable {
+    let result: WheelDeleteResult
+}
+
+struct WheelDeleteResult: Codable {
+    let data: WheelDeleteData
+}
+
+struct WheelDeleteData: Codable {
+    let json: Wheel
+}
+
 // MARK: - Параметры пагинации
 
 struct PaginationParams: Codable {

@@ -64,8 +64,14 @@ struct WheelListView: View {
                             ForEach(viewModel.wheels, id: \.id) { wheel in
                                 WheelCardView(
                                     cardData: wheel,
-                                    currentUser: user?.user
+                                    currentUser: user?.user,
+                                    onDelete: { wheelId in
+                                        Task {
+                                            await viewModel.deleteWheel(withId: wheelId)
+                                        }
+                                    }
                                 )
+                                .padding(.horizontal, 20)
                             }
                         }
                     }

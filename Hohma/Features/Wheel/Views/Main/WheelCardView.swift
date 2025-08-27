@@ -7,85 +7,143 @@ struct WheelCardView: View {
     @ObservedObject private var viewModel: WheelCardViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingGame = false
+    @State private var showingDeleteConfirmation = false
+    @State private var dragOffset: CGFloat = 0
 
     let cardData: WheelWithRelations
     let currentUser: AuthUser?
+    let onDelete: ((String) -> Void)?
 
-    init(cardData: WheelWithRelations, currentUser: AuthUser? = nil) {
+    init(
+        cardData: WheelWithRelations, currentUser: AuthUser? = nil,
+        onDelete: ((String) -> Void)? = nil
+    ) {
         self.cardData = cardData
         self.viewModel = WheelCardViewModel(cardData: cardData)
         self.currentUser = currentUser
+        self.onDelete = onDelete
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Видео фон с заголовком
-            ZStack {
-                if let urlString = cardData.theme?.backgroundVideoURL,
-                    let url = URL(string: urlString)
-                {
-                    // Используем новый StreamVideoView для внешних URL
-                    StreamVideoView(url: url)
-                        .frame(width: 380, height: 200)
-                        .clipped()
-                        .id(urlString)  // Принудительно пересоздаем при изменении URL
-                } else if viewModel.isVideoReady {
-                    // Используем старый VideoBackgroundView для локального видео
-                    if let player = viewModel.player {
-                        VideoBackgroundView(player: player)
+        ZStack {
+            // Кнопка удаления под карточкой
+            HStack {
+                Spacer()
+                if dragOffset < -30 {
+                    Button(action: {
+                        showingDeleteConfirmation = true
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            dragOffset = 0
+                        }
+                    }) {
+                        Image(systemName: "trash.fill")
+                            .foregroundColor(.white)
+                            .font(.title2)
+                            .frame(width: 60, height: 60)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                    }
+                    .padding(.trailing, 20)
+                    .scaleEffect(dragOffset < -50 ? 1.0 : 0.8)
+                    .opacity(dragOffset < -40 ? 1.0 : 0.6)
+                    .rotationEffect(.degrees(dragOffset < -80 ? 0 : -15))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: dragOffset)
+                }
+            }
+
+            // Основная карточка
+            VStack(alignment: .leading, spacing: 16) {
+                // Видео фон с заголовком
+                ZStack {
+                    if let urlString = cardData.theme?.backgroundVideoURL,
+                        let url = URL(string: urlString)
+                    {
+                        // Используем новый StreamVideoView для внешних URL
+                        StreamVideoView(url: url)
+                            .frame(width: 380, height: 200)
+                            .clipped()
+                            .id(urlString)  // Принудительно пересоздаем при изменении URL
+                    } else if viewModel.isVideoReady {
+                        // Используем старый VideoBackgroundView для локального видео
+                        if let player = viewModel.player {
+                            VideoBackgroundView(player: player)
+                                .frame(width: 380, height: 200)
+                        }
+                    } else {
+                        // Показываем градиент пока видео загружается
+                        AnimatedGradientBackground()
                             .frame(width: 380, height: 200)
                     }
-                } else {
-                    // Показываем градиент пока видео загружается
-                    AnimatedGradientBackground()
-                        .frame(width: 380, height: 200)
+
+                    WheelHeaderView(
+                        hasWinner: viewModel.hasWinner,
+                        winnerUser: viewModel.winnerUser
+                    )
                 }
 
-                WheelHeaderView(
-                    hasWinner: viewModel.hasWinner,
-                    winnerUser: viewModel.winnerUser
-                )
-            }
+                // Информация о колесе
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(cardData.name)
+                        .font(.system(size: 20))
+                        .fontWeight(.bold)
+                        .padding(.bottom)
 
-            // Информация о колесе
-            VStack(alignment: .leading, spacing: 10) {
-                Text(cardData.name)
-                    .font(.system(size: 20))
-                    .fontWeight(.bold)
-                    .padding(.bottom)
+                    if viewModel.hasParticipants {
+                        Text("Участники")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .padding(.bottom, 10)
 
-                if viewModel.hasParticipants {
-                    Text("Участники")
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .padding(.bottom, 10)
-
-                    ParticipantsView(users: viewModel.uniqueUsers)
-                }
-
-                // Кнопка для запуска игры
-                Button(action: {
-                    showingGame = true
-                }) {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("Играть")
+                        ParticipantsView(users: viewModel.uniqueUsers)
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color("AccentColor"))
-                    .cornerRadius(8)
+
+                    // Кнопка для запуска игры
+                    Button(action: {
+                        showingGame = true
+                    }) {
+                        HStack {
+                            Image(systemName: "play.fill")
+                            Text("Играть")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color("AccentColor"))
+                        .cornerRadius(8)
+                    }
+                    .padding(.top, 10)
                 }
-                .padding(.top, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            .background(.ultraThinMaterial)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
+            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
+            .offset(x: dragOffset)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 30)
+                    .onChanged { value in
+                        // Обрабатываем только четко горизонтальные жесты
+                        let horizontalRatio =
+                            abs(value.translation.width) / max(abs(value.translation.height), 1)
+                        if horizontalRatio > 2.0 && value.translation.width < 0 {
+                            // Ограничиваем максимальный свайп до -120px
+                            dragOffset = max(value.translation.width, -120)
+                        }
+                    }
+                    .onEnded { value in
+                        let horizontalRatio =
+                            abs(value.translation.width) / max(abs(value.translation.height), 1)
+                        if horizontalRatio > 2.0 && value.translation.width < -100 {
+                            showingDeleteConfirmation = true
+                        }
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            dragOffset = 0
+                        }
+                    }
+            )
         }
-        .background(.ultraThinMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
         .onAppear {
             viewModel.onAppear()
         }
@@ -99,6 +157,16 @@ struct WheelCardView: View {
         .onChange(of: cardData.id) { _, _ in
             // Обновляем viewModel при изменении cardData
             viewModel.updateCardData(cardData)
+        }
+        .alert("Удаление колеса", isPresented: $showingDeleteConfirmation) {
+            Button("Отмена", role: .cancel) {}
+            Button("Удалить", role: .destructive) {
+                onDelete?(cardData.id)
+            }
+        } message: {
+            Text(
+                "Вы уверены, что хотите удалить колесо \"\(cardData.name)\"? Это действие нельзя отменить."
+            )
         }
         .navigationDestination(isPresented: $showingGame) {
             FortuneWheelGameView(wheelData: cardData, currentUser: currentUser)
