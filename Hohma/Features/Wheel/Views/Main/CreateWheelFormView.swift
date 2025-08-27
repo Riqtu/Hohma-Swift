@@ -8,6 +8,7 @@ struct CreateWheelFormView: View {
 
     var body: some View {
         NavigationView {
+
             VStack(spacing: 24) {
                 // Заголовок
                 VStack(spacing: 8) {
@@ -31,12 +32,12 @@ struct CreateWheelFormView: View {
                             .fontWeight(.medium)
 
                         TextField("Введите название", text: $viewModel.wheelName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
-                            .background(Color(.systemGray6))
+                            .background(.thickMaterial)
                             .cornerRadius(12)
                     }
+                    .animation(nil, value: UUID())  // Отключаем анимацию только для контента
 
                     // Выбор темы
                     VStack(alignment: .leading, spacing: 8) {
@@ -127,15 +128,24 @@ struct CreateWheelFormView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .appBackground()
-            .navigationBarHidden(true)
+            .appBackground(useVideo: false)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Отмена") {
+                        dismiss()
+                    }
+                }
+            }
         }
+
         .onAppear {
             Task {
                 await viewModel.loadThemes()
             }
         }
+        .animation(nil, value: UUID())  // Отключаем анимацию только для контента
+
         .enableInjection()
     }
 }
