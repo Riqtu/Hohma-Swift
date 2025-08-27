@@ -13,6 +13,7 @@ struct AuthView: View {
     @ObserveInjection var inject
     @ObservedObject var viewModel: AuthViewModel
     @State private var showTelegramWebView = false
+    @State private var showTermsWebView = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -39,6 +40,29 @@ struct AuthView: View {
                         .foregroundColor(.red)
                 }
 
+                // Ссылка на условия использования
+                VStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.shield")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+
+                        Text("Авторизуясь, вы соглашаетесь с")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+
+                    Button("Условиями использования") {
+                        showTermsWebView = true
+                    }
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
+                    .underline()
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 20)
+
                 TelegramSignInButton {
                     showTelegramWebView = true
                 }
@@ -58,6 +82,11 @@ struct AuthView: View {
 
             }
             .padding()
+        }
+        .sheet(isPresented: $showTermsWebView) {
+            if let url = URL(string: "https://hohma.su/terms-of-service") {
+                WebViewSheet(url: url, title: "Условия использования")
+            }
         }
         .enableInjection()
     }
