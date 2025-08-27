@@ -101,6 +101,7 @@ struct WheelListView: View {
             .appBackground()
         }
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { notification in
+            print("🔄 WheelListView: Received wheel data update notification")
             // ИСПРАВЛЕНИЕ: Умное обновление данных без потери позиции в списке
             // Получаем ID обновленного колеса из уведомления, если оно есть
             if let wheelId = notification.userInfo?["wheelId"] as? String {

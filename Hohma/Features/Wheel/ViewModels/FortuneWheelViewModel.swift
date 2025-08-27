@@ -477,6 +477,10 @@ class FortuneWheelViewModel: ObservableObject {
     // MARK: - Cleanup
 
     func cleanup() {
+        print("🔄 FortuneWheelViewModel: Starting cleanup")
+
+        // Принудительно останавливаем вращение колеса
+        wheelState.forceStopSpinning()
         wheelState.cleanup()
         socketService.disconnect()
         cancellables.removeAll()
@@ -484,5 +488,7 @@ class FortuneWheelViewModel: ObservableObject {
         // Отписываемся от уведомлений
         NotificationCenter.default.removeObserver(
             self, name: .roomUsersUpdated, object: nil)
+
+        print("🔄 FortuneWheelViewModel: Cleanup completed")
     }
 }

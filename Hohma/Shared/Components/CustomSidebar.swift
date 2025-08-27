@@ -51,19 +51,39 @@ struct CustomSidebar: View {
                     title: "Главная",
                     icon: "house",
                     isSelected: selection == "home"
-                ) { selection = "home" }
+                ) {
+                    print("🔄 CustomSidebar: Switching to home")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil, userInfo: ["destination": "home"])
+                    selection = "home"
+                }
 
                 SidebarButton(
                     title: "Колесо",
                     icon: "theatermasks.circle",
                     isSelected: selection == "wheelList"
-                ) { selection = "wheelList" }
+                ) {
+                    print("🔄 CustomSidebar: Switching to wheel list")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "wheelList"])
+                    selection = "wheelList"
+                }
 
                 SidebarButton(
                     title: "Профиль",
                     icon: "person",
                     isSelected: selection == "profile"
-                ) { selection = "profile" }
+                ) {
+                    print("🔄 CustomSidebar: Switching to profile")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "profile"])
+                    selection = "profile"
+                }
             }
             .padding(.top, 12)
             .padding(.horizontal, 8)
@@ -78,7 +98,14 @@ struct CustomSidebar: View {
                     title: "Настройки",
                     icon: "gearshape",
                     isSelected: selection == "settings"
-                ) { selection = "settings" }
+                ) {
+                    print("🔄 CustomSidebar: Switching to settings")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "settings"])
+                    selection = "settings"
+                }
             }
             .padding(.horizontal, 8)
         }

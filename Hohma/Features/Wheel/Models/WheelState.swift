@@ -13,6 +13,7 @@ extension Notification.Name {
     static let sectorEliminated = Notification.Name("sectorEliminated")
     static let wheelCompleted = Notification.Name("wheelCompleted")
     static let wheelDataUpdated = Notification.Name("wheelDataUpdated")
+    static let navigationRequested = Notification.Name("navigationRequested")
 }
 
 @MainActor
@@ -113,6 +114,9 @@ class WheelState: ObservableObject {
             return
         }
 
+        // Принудительно сбрасываем состояние spinning на всякий случай
+        spinning = false
+
         let totalSectors = sectors.count
         let anglePerSector = 360.0 / Double(totalSectors)
         let winningIndex = Int.random(in: 0..<totalSectors)
@@ -176,6 +180,12 @@ class WheelState: ObservableObject {
         sectors = shuffledSectors
     }
 
+    // MARK: - Force Stop
+    func forceStopSpinning() {
+        print("🛑 WheelState: Force stopping wheel spinning")
+        spinning = false
+    }
+
     func randomColor() -> (h: Double, s: Double, l: Double) {
         let hue = Double.random(in: 0...360)
         return (h: hue, s: 60, l: 30)
@@ -187,6 +197,16 @@ class WheelState: ObservableObject {
             "🎯 WheelState: Handling spin result - winningIndex: \(winningIndex), rotation: \(rotation), speed: \(speed)"
         )
         DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
+            // Проверяем, что колесо все еще вращается и секторы существуют
+            guard self.spinning && winningIndex < self.sectors.count else {
+                print(
+                    "⚠️ WheelState: Cannot handle spin result - spinning: \(self.spinning), sectors count: \(self.sectors.count)"
+                )
+                // Принудительно останавливаем вращение если что-то пошло не так
+                self.spinning = false
+                return
+            }
+
             let eliminatedSector = self.sectors[winningIndex]
 
             self.sectors.remove(at: winningIndex)
@@ -225,16 +245,11 @@ class WheelState: ObservableObject {
                 self.setWheelStatus?(.active, self.sectors[0].wheelId)
             }
 
-            // Проверяем, что колесо все еще вращается
-            guard self.spinning else { return }
-
             // Оставляем колесо на той позиции, где оно остановилось
             print("🔄 WheelState: Wheel stopped at rotation: \(self.rotation)")
 
-            // Небольшая задержка для завершения анимации
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.spinning = false
-            }
+            // Останавливаем вращение немедленно
+            self.spinning = false
 
             self.setEliminated?(eliminatedSector.id)
         }
@@ -656,6 +671,9 @@ class WheelState: ObservableObject {
 
     // MARK: - Cleanup
     func cleanup() {
+        // Принудительно останавливаем вращение
+        forceStopSpinning()
+
         leaveRoom()
         socket = nil
         roomId = nil

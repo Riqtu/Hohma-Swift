@@ -21,12 +21,25 @@ struct RootView: View {
                             switch selection {
                             case "wheelList":
                                 WheelListView(user: authViewModel.user)
+                                    .onAppear {
+                                        // Сбрасываем состояние при переходе на экран колеса
+                                        print("🔄 RootView: Navigating to wheel list")
+                                    }
                             case "profile":
                                 ProfileView(authViewModel: authViewModel)
+                                    .onAppear {
+                                        print("🔄 RootView: Navigating to profile")
+                                    }
                             case "settings":
                                 SettingsView(viewModel: settingsViewModel)
+                                    .onAppear {
+                                        print("🔄 RootView: Navigating to settings")
+                                    }
                             default:
                                 HomeView()
+                                    .onAppear {
+                                        print("🔄 RootView: Navigating to home")
+                                    }
                             }
                         }
                     }
@@ -75,6 +88,17 @@ struct RootView: View {
             ) { _ in
                 Task { @MainActor in
                     authViewModel.logout()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
+            // Обрабатываем уведомления о навигации
+            if let destination = notification.userInfo?["destination"] as? String {
+                print("🔄 RootView: Navigation requested to \(destination)")
+                // Обновляем selection для навигации
+                DispatchQueue.main.async {
+                    self.selection = destination
                 }
             }
         }

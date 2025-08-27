@@ -99,6 +99,7 @@ struct WheelCardView: View {
 
                     // Кнопка для запуска игры
                     Button(action: {
+                        print("🔄 WheelCardView: Starting game for wheel: \(cardData.name)")
                         showingGame = true
                     }) {
                         HStack {
@@ -171,8 +172,18 @@ struct WheelCardView: View {
         .navigationDestination(isPresented: $showingGame) {
             FortuneWheelGameView(wheelData: cardData, currentUser: currentUser)
                 .navigationBarTitleDisplayMode(.inline)
-
                 .toolbar(.hidden, for: .tabBar)  // Скрываем TabBar в игре
+                .onAppear {
+                    print("🔄 WheelCardView: Game view appeared")
+                }
+                .onDisappear {
+                    print("🔄 WheelCardView: Game view disappeared")
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) { _ in
+                    // Если получаем уведомление о навигации, закрываем экран игры
+                    print("🔄 WheelCardView: Navigation requested, closing game")
+                    showingGame = false
+                }
             // .navigationBarBackButtonHidden(true)
         }
         .enableInjection()

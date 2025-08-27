@@ -242,7 +242,26 @@ struct FortuneWheelGameView: View {
         .onAppear {
             viewModel.setupVideoBackground()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
+            // Если получаем уведомление об обновлении данных колеса,
+            // это может означать, что пользователь хочет перейти к другому экрану
+            print("🔄 FortuneWheelGameView: Received wheel data update, checking navigation state")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
+            // Если получаем уведомление о навигации, закрываем экран игры
+            if let destination = notification.userInfo?["destination"] as? String {
+                print(
+                    "🔄 FortuneWheelGameView: Navigation requested to \(destination), closing game view"
+                )
+                // Принудительно останавливаем вращение и закрываем экран
+                viewModel.wheelState.forceStopSpinning()
+                viewModel.cleanup()
+            }
+        }
         .onDisappear {
+            // Принудительно останавливаем вращение колеса при выходе с экрана
+            viewModel.wheelState.forceStopSpinning()
             viewModel.cleanup()
             // Уведомляем об обновлении данных колеса только если были изменения
             if viewModel.wheelState.sectors.count > 0 || viewModel.wheelState.losers.count > 0 {
