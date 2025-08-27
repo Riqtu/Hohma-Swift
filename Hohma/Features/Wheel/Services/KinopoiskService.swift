@@ -199,16 +199,26 @@ struct KinopoiskResponse: Codable {
     let pages: Int
 }
 
-@MainActor
 class KinopoiskService: ObservableObject {
+    @MainActor
     private let networkManager = NetworkManager.shared
+
+    // Добавляем кэш для результатов поиска
+    private var searchCache: [String: [KinopoiskMovie]] = [:]
+    private let cacheQueue = DispatchQueue(label: "kinopoisk.cache", qos: .userInitiated)
 
     // Получаем API ключ из конфигурации
     private var apiKey: String {
         return Bundle.main.object(forInfoDictionaryKey: "KINOPOISK_API_KEY") as? String ?? ""
     }
 
+    @MainActor
     func searchMovies(query: String) async throws -> [KinopoiskMovie] {
+        // Проверяем кэш сначала
+        if let cachedResults = getCachedResults(for: query) {
+            return cachedResults
+        }
+
         guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
             let url = URL(string: "\(apiURL)/kinopoisk.getMovie")
         else {
@@ -234,9 +244,16 @@ class KinopoiskService: ObservableObject {
         var request = URLRequest(url: finalURL)
         request.httpMethod = "GET"
 
+        // Добавляем таймаут для предотвращения долгих запросов
+        request.timeoutInterval = 10.0
+
         addAuthorizationHeader(to: &request)
 
         let response: KinopoiskResponse = try await networkManager.request(request)
+
+        // Кэшируем результаты
+        cacheResults(response.docs, for: query)
+
         return response.docs
     }
 
@@ -251,4 +268,35 @@ class KinopoiskService: ObservableObject {
         }
     }
 
+    // MARK: - Caching Methods
+
+    private func getCachedResults(for query: String) -> [KinopoiskMovie]? {
+        let normalizedQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return cacheQueue.sync {
+            return searchCache[normalizedQuery]
+        }
+    }
+
+    private func cacheResults(_ results: [KinopoiskMovie], for query: String) {
+        let normalizedQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        cacheQueue.async {
+            // Ограничиваем размер кэша
+            if self.searchCache.count > 50 {
+                // Удаляем старые записи
+                let sortedKeys = self.searchCache.keys.sorted()
+                let keysToRemove = sortedKeys.prefix(10)
+                for key in keysToRemove {
+                    self.searchCache.removeValue(forKey: key)
+                }
+            }
+            self.searchCache[normalizedQuery] = results
+        }
+    }
+
+    // Метод для очистки кэша
+    func clearCache() {
+        cacheQueue.async {
+            self.searchCache.removeAll()
+        }
+    }
 }

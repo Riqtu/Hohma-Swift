@@ -14,157 +14,193 @@ struct FortuneWheelGameView: View {
     @StateObject private var viewModel: FortuneWheelViewModel
     @State private var showingSectorsFullScreen = false
     @State private var swipeAnimation = false
+    @State private var isPortraitOrientation = true
+    @State private var lastOrientationUpdate = Date()
 
     init(wheelData: WheelWithRelations, currentUser: AuthUser?) {
         self._viewModel = StateObject(
             wrappedValue: FortuneWheelViewModel(wheelData: wheelData, currentUser: currentUser))
     }
 
+    // MARK: - Computed Properties
+
+    private var backgroundView: some View {
+        let urlString = viewModel.wheelState.backVideo
+        if !urlString.isEmpty, let url = URL(string: urlString) {
+            return AnyView(
+                StreamVideoView(url: url)
+                    .ignoresSafeArea())
+        } else if viewModel.isVideoReady {
+            return AnyView(
+                AnimatedGradientBackground()
+                    .ignoresSafeArea())
+        } else {
+            return AnyView(
+                AnimatedGradientBackground()
+                    .ignoresSafeArea())
+        }
+    }
+
+    private var errorOverlay: some View {
+        Group {
+            if let error = viewModel.error {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.8))
+                    .cornerRadius(8)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+    }
+
+    private func mainContentView(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 16) {
+            swipeHintView
+            wheelContent(geometry: geometry)
+            Spacer()
+        }
+    }
+
+    private var swipeHintView: some View {
+        HStack(spacing: 4) {
+            Text("Свайп для фильмов")
+                .font(.caption2)
+                .foregroundColor(Color(hex: viewModel.wheelState.accentColor).opacity(0.8))
+            Image(systemName: "arrow.left")
+                .font(.caption2)
+                .foregroundColor(Color(hex: viewModel.wheelState.accentColor).opacity(0.8))
+                .offset(x: swipeAnimation ? -2 : 0)
+                .animation(.easeInOut(duration: 0.2), value: swipeAnimation)
+        }
+        .padding(.top, 8)
+    }
+
+    private func wheelContent(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 16) {
+            wheelLayout(geometry: geometry)
+            connectionIndicator
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func wheelLayout(geometry: GeometryProxy) -> some View {
+        // Специальная логика для iPad в портретной ориентации
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        let currentIsPortrait = geometry.size.height > geometry.size.width * 1.1
+
+        // Для iPad используем более консервативный подход
+        let threshold: CGFloat = isIPad ? 100 : 50
+
+        // Update orientation state with debouncing for iPad
+        if abs(geometry.size.height - geometry.size.width) > threshold {
+            let now = Date()
+            if now.timeIntervalSince(lastOrientationUpdate) > 0.5 {
+                DispatchQueue.main.async {
+                    isPortraitOrientation = currentIsPortrait
+                    lastOrientationUpdate = now
+                }
+            }
+        }
+
+        return Group {
+            if isPortraitOrientation {
+                portraitLayout(geometry: geometry)
+            } else {
+                landscapeLayout(geometry: geometry)
+            }
+        }
+    }
+
+    private func portraitLayout(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 16) {
+            UsersPanelView(
+                viewModel: viewModel,
+                accentColor: viewModel.wheelState.accentColor
+            )
+            FortuneWheelView(
+                wheelState: viewModel.wheelState,
+                size: viewModel.calculateWheelSize(for: geometry)
+            )
+            .frame(maxWidth: .infinity)
+
+            if !viewModel.wheelState.sectors.contains(where: { $0.winner }) {
+                WheelControlsView(
+                    wheelState: viewModel.wheelState,
+                    viewModel: viewModel,
+                    userCoins: viewModel.currentUserCoins,
+                    isSocketReady: viewModel.isSocketReady
+                )
+            }
+        }
+    }
+
+    private func landscapeLayout(geometry: GeometryProxy) -> some View {
+        HStack(spacing: 16) {
+            UsersPanelView(
+                viewModel: viewModel,
+                accentColor: viewModel.wheelState.accentColor
+            )
+
+            GeometryReader { wheelGeometry in
+                FortuneWheelView(
+                    wheelState: viewModel.wheelState,
+                    size: viewModel.calculateWheelSize(
+                        for: geometry,
+                        availableWidth: wheelGeometry.size.width
+                    )
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .position(
+                    x: wheelGeometry.size.width / 2,
+                    y: wheelGeometry.size.height / 2
+                )
+            }
+
+            if !viewModel.wheelState.sectors.contains(where: { $0.winner }) {
+                WheelControlsView(
+                    wheelState: viewModel.wheelState,
+                    viewModel: viewModel,
+                    userCoins: viewModel.currentUserCoins,
+                    isSocketReady: viewModel.isSocketReady
+                )
+            }
+        }
+    }
+
+    private var connectionIndicator: some View {
+        Group {
+            if !viewModel.isSocketReady {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Подключение к игре...")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.black.opacity(0.6))
+                .cornerRadius(8)
+            }
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Видео фон
-                let urlString = viewModel.wheelState.backVideo
-                if !urlString.isEmpty,
-                    let url = URL(string: urlString)
-                {
-                    // Используем новый StreamVideoView для внешних URL
-                    StreamVideoView(url: url)
-                        .ignoresSafeArea()
-                } else if viewModel.isVideoReady {
-                    // Fallback на градиент если видео не готово
-                    AnimatedGradientBackground()
-                        .ignoresSafeArea()
-                } else {
-                    // Показываем градиент пока видео загружается
-                    AnimatedGradientBackground()
-                        .ignoresSafeArea()
-                }
-
-                // Основной контент
-                VStack(spacing: 16) {
-                    // Подсказка о свайпе
-                    HStack(spacing: 4) {
-                        Text("Свайп для фильмов")
-                            .font(.caption2)
-                            .foregroundColor(
-                                Color(hex: viewModel.wheelState.accentColor).opacity(0.8))
-                        Image(systemName: "arrow.left")
-                            .font(.caption2)
-                            .foregroundColor(
-                                Color(hex: viewModel.wheelState.accentColor).opacity(0.8)
-                            )
-                            .offset(x: swipeAnimation ? -2 : 0)
-                            .animation(.easeInOut(duration: 0.2), value: swipeAnimation)
-                    }
-                    .padding(.top, 8)
-
-                    // Основная область с колесом
-                    // Панель пользователей
-
-                    // Центральная область с колесом
-                    VStack(spacing: 16) {
-                        // Колесо фортуны
-                        Group {
-                            if geometry.size.height > geometry.size.width {
-                                // Вертикальная ориентация - VStack
-                                VStack(spacing: 16) {
-                                    UsersPanelView(
-                                        viewModel: viewModel,
-                                        accentColor: viewModel.wheelState.accentColor
-                                    )
-                                    FortuneWheelView(
-                                        wheelState: viewModel.wheelState,
-                                        size: viewModel.calculateWheelSize(for: geometry)
-                                    )
-                                    .frame(maxWidth: .infinity)
-
-                                    // Управление (скрываем если есть победитель)
-                                    if !viewModel.wheelState.sectors.contains(where: { $0.winner })
-                                    {
-                                        WheelControlsView(
-                                            wheelState: viewModel.wheelState,
-                                            viewModel: viewModel,
-                                            userCoins: viewModel.currentUserCoins,
-                                            isSocketReady: viewModel.isSocketReady
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Горизонтальная ориентация - HStack
-                                HStack(spacing: 16) {
-                                    UsersPanelView(
-                                        viewModel: viewModel,
-                                        accentColor: viewModel.wheelState.accentColor
-                                    )
-
-                                    GeometryReader { wheelGeometry in
-                                        FortuneWheelView(
-                                            wheelState: viewModel.wheelState,
-                                            size: viewModel.calculateWheelSize(
-                                                for: geometry,
-                                                availableWidth: wheelGeometry.size.width
-                                            )
-                                        )
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                        .position(
-                                            x: wheelGeometry.size.width / 2,
-                                            y: wheelGeometry.size.height / 2
-                                        )
-                                    }
-
-                                    // Управление (скрываем если есть победитель)
-                                    if !viewModel.wheelState.sectors.contains(where: { $0.winner })
-                                    {
-                                        WheelControlsView(
-                                            wheelState: viewModel.wheelState,
-                                            viewModel: viewModel,
-                                            userCoins: viewModel.currentUserCoins,
-                                            isSocketReady: viewModel.isSocketReady
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Индикатор подключения
-                        if !viewModel.isSocketReady {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Подключение к игре...")
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.black.opacity(0.6))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-
-                    Spacer()
-                }
-
-                // Ошибка подключения
-                if let error = viewModel.error {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.white)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.8))
-                        .cornerRadius(8)
-                        .padding(.bottom, 20)
-                    }
-                }
+                backgroundView
+                mainContentView(geometry: geometry)
+                errorOverlay
             }
         }
         .gesture(

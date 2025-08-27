@@ -103,7 +103,7 @@ struct WheelControlsView: View {
                 onSectorCreated: { sector in
                     viewModel.addSector(sector)
                 }
-            )
+            ).presentationDragIndicator(.visible)
         }
         .enableInjection()
     }

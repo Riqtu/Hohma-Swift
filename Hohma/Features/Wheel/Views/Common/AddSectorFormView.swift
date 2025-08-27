@@ -5,6 +5,7 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
+import Combine
 import Inject
 import SwiftUI
 
@@ -14,11 +15,17 @@ struct AddSectorFormView: View {
     @StateObject private var kinopoiskService = KinopoiskService()
 
     @State private var movieTitle = ""
+
     @State private var searchResults: [KinopoiskMovie] = []
     @State private var isLoading = false
     @State private var selectedMovie: KinopoiskMovie?
     @State private var showingSearchResults = false
     @State private var errorMessage: String?
+
+    // Добавляем дебаунсинг для поиска
+    @State private var searchDebouncer: Timer?
+    @State private var searchTask: Task<Void, Never>?
+    @FocusState private var isTextFieldFocused: Bool
 
     let wheelId: String
     let currentUser: AuthUser?
@@ -43,13 +50,17 @@ struct AddSectorFormView: View {
                         .font(.headline)
 
                     TextField("Введите название фильма", text: $movieTitle)
-                        // .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onChange(of: movieTitle) { _, newValue in
-                            searchMovies(query: newValue)
-                        }
+                        .textFieldStyle(PlainTextFieldStyle())
                         .padding()
                         .background(.thickMaterial)
                         .cornerRadius(12)
+                        .keyboardType(.default)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.words)
+                        .focused($isTextFieldFocused)
+                        .onChange(of: movieTitle) { _, newValue in
+                            debouncedSearch(query: newValue)
+                        }
 
                     if isLoading {
                         HStack {
@@ -74,6 +85,8 @@ struct AddSectorFormView: View {
                                         self.selectedMovie = selectedMovie
                                         self.movieTitle = selectedMovie.name
                                         self.showingSearchResults = false
+                                        // Отменяем поиск при выборе фильма
+                                        cancelSearch()
                                     }
                                 )
                             }
@@ -122,7 +135,7 @@ struct AddSectorFormView: View {
             }
             .padding(20)
             .appBackground(useVideo: false)
-            .navigationTitle("Добавить сектор")
+            // .navigationTitle("Добавить сектор")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -132,29 +145,88 @@ struct AddSectorFormView: View {
                     .foregroundColor(accentColorUI)
                 }
             }
+            .enableInjection()
+            .onAppear {
+                // Автоматически фокусируемся на TextField при появлении
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isTextFieldFocused = true
+                }
+            }
+            .onDisappear {
+                // Очищаем ресурсы при закрытии
+                cancelSearch()
+            }
+            // Правильная обработка клавиатуры
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .simultaneousGesture(
+                TapGesture()
+                    .onEnded { _ in
+                        // Скрываем клавиатуру при тапе вне TextField
+                        if isTextFieldFocused {
+                            isTextFieldFocused = false
+                        }
+                    }
+            )
         }
-        .enableInjection()
     }
 
     // MARK: - Private Methods
 
-    private func searchMovies(query: String) {
+    private func debouncedSearch(query: String) {
+        // Отменяем предыдущий таймер
+        searchDebouncer?.invalidate()
+
+        // Отменяем предыдущую задачу поиска
+        searchTask?.cancel()
+
+        guard query.count >= 2 else {
+            searchResults = []
+            showingSearchResults = false
+            isLoading = false
+            return
+        }
+
+        // Создаем новый таймер с задержкой 500ms
+        searchDebouncer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+            performSearch(query: query)
+        }
+    }
+
+    private func cancelSearch() {
+        searchDebouncer?.invalidate()
+        searchDebouncer = nil
+        searchTask?.cancel()
+        searchTask = nil
+    }
+
+    private func performSearch(query: String) {
         guard query.count >= 2 else {
             searchResults = []
             showingSearchResults = false
             return
         }
 
-        Task {
-            isLoading = true
+        searchTask = Task {
+            await MainActor.run {
+                isLoading = true
+                errorMessage = nil
+            }
+
             do {
                 let results = try await kinopoiskService.searchMovies(query: query)
+
+                // Проверяем, не была ли задача отменена
+                if Task.isCancelled { return }
+
                 await MainActor.run {
                     searchResults = results
                     showingSearchResults = true
                     isLoading = false
                 }
             } catch {
+                // Проверяем, не была ли задача отменена
+                if Task.isCancelled { return }
+
                 await MainActor.run {
                     errorMessage = "Ошибка поиска: \(error.localizedDescription)"
                     isLoading = false
