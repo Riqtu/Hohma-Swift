@@ -92,13 +92,31 @@ struct SectorsSlideView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 40)
                 }
+                .allowsHitTesting(true)  // Разрешаем нажатия
+                .contentShape(Rectangle())  // Определяем область для нажатий
             }
         }
         .navigationTitle("Фильмы")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-
         .interactiveDismissDisabled(false)  // Разрешаем свайп для возврата назад
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
+            // Если получаем уведомление о навигации, закрываем экран
+            if let destination = notification.userInfo?["destination"] as? String {
+                print("🔄 SectorsSlideView: Navigation requested to \(destination), closing view")
+                isPresented = false
+
+                // Отправляем дополнительное уведомление для навигации
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(
+                        name: .navigationRequested,
+                        object: nil,
+                        userInfo: ["destination": destination, "force": true]
+                    )
+                }
+            }
+        }
     }
 
 }

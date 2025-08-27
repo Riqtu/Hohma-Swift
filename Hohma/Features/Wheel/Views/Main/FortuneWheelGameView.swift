@@ -254,9 +254,20 @@ struct FortuneWheelGameView: View {
                 print(
                     "🔄 FortuneWheelGameView: Navigation requested to \(destination), closing game view"
                 )
+                // Закрываем полный экран секторов если он открыт
+                showingSectorsFullScreen = false
                 // Принудительно останавливаем вращение и закрываем экран
                 viewModel.wheelState.forceStopSpinning()
                 viewModel.cleanup()
+
+                // Отправляем дополнительное уведомление для навигации
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(
+                        name: .navigationRequested,
+                        object: nil,
+                        userInfo: ["destination": destination, "force": true]
+                    )
+                }
             }
         }
         .onDisappear {

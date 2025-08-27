@@ -35,9 +35,6 @@ struct CustomSidebar: View {
                 VStack(alignment: .leading) {
                     Text(user?.user.firstName ?? "Аноним")
                         .font(.headline)
-                    Text("Разработчик")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                 }
             }
             .padding(.vertical, 16)
@@ -56,7 +53,10 @@ struct CustomSidebar: View {
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil, userInfo: ["destination": "home"])
-                    selection = "home"
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "home"
+                    }
                 }
 
                 SidebarButton(
@@ -69,7 +69,10 @@ struct CustomSidebar: View {
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "wheelList"])
-                    selection = "wheelList"
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "wheelList"
+                    }
                 }
 
                 SidebarButton(
@@ -82,7 +85,10 @@ struct CustomSidebar: View {
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "profile"])
-                    selection = "profile"
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "profile"
+                    }
                 }
             }
             .padding(.top, 12)
@@ -104,7 +110,10 @@ struct CustomSidebar: View {
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "settings"])
-                    selection = "settings"
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "settings"
+                    }
                 }
             }
             .padding(.horizontal, 8)

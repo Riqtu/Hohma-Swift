@@ -122,7 +122,7 @@ struct WheelCardView: View {
             .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
             .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
             .offset(x: dragOffset)
-            .highPriorityGesture(
+            .gesture(
                 DragGesture(minimumDistance: 30)
                     .onChanged { value in
                         // Обрабатываем только четко горизонтальные жесты
@@ -179,10 +179,23 @@ struct WheelCardView: View {
                 .onDisappear {
                     print("🔄 WheelCardView: Game view disappeared")
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) { _ in
+                .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+                    notification in
                     // Если получаем уведомление о навигации, закрываем экран игры
-                    print("🔄 WheelCardView: Navigation requested, closing game")
-                    showingGame = false
+                    if let destination = notification.userInfo?["destination"] as? String {
+                        print(
+                            "🔄 WheelCardView: Navigation requested to \(destination), closing game")
+                        showingGame = false
+
+                        // Отправляем дополнительное уведомление для навигации
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NotificationCenter.default.post(
+                                name: .navigationRequested,
+                                object: nil,
+                                userInfo: ["destination": destination, "force": true]
+                            )
+                        }
+                    }
                 }
             // .navigationBarBackButtonHidden(true)
         }

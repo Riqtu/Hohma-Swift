@@ -95,12 +95,25 @@ struct RootView: View {
             notification in
             // Обрабатываем уведомления о навигации
             if let destination = notification.userInfo?["destination"] as? String {
-                print("🔄 RootView: Navigation requested to \(destination)")
-                // Обновляем selection для навигации
+                let isForce = notification.userInfo?["force"] as? Bool ?? false
+                print("🔄 RootView: Navigation requested to \(destination), force: \(isForce)")
+
+                // Обновляем selection для навигации с приоритетом
                 DispatchQueue.main.async {
                     self.selection = destination
+
+                    // Если это принудительная навигация, добавляем дополнительную задержку
+                    if isForce {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            self.selection = destination
+                        }
+                    }
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
+            // Обрабатываем уведомления об обновлении данных колеса
+            print("🔄 RootView: Wheel data updated")
         }
     }
 

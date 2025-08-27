@@ -102,10 +102,30 @@ struct SectorsFullScreenView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 40)
                     }
+                    .allowsHitTesting(true)  // Разрешаем нажатия
+                    .contentShape(Rectangle())  // Определяем область для нажатий
                 }
             }
         }
         .navigationBarHidden(true)
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
+            // Если получаем уведомление о навигации, закрываем экран
+            if let destination = notification.userInfo?["destination"] as? String {
+                print(
+                    "🔄 SectorsFullScreenView: Navigation requested to \(destination), closing view")
+                // Закрываем экран и отправляем дополнительное уведомление для навигации
+                dismiss()
+                // Отправляем уведомление с небольшой задержкой, чтобы экран успел закрыться
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(
+                        name: .navigationRequested,
+                        object: nil,
+                        userInfo: ["destination": destination, "force": true]
+                    )
+                }
+            }
+        }
     }
 }
 
