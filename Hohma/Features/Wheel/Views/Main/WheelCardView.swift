@@ -60,19 +60,19 @@ struct WheelCardView: View {
                     {
                         // Используем новый StreamVideoView для внешних URL
                         StreamVideoView(url: url)
-                            .frame(width: 380, height: 200)
+                            .frame(minWidth: 330, maxWidth: 380, minHeight: 200)
                             .clipped()
                             .id(urlString)  // Принудительно пересоздаем при изменении URL
                     } else if viewModel.isVideoReady {
                         // Используем старый VideoBackgroundView для локального видео
                         if let player = viewModel.player {
                             VideoBackgroundView(player: player)
-                                .frame(width: 380, height: 200)
+                                .frame(minWidth: 330, maxWidth: 380, minHeight: 200)
                         }
                     } else {
                         // Показываем градиент пока видео загружается
                         AnimatedGradientBackground()
-                            .frame(width: 380, height: 200)
+                            .frame(minWidth: 330, maxWidth: 380, minHeight: 200)
                     }
 
                     WheelHeaderView(

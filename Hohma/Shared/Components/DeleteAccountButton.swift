@@ -14,21 +14,25 @@ struct DeleteAccountButton: View {
             HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .red))
                         .scaleEffect(0.8)
                 } else {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 16, weight: .medium))
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .medium))
                 }
 
                 Text(isLoading ? "Удаление..." : "Удалить аккаунт")
-                    .fontWeight(.semibold)
+                    .font(.body)
+                    .fontWeight(.medium)
             }
-            .foregroundColor(.white)
+            .foregroundColor(.red)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .background(Color.red.opacity(0.8))
-            .cornerRadius(12)
+            .background(Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.red.opacity(0.3), lineWidth: 1)
+            )
         }
         .disabled(isLoading)
         .alert("Удаление аккаунта", isPresented: $showConfirmation) {

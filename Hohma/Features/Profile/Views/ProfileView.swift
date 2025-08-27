@@ -24,6 +24,7 @@ struct ProfileView: View {
                 // Кнопка редактирования
                 editButtonSection
 
+                Spacer()
                 // Кнопки действий
                 actionButtonsSection
             }

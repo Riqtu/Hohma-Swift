@@ -47,7 +47,7 @@ struct SettingsView: View {
                             SettingsRow(
                                 icon: "info.circle",
                                 title: "О приложении",
-                                subtitle: "Версия 1.0.4",
+                                subtitle: "Версия 1.0.5",
                                 action: {
                                     if let url = URL(string: "https://hohma.su/about") {
                                         webViewURL = url

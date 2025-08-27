@@ -81,7 +81,7 @@ struct CreateWheelFormView: View {
                     }
 
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity)
 
                 Spacer()
