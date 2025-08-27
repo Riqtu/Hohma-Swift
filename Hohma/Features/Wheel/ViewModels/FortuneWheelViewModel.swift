@@ -207,13 +207,13 @@ class FortuneWheelViewModel: ObservableObject {
     func calculateWheelSize(for geometry: GeometryProxy, availableWidth: CGFloat? = nil) -> CGFloat
     {
         let minDimension = min(geometry.size.width, geometry.size.height)
-        let maxDimension = max(geometry.size.width, geometry.size.height)
+        _ = max(geometry.size.width, geometry.size.height)
 
         // Определяем ориентацию
         let isLandscape = geometry.size.width > geometry.size.height
 
         // Определяем тип устройства
-        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        _ = UIDevice.current.userInterfaceIdiom == .pad
         let isSmallScreen = minDimension < 600  // Маленький экран (iPad mini, iPhone)
 
         if isLandscape {
@@ -235,7 +235,7 @@ class FortuneWheelViewModel: ObservableObject {
 
             if isSmallScreen {
                 // Для маленьких экранов используем более консервативный размер
-                wheelSize = geometry.size.width * 0.6  // 60% от ширины для маленьких экранов
+                wheelSize = geometry.size.width * 0.8  // 60% от ширины для маленьких экранов
             } else {
                 wheelSize = geometry.size.width * 0.8  // 80% от ширины для больших экранов
             }
