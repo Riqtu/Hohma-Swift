@@ -49,7 +49,11 @@ struct AddSectorFormView: View {
                     Text("Название фильма")
                         .font(.headline)
 
-                    TextField("Введите название фильма", text: $movieTitle)
+                    Text("Введите название фильма для поиска или просто название для добавления")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+
+                    TextField("Например: Титаник или любой фильм", text: $movieTitle)
                         .textFieldStyle(PlainTextFieldStyle())
                         .padding()
                         .background(.thickMaterial)
@@ -130,8 +134,9 @@ struct AddSectorFormView: View {
                     .background(Color("AccentColor"))
                     .cornerRadius(12)
                 }
-                .disabled(selectedMovie == nil)
-                .opacity(selectedMovie == nil ? 0.5 : 1.0)
+                .disabled(movieTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(
+                    movieTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
             }
             .padding(20)
             .appBackground(useVideo: false)
@@ -236,9 +241,10 @@ struct AddSectorFormView: View {
     }
 
     private func addSector() {
-        guard let selectedMovie = selectedMovie,
-            let currentUser = currentUser
-        else { return }
+        guard let currentUser = currentUser else { return }
+
+        let trimmedTitle = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
 
         // Создаем случайный цвет для сектора
         let randomColor = ColorJSON(
@@ -250,18 +256,18 @@ struct AddSectorFormView: View {
         // Создаем сектор
         let sector = Sector(
             id: UUID().uuidString,  // Временный ID, будет заменен сервером
-            label: selectedMovie.name,
+            label: selectedMovie?.name ?? trimmedTitle,
             color: randomColor,
             name: currentUser.firstName ?? currentUser.username ?? "Unknown",
             eliminated: false,
             winner: false,
-            description: selectedMovie.description,
-            pattern: selectedMovie.poster?.bestUrl,  // Добавляем постер в pattern
+            description: selectedMovie?.description,
+            pattern: selectedMovie?.poster?.bestUrl,  // Добавляем постер в pattern
             patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
-            poster: selectedMovie.poster?.bestUrl,
-            genre: selectedMovie.genres?.first?.name,
+            poster: selectedMovie?.poster?.bestUrl,
+            genre: selectedMovie?.genres?.first?.name,
             rating: nil,
-            year: String(selectedMovie.year),
+            year: selectedMovie != nil ? String(selectedMovie!.year) : nil,
             labelColor: nil,
             labelHidden: false,
             wheelId: wheelId,
