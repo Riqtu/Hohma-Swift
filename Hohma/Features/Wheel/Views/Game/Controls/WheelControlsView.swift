@@ -65,14 +65,14 @@ struct WheelControlsView: View {
                 .disabled(wheelState.spinning || !isSocketReady)
                 .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
-                Button(action: {
-                    showingSettings = true
-                }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .frame(minWidth: 44, minHeight: 44)  // Минимальный размер для доступности
-                }
+                // Button(action: {
+                //     showingSettings = true
+                // }) {
+                //     Image(systemName: "gearshape.fill")
+                //         .font(.title2)
+                //         .foregroundColor(.white)
+                //         .frame(minWidth: 44, minHeight: 44)  // Минимальный размер для доступности
+                // }
                 // Кнопка добавления сектора
                 Button(action: {
                     showingAddSector = true
