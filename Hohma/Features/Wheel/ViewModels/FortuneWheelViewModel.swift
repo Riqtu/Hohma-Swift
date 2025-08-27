@@ -206,21 +206,41 @@ class FortuneWheelViewModel: ObservableObject {
 
     func calculateWheelSize(for geometry: GeometryProxy, availableWidth: CGFloat? = nil) -> CGFloat
     {
-        _ = min(geometry.size.width, geometry.size.height)
-        _ = max(geometry.size.width, geometry.size.height)
+        let minDimension = min(geometry.size.width, geometry.size.height)
+        let maxDimension = max(geometry.size.width, geometry.size.height)
 
         // Определяем ориентацию
         let isLandscape = geometry.size.width > geometry.size.height
 
+        // Определяем тип устройства
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+        let isSmallScreen = minDimension < 600  // Маленький экран (iPad mini, iPhone)
+
         if isLandscape {
             // В альбомной ориентации используем доступную ширину или высоту
             let availableSpace = availableWidth ?? geometry.size.width
-            let wheelSize = min(geometry.size.height * 0.9, availableSpace * 0.7)
-            return max(250, min(wheelSize, 700))
+            let wheelSize: CGFloat
+
+            if isSmallScreen {
+                // Для маленьких экранов используем более консервативный размер
+                wheelSize = min(geometry.size.height * 0.7, availableSpace * 0.5)
+            } else {
+                wheelSize = min(geometry.size.height * 0.9, availableSpace * 0.7)
+            }
+
+            return max(200, min(wheelSize, isSmallScreen ? 400 : 700))
         } else {
             // В портретной ориентации используем ширину как основу
-            let wheelSize = geometry.size.width * 0.8  // 70% от ширины
-            return max(250, min(wheelSize, 500))  // Минимум 250, максимум 500
+            let wheelSize: CGFloat
+
+            if isSmallScreen {
+                // Для маленьких экранов используем более консервативный размер
+                wheelSize = geometry.size.width * 0.6  // 60% от ширины для маленьких экранов
+            } else {
+                wheelSize = geometry.size.width * 0.8  // 80% от ширины для больших экранов
+            }
+
+            return max(200, min(wheelSize, isSmallScreen ? 350 : 500))
         }
     }
 

@@ -59,6 +59,7 @@ struct WheelControlsView: View {
 
                     }
                     .foregroundColor(.white)
+                    .frame(minWidth: 44, minHeight: 44)  // Минимальный размер для доступности
 
                 }
                 .disabled(wheelState.spinning || !isSocketReady)
@@ -70,6 +71,7 @@ struct WheelControlsView: View {
                     Image(systemName: "gearshape.fill")
                         .font(.title2)
                         .foregroundColor(.white)
+                        .frame(minWidth: 44, minHeight: 44)  // Минимальный размер для доступности
                 }
                 // Кнопка добавления сектора
                 Button(action: {
@@ -81,12 +83,14 @@ struct WheelControlsView: View {
 
                     }
                     .foregroundColor(.white)
+                    .frame(minWidth: 44, minHeight: 44)  // Минимальный размер для доступности
 
                 }
                 .disabled(wheelState.spinning || !isSocketReady)
                 .opacity((wheelState.spinning || !isSocketReady) ? 0.5 : 1.0)
 
             }
+            .padding(.horizontal, 10)  // Уменьшенные отступы для маленьких экранов
 
         }
         .sheet(isPresented: $showingSettings) {

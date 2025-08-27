@@ -67,6 +67,7 @@ struct HomeView: View {
                 break
             }
         }
+        .appBackground()
         .enableInjection()
     }
 }

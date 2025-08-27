@@ -122,7 +122,12 @@ struct FortuneWheelGameView: View {
     }
 
     private func portraitLayout(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 16) {
+        // Адаптивные отступы для маленьких экранов
+        let isSmallScreen = min(geometry.size.width, geometry.size.height) < 600
+        let spacing: CGFloat = isSmallScreen ? 8 : 16
+        let horizontalPadding: CGFloat = isSmallScreen ? 10 : 20
+
+        return VStack(spacing: spacing) {
             UsersPanelView(
                 viewModel: viewModel,
                 accentColor: viewModel.wheelState.accentColor
@@ -140,12 +145,19 @@ struct FortuneWheelGameView: View {
                     userCoins: viewModel.currentUserCoins,
                     isSocketReady: viewModel.isSocketReady
                 )
+                .padding(.horizontal, horizontalPadding)
             }
         }
+        .padding(.horizontal, horizontalPadding)
     }
 
     private func landscapeLayout(geometry: GeometryProxy) -> some View {
-        HStack(spacing: 16) {
+        // Адаптивные отступы для маленьких экранов
+        let isSmallScreen = min(geometry.size.width, geometry.size.height) < 600
+        let spacing: CGFloat = isSmallScreen ? 8 : 16
+        let horizontalPadding: CGFloat = isSmallScreen ? 10 : 20
+
+        return HStack(spacing: spacing) {
             UsersPanelView(
                 viewModel: viewModel,
                 accentColor: viewModel.wheelState.accentColor
@@ -173,8 +185,10 @@ struct FortuneWheelGameView: View {
                     userCoins: viewModel.currentUserCoins,
                     isSocketReady: viewModel.isSocketReady
                 )
+                .padding(.horizontal, horizontalPadding)
             }
         }
+        .padding(.horizontal, horizontalPadding)
     }
 
     private var connectionIndicator: some View {

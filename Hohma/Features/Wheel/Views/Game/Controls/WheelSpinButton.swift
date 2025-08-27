@@ -20,6 +20,21 @@ struct WheelSpinButton: View {
         Color(hex: wheelState.accentColor)
     }
 
+    // Адаптивный размер кнопки
+    private var buttonSize: CGFloat {
+        let screenSize = UIScreen.main.bounds.size
+        let minDimension = min(screenSize.width, screenSize.height)
+
+        // Для маленьких экранов используем меньший размер
+        if minDimension < 600 {
+            return 60  // Маленький размер для iPad mini и iPhone
+        } else if minDimension < 800 {
+            return 70  // Средний размер для обычного iPad
+        } else {
+            return 80  // Большой размер для больших iPad
+        }
+    }
+
     var body: some View {
         Button(action: {
             withAnimation(.easeInOut(duration: 0.1)) {
@@ -47,7 +62,7 @@ struct WheelSpinButton: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 80, height: 80)
+                        .frame(width: buttonSize, height: buttonSize)
                         .overlay(
                             Circle()
                                 .stroke(Color.white, lineWidth: 2)
@@ -62,7 +77,7 @@ struct WheelSpinButton: View {
 
                     // Иконка вращения с идеальным центрированием
                     Image(systemName: "play.fill")
-                        .font(.title)
+                        .font(.system(size: buttonSize * 0.4))  // Адаптивный размер иконки
                         .foregroundColor(.black)
                         .rotationEffect(.degrees(rotationAngle))
                         .position(
@@ -72,7 +87,7 @@ struct WheelSpinButton: View {
 
                 }
             }
-            .frame(width: 80, height: 80)
+            .frame(width: buttonSize, height: buttonSize)
         }
         .disabled(wheelState.spinning || wheelState.sectors.count <= 1 || !isSocketReady)
         .opacity(
