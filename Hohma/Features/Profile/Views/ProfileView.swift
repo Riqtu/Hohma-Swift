@@ -95,7 +95,7 @@ struct ProfileView: View {
                     if let email = user.email {
                         Text(email)
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.secondary)
                     }
                 }
             } else {

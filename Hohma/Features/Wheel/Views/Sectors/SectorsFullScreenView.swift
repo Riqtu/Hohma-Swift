@@ -39,7 +39,7 @@ struct SectorsFullScreenView: View {
                             Text(title)
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
-                                .foregroundColor(Color(hex: accentColor))
+                                .foregroundColor(Color("AccentColor"))
 
                             Text("\(sectors.count) элементов")
                                 .font(.subheadline)
@@ -144,7 +144,6 @@ struct StatCard: View {
             Text("\(count)")
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(.white)
 
             Text(title)
                 .font(.caption)
@@ -191,7 +190,6 @@ struct SectorFullScreenRowView: View {
                 Text(sector.label)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
 
                 Text(sector.name)
                     .font(.body)
@@ -240,13 +238,13 @@ struct SectorFullScreenRowView: View {
                         .foregroundColor(.red)
                 } else if sector.winner {
                     Image(systemName: "crown.fill")
-                        .foregroundColor(Color(hex: accentColor))
+                        .foregroundColor(Color("AccentColor"))
                         .font(.title2)
 
                     Text("Победитель")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(Color(hex: accentColor))
+                        .foregroundColor(Color("AccentColor"))
                 } else {
                     Image(systemName: "circle.fill")
                         .foregroundColor(.green)
@@ -262,10 +260,10 @@ struct SectorFullScreenRowView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.1))
+                .fill(.thickMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
+                        .stroke(Color("AccentColor").opacity(0.3), lineWidth: 1)
                 )
         )
     }

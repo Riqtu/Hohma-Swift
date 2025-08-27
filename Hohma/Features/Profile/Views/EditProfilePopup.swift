@@ -25,7 +25,7 @@ struct EditProfilePopup: View {
 
                         Text("Обновите информацию о себе")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.secondary)
                     }
                     .padding(.top, 16)
 
@@ -102,7 +102,7 @@ struct EditProfilePopup: View {
                         Button("Отмена") {
                             isPresented = false
                         }
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.secondary)
                         .padding(.vertical, 8)
                     }
                     .padding(.horizontal, 20)

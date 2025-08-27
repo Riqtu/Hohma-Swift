@@ -19,83 +19,72 @@ struct SectorsSlideView: View {
     let viewModel: FortuneWheelViewModel?
 
     var body: some View {
-        ZStack {
-            // Фоновый градиент
-            LinearGradient(
-                colors: [
-                    Color.black,
-                    Color(hex: accentColor).opacity(0.1),
-                    Color.black,
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Заголовок
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color(hex: accentColor))
+        VStack(spacing: 0) {
+            // Заголовок
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color("AccentColor"))
 
-                        Text("\(sectors.count) элементов")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-
-                    Spacer()
+                    Text("\(sectors.count) элементов")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 20)
 
-                // Статистика
-                HStack(spacing: 24) {
-                    StatCard(
-                        title: "Активные",
-                        count: sectors.filter { !$0.eliminated && !$0.winner }.count,
-                        color: .green,
-                        icon: "circle.fill"
-                    )
-
-                    StatCard(
-                        title: "Выбывшие",
-                        count: sectors.filter { $0.eliminated }.count,
-                        color: .red,
-                        icon: "xmark.circle.fill"
-                    )
-
-                    StatCard(
-                        title: "Победители",
-                        count: sectors.filter { $0.winner }.count,
-                        color: Color(hex: accentColor),
-                        icon: "crown.fill"
-                    )
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-
-                // Список секторов
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(sectors) { sector in
-                            SectorSlideRowView(
-                                sector: sector,
-                                accentColor: accentColor,
-                                viewModel: viewModel
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
-                }
-                .allowsHitTesting(true)  // Разрешаем нажатия
-                .contentShape(Rectangle())  // Определяем область для нажатий
+                Spacer()
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 20)
+
+            // Статистика
+            HStack(spacing: 24) {
+                StatCard(
+                    title: "Активные",
+                    count: sectors.filter { !$0.eliminated && !$0.winner }.count,
+                    color: .green,
+                    icon: "circle.fill"
+                )
+
+                StatCard(
+                    title: "Выбывшие",
+                    count: sectors.filter { $0.eliminated }.count,
+                    color: .red,
+                    icon: "xmark.circle.fill"
+                )
+
+                StatCard(
+                    title: "Победители",
+                    count: sectors.filter { $0.winner }.count,
+                    color: Color("AccentColor"),
+                    icon: "crown.fill"
+                )
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+
+            // Список секторов
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(sectors) { sector in
+                        SectorSlideRowView(
+                            sector: sector,
+                            accentColor: accentColor,
+                            viewModel: viewModel
+                        )
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+            .allowsHitTesting(true)  // Разрешаем нажатия
+            .contentShape(Rectangle())  // Определяем область для нажатий
+
         }
+        .appBackground(useVideo: false)
         .navigationTitle("Фильмы")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -149,7 +138,6 @@ struct SectorSlideRowView: View {
                 Text(sector.label)
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
 
                 Text(sector.name)
                     .font(.subheadline)
@@ -198,13 +186,13 @@ struct SectorSlideRowView: View {
                         .foregroundColor(.red)
                 } else if sector.winner {
                     Image(systemName: "crown.fill")
-                        .foregroundColor(Color(hex: accentColor))
+                        .foregroundColor(Color("AccentColor"))
                         .font(.title3)
 
                     Text("Победитель")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(Color(hex: accentColor))
+                        .foregroundColor(Color("AccentColor"))
                 } else {
                     Image(systemName: "circle.fill")
                         .foregroundColor(.green)
@@ -223,7 +211,7 @@ struct SectorSlideRowView: View {
                 .fill(Color.white.opacity(0.1))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: accentColor).opacity(0.3), lineWidth: 1)
+                        .stroke(Color("AccentColor").opacity(0.3), lineWidth: 1)
                 )
         )
     }

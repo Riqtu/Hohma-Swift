@@ -104,7 +104,6 @@ struct AddSectorFormView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Выбранный фильм")
                             .font(.headline)
-                            .foregroundColor(.white)
 
                         SelectedMovieCard(movie: selectedMovie, accentColor: accentColor)
                     }

@@ -90,7 +90,7 @@ struct FortuneWheelGameView: View {
             wheelLayout(geometry: geometry)
             connectionIndicator
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 10)
     }
 
     private func wheelLayout(geometry: GeometryProxy) -> some View {
