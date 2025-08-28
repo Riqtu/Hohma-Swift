@@ -138,7 +138,9 @@ final class VideoPlayerManager: ObservableObject {
         #if os(iOS)
             do {
                 let audioSession = AVAudioSession.sharedInstance()
-                try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                // Настраиваем для работы с другими приложениями (Spotify, Apple Music и т.д.)
+                try audioSession.setCategory(
+                    .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
                 try audioSession.setActive(true)
             } catch {
                 print("❌ Ошибка настройки аудиосессии: \(error)")
@@ -222,7 +224,6 @@ final class VideoPlayerManager: ObservableObject {
     // MARK: - Public Methods
     func player(resourceName: String, resourceExtension: String = "mp4") -> AVPlayer? {
         let key = "\(resourceName).\(resourceExtension)"
-
 
         // Проверяем кэш
         if let cachedPlayer = cache[key] {
@@ -329,7 +330,6 @@ final class VideoPlayerManager: ObservableObject {
 
         player.isMuted = true
         player.actionAtItemEnd = .none
-
 
         // Создаем cached player
         let cachedPlayer = CachedPlayer(player: player)

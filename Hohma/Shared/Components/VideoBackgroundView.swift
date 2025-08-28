@@ -1,6 +1,16 @@
 import AVFoundation
 import SwiftUI
 
+/// Видео фон компонент с поддержкой управления звуком
+///
+/// Пример использования:
+/// ```swift
+/// // Без звука (не прерывает Spotify/Apple Music)
+/// VideoBackgroundView(player: player, isMuted: true)
+///
+/// // Со звуком (может прерывать другие приложения)
+/// VideoBackgroundView(player: player, isMuted: false)
+/// ```
 #if os(iOS)
     import UIKit
 
@@ -9,10 +19,22 @@ import SwiftUI
         private var timeObserver: Any?
         private var playerItemObserver: NSKeyValueObservation?
         private var isVisible: Bool = true
+        private var isLoading: Bool = false
+        private var isExternalURL: Bool = false
+        private var isMuted: Bool = true
 
-        init(player: AVPlayer) {
+        init(player: AVPlayer, isMuted: Bool = true) {
             self.playerLayer = AVPlayerLayer(player: player)
+            self.isMuted = isMuted
             super.init(frame: .zero)
+
+            // Определяем, является ли это внешним URL
+            if let urlAsset = player.currentItem?.asset as? AVURLAsset {
+                self.isExternalURL = urlAsset.url.scheme == "http" || urlAsset.url.scheme == "https"
+            }
+
+            // Настраиваем аудиосессию для работы с другими приложениями
+            setupAudioSession()
 
             // Важно: настраиваем layer правильно
             self.playerLayer.videoGravity = .resizeAspectFill
@@ -58,12 +80,32 @@ import SwiftUI
             {
                 [weak self] item, _ in
                 DispatchQueue.main.async {
-                    if item.status == .readyToPlay {
+                    switch item.status {
+                    case .readyToPlay:
+                        self?.isLoading = false
                         self?.playerLayer.player?.play()
 
                         // Принудительно обновляем layout
                         self?.setNeedsLayout()
                         self?.layoutSubviews()
+                    case .failed:
+                        self?.isLoading = false
+                        // Обработка ошибок для внешних URL
+                        if let error = item.error {
+                            print("❌ Ошибка воспроизведения видео: \(error)")
+                            // Для внешних URL можно попробовать перезагрузить
+                            if let self = self, self.isExternalURL {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                    self.retryLoading()
+                                }
+                            }
+                        }
+                    case .unknown:
+                        self?.isLoading = true
+                        break
+                    @unknown default:
+                        self?.isLoading = false
+                        break
                     }
                 }
             }
@@ -84,6 +126,35 @@ import SwiftUI
             }
         }
 
+        private func setupAudioSession() {
+            #if os(iOS)
+                do {
+                    let audioSession = AVAudioSession.sharedInstance()
+
+                    if isMuted {
+                        // Для фонового видео без звука - не прерываем другие приложения
+                        try audioSession.setCategory(
+                            .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
+                    } else {
+                        // Для видео со звуком - стандартная настройка
+                        try audioSession.setCategory(.playback, mode: .default, options: [])
+                    }
+
+                    try audioSession.setActive(true)
+                } catch {
+                    print("❌ Ошибка настройки аудиосессии: \(error)")
+                }
+            #endif
+        }
+
+        private func retryLoading() {
+            guard let urlAsset = playerLayer.player?.currentItem?.asset as? AVURLAsset else {
+                return
+            }
+            let newPlayerItem = AVPlayerItem(url: urlAsset.url)
+            playerLayer.player?.replaceCurrentItem(with: newPlayerItem)
+        }
+
         override func layoutSubviews() {
             super.layoutSubviews()
             playerLayer.frame = bounds
@@ -102,9 +173,15 @@ import SwiftUI
 
     struct VideoBackgroundView: UIViewRepresentable {
         let player: AVPlayer
+        let isMuted: Bool
+
+        init(player: AVPlayer, isMuted: Bool = true) {
+            self.player = player
+            self.isMuted = isMuted
+        }
 
         func makeUIView(context: Context) -> VideoPlayerView {
-            let view = VideoPlayerView(player: player)
+            let view = VideoPlayerView(player: player, isMuted: isMuted)
             return view
         }
 
@@ -136,10 +213,22 @@ import SwiftUI
         let playerLayer: AVPlayerLayer
         private var playerItemObserver: NSKeyValueObservation?
         private var isVisible: Bool = true
+        private var isLoading: Bool = false
+        private var isExternalURL: Bool = false
+        private var isMuted: Bool = true
 
-        init(player: AVPlayer) {
+        init(player: AVPlayer, isMuted: Bool = true) {
             self.playerLayer = AVPlayerLayer(player: player)
+            self.isMuted = isMuted
             super.init(frame: .zero)
+
+            // Определяем, является ли это внешним URL
+            if let urlAsset = player.currentItem?.asset as? AVURLAsset {
+                self.isExternalURL = urlAsset.url.scheme == "http" || urlAsset.url.scheme == "https"
+            }
+
+            // Настраиваем аудиосессию для работы с другими приложениями
+            setupAudioSession()
 
             self.wantsLayer = true
             self.layer = CALayer()
@@ -205,6 +294,22 @@ import SwiftUI
             }
         }
 
+        private func setupAudioSession() {
+            #if os(macOS)
+                // На macOS аудиосессия настраивается автоматически
+                // Просто устанавливаем muted состояние плеера
+                playerLayer.player?.isMuted = isMuted
+            #endif
+        }
+
+        private func retryLoading() {
+            guard let urlAsset = playerLayer.player?.currentItem?.asset as? AVURLAsset else {
+                return
+            }
+            let newPlayerItem = AVPlayerItem(url: urlAsset.url)
+            playerLayer.player?.replaceCurrentItem(with: newPlayerItem)
+        }
+
         override func layout() {
             super.layout()
             playerLayer.frame = bounds
@@ -223,9 +328,15 @@ import SwiftUI
 
     struct VideoBackgroundView: NSViewRepresentable {
         let player: AVPlayer
+        let isMuted: Bool
+
+        init(player: AVPlayer, isMuted: Bool = true) {
+            self.player = player
+            self.isMuted = isMuted
+        }
 
         func makeNSView(context: Context) -> VideoPlayerView {
-            let view = VideoPlayerView(player: player)
+            let view = VideoPlayerView(player: player, isMuted: isMuted)
             return view
         }
 
