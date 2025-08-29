@@ -119,6 +119,15 @@ struct EditProfilePopup: View {
                 }
             }
             .appBackground()
+            .onReceive(viewModel.$successMessage) { successMessage in
+                if successMessage != nil {
+                    // Закрываем окно после небольшой задержки, чтобы пользователь увидел сообщение об успехе
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        isPresented = false
+                        viewModel.clearMessages()
+                    }
+                }
+            }
         }
         .enableInjection()
     }

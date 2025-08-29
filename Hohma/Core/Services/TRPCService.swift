@@ -94,6 +94,10 @@ class TRPCService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         try addAuthorizationHeader(to: &request)
 
+        // Wrap in tRPC format
+        let trpcBody = ["json": body]
+        request.httpBody = try JSONSerialization.data(withJSONObject: trpcBody)
+
         return request
     }
 
