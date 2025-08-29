@@ -207,6 +207,45 @@ struct Sector: Codable, Identifiable {
     )
 }
 
+// MARK: - Sector Extensions
+extension Sector {
+    var dictionary: [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "label": label,
+            "color": [
+                "h": color.h,
+                "s": color.s,
+                "l": color.l,
+            ],
+            "name": name,
+            "eliminated": eliminated,
+            "winner": winner,
+            "labelHidden": labelHidden,
+            "wheelId": wheelId,
+        ]
+
+        // Добавляем опциональные поля только если они не nil
+        if let description = description { dict["description"] = description }
+        if let pattern = pattern { dict["pattern"] = pattern }
+        if let patternPosition = patternPosition {
+            dict["patternPosition"] = [
+                "x": patternPosition.x,
+                "y": patternPosition.y,
+                "z": patternPosition.z,
+            ]
+        }
+        if let poster = poster { dict["poster"] = poster }
+        if let genre = genre { dict["genre"] = genre }
+        if let rating = rating { dict["rating"] = rating }
+        if let year = year { dict["year"] = year }
+        if let labelColor = labelColor { dict["labelColor"] = labelColor }
+        if let userId = userId { dict["userId"] = userId }
+
+        return dict
+    }
+}
+
 struct SectorWithRelations: Codable {
     let sector: Sector
     let wheel: Wheel
