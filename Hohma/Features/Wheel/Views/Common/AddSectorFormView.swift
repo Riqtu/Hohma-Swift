@@ -8,6 +8,7 @@
 import Combine
 import Inject
 import SwiftUI
+import UIKit
 
 struct AddSectorFormView: View {
     @ObserveInjection var inject
@@ -46,8 +47,29 @@ struct AddSectorFormView: View {
 
                 // Поле поиска фильма
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Название фильма")
-                        .font(.headline)
+                    HStack {
+                        Text("Название фильма")
+                            .font(.headline)
+
+                        Spacer()
+
+                        // Кнопка для принудительного фокуса (помощь для iPad)
+                        Button(action: {
+                            isTextFieldFocused = true
+                            // Дополнительная попытка показать клавиатуру
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isTextFieldFocused = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTextFieldFocused = true
+                                }
+                            }
+                        }) {
+                            Image(systemName: "keyboard")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
 
                     Text("Введите название фильма для поиска или просто название для добавления")
                         .font(.caption)
@@ -62,6 +84,18 @@ struct AddSectorFormView: View {
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.words)
                         .focused($isTextFieldFocused)
+                        .submitLabel(.done)
+                        .onReceive(
+                            NotificationCenter.default.publisher(
+                                for: UIResponder.keyboardDidShowNotification)
+                        ) { _ in
+                            // Клавиатура показалась - убеждаемся, что TextField в фокусе
+                            if !isTextFieldFocused {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    isTextFieldFocused = true
+                                }
+                            }
+                        }
                         .onChange(of: movieTitle) { _, newValue in
                             debouncedSearch(query: newValue)
                         }
@@ -152,25 +186,63 @@ struct AddSectorFormView: View {
             .enableInjection()
             .onAppear {
                 // Автоматически фокусируемся на TextField при появлении
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Увеличиваем задержку для более надежной работы на iPad
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     isTextFieldFocused = true
+                }
+
+                // Дополнительная попытка фокуса через 1 секунду для iPad
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    if !isTextFieldFocused {
+                        isTextFieldFocused = true
+                    }
+                }
+
+                // Подписываемся на уведомления о клавиатуре
+                NotificationCenter.default.addObserver(
+                    forName: UIResponder.keyboardWillShowNotification,
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    // Клавиатура показывается - убеждаемся, что TextField в фокусе
+                    if !isTextFieldFocused {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isTextFieldFocused = true
+                        }
+                    }
+                }
+
+                // Проверяем доступность клавиатуры
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    if !isTextFieldFocused {
+                        // Если клавиатура все еще не открылась, показываем дополнительную подсказку
+                        print("⚠️ Клавиатура не открылась автоматически на iPad")
+
+                        // Попытка принудительного фокуса
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            isTextFieldFocused = true
+                        }
+                    }
                 }
             }
             .onDisappear {
                 // Очищаем ресурсы при закрытии
                 cancelSearch()
+
+                // Удаляем наблюдатель уведомлений
+                NotificationCenter.default.removeObserver(
+                    self,
+                    name: UIResponder.keyboardWillShowNotification,
+                    object: nil
+                )
             }
-            // Правильная обработка клавиатуры
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-            .simultaneousGesture(
-                TapGesture()
-                    .onEnded { _ in
-                        // Скрываем клавиатуру при тапе вне TextField
-                        if isTextFieldFocused {
-                            isTextFieldFocused = false
-                        }
-                    }
-            )
+            // Улучшенная обработка клавиатуры
+            .onTapGesture {
+                // Скрываем клавиатуру при тапе вне TextField
+                if isTextFieldFocused {
+                    isTextFieldFocused = false
+                }
+            }
         }
     }
 
