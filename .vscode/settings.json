@@ -1,4 +1,42 @@
 {
   "sweetpad.build.xcodeWorkspacePath": "Hohma.xcodeproj/project.xcworkspace",
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "better-comments.tags": [
+    {
+      "tag": "MARK",
+      "color": "#007acc",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": true,
+      "italic": false
+    },
+    {
+      "tag": "TODO",
+      "color": "#ff8c00",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": false,
+      "italic": false
+    },
+    {
+      "tag": "FIXME",
+      "color": "#f44747",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": false,
+      "italic": false
+    },
+    {
+      "tag": "NOTE",
+      "color": "#4ec9b0",
+      "strikethrough": false,
+      "underline": false,
+      "backgroundColor": "transparent",
+      "bold": false,
+      "italic": false
+    }
+  ]
 }

@@ -16,6 +16,18 @@
 				<string>riqtu.Hohma</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Universal Links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>https</string>
+			</array>
+		</dict>
+	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:hohma.su</string>
 	</array>
 	<key>KINOPOISK_API_KEY</key>
 	<string>$(KINOPOISK_API_KEY)</string>
