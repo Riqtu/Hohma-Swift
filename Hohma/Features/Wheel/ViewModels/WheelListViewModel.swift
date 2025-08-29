@@ -266,8 +266,7 @@ class WheelListViewModel: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
-        let response: WheelDeleteResponse = try await NetworkManager.shared.request(
-            request, decoder: decoder)
+        let response: WheelDeleteResponse = try await NetworkManager.shared.request(request)
 
         return response.result.data.json
     }
@@ -300,8 +299,7 @@ class WheelListViewModel: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
-        let response: WheelListResponse = try await NetworkManager.shared.request(
-            request, decoder: decoder)
+        let response: WheelListResponse = try await NetworkManager.shared.request(request)
 
         return response.result.data.json
     }
@@ -357,8 +355,7 @@ class WheelListViewModel: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
-        let response: WheelListPaginationResponse = try await NetworkManager.shared.request(
-            request, decoder: decoder)
+        let response: WheelListPaginationResponse = try await NetworkManager.shared.request(request)
 
         return response.result.data.json
     }
