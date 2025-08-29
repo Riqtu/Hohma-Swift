@@ -12,6 +12,8 @@ class SettingsViewModel: ObservableObject {
         loadThemeSettings()
         // Применяем сохраненную тему при инициализации
         applyTheme(themeSettings.currentTheme)
+        print(
+            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue)")
     }
 
     func setTheme(_ theme: AppTheme) {
@@ -21,6 +23,8 @@ class SettingsViewModel: ObservableObject {
     }
 
     func applySavedTheme() {
+        // Перезагружаем настройки из UserDefaults перед применением
+        loadThemeSettings()
         // Применяем сохраненную тему (например, при возвращении в приложение)
         applyTheme(themeSettings.currentTheme)
     }
@@ -30,6 +34,9 @@ class SettingsViewModel: ObservableObject {
             let theme = AppTheme(rawValue: savedTheme)
         {
             themeSettings.currentTheme = theme
+        } else {
+            // Если тема не найдена, используем системную по умолчанию
+            themeSettings.currentTheme = .system
         }
     }
 
@@ -51,25 +58,40 @@ class SettingsViewModel: ObservableObject {
         // Убеждаемся, что изменения применились
         DispatchQueue.main.async {
             self.objectWillChange.send()
+            print("🎨 SettingsViewModel: UI обновлен для темы: \(theme.rawValue)")
         }
     }
 
     private func setColorScheme(_ colorScheme: ColorScheme?) {
+        let colorSchemeString =
+            colorScheme == nil ? "system" : (colorScheme == .dark ? "dark" : "light")
+        print("🎨 SettingsViewModel: Установка ColorScheme: \(colorSchemeString)")
+
         // Применяем тему к приложению
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
             windowScene.windows.forEach { window in
-                window.overrideUserInterfaceStyle = colorScheme?.userInterfaceStyle ?? .unspecified
+                let newStyle = colorScheme?.userInterfaceStyle ?? .unspecified
+                if window.overrideUserInterfaceStyle != newStyle {
+                    window.overrideUserInterfaceStyle = newStyle
+                }
             }
         }
 
         // Для macOS также применяем тему
         #if os(macOS)
             if let colorScheme = colorScheme {
-                NSApp.appearance =
+                let newAppearance =
                     colorScheme == .dark
-                    ? NSAppearance(named: .darkAqua) : NSAppearance(named: .aqua)
+                    ? NSAppearance(named: .darkAqua)
+                    : NSAppearance(named: .aqua)
+
+                if NSApp.appearance != newAppearance {
+                    NSApp.appearance = newAppearance
+                }
             } else {
-                NSApp.appearance = nil
+                if NSApp.appearance != nil {
+                    NSApp.appearance = nil
+                }
             }
         #endif
     }

@@ -45,35 +45,37 @@ struct ProfileView: View {
                 .presentationDragIndicator(.visible)
         }
         .overlay(
-            Group {
-                if let errorMessage = viewModel.errorMessage {
-                    VStack {
-                        NotificationView(
-                            message: errorMessage,
-                            type: .error
-                        ) {
-                            viewModel.clearMessages()
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 60)
-                }
-
-                if let successMessage = viewModel.successMessage {
-                    VStack {
-                        NotificationView(
-                            message: successMessage,
-                            type: .success
-                        ) {
-                            viewModel.clearMessages()
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 60)
-                }
-            }
+            notificationOverlay
         )
         .enableInjection()
+    }
+
+    // MARK: - Notification Overlay
+    private var notificationOverlay: some View {
+        Group {
+            if let errorMessage = viewModel.errorMessage {
+                notificationView(message: errorMessage, type: .error)
+            }
+
+            if let successMessage = viewModel.successMessage {
+                notificationView(message: successMessage, type: .success)
+            }
+        }
+    }
+
+    private func notificationView(message: String, type: NotificationView.NotificationType)
+        -> some View
+    {
+        VStack {
+            NotificationView(
+                message: message,
+                type: type
+            ) {
+                viewModel.clearMessages()
+            }
+            Spacer()
+        }
+        .padding(.top, 60)
     }
 
     // MARK: - Header Section
@@ -118,10 +120,21 @@ struct ProfileView: View {
             }
 
             VStack(spacing: 12) {
-                infoRow(title: "Хохмокоины", value: "\(user.coins)", icon: "dollarsign.circle.fill")
-                infoRow(title: "Клики", value: "\(user.clicks)", icon: "hand.tap.fill")
                 infoRow(
-                    title: "Дата регистрации", value: formatDate(user.createdAt), icon: "calendar")
+                    title: "Хохмокоины",
+                    value: "\(user.coins)",
+                    icon: "dollarsign.circle.fill"
+                )
+                infoRow(
+                    title: "Клики",
+                    value: "\(user.clicks)",
+                    icon: "hand.tap.fill"
+                )
+                infoRow(
+                    title: "Дата регистрации",
+                    value: formatDate(user.createdAt),
+                    icon: "calendar"
+                )
             }
         }
         .padding(20)
