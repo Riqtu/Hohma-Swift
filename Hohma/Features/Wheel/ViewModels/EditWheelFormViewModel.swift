@@ -2,21 +2,29 @@ import Combine
 import Foundation
 
 @MainActor
-final class CreateWheelFormViewModel: ObservableObject {
+final class EditWheelFormViewModel: ObservableObject {
     @Published var wheelName: String = ""
     @Published var selectedThemeId: String?
     @Published var isPrivate: Bool = false
     @Published var themes: [WheelTheme] = []
     @Published var isLoadingThemes = false
-    @Published var isCreating = false
+    @Published var isUpdating = false
     @Published var error: String?
     @Published var isSuccess = false
 
     private let wheelService = FortuneWheelService.shared
     private let trpcService = TRPCService.shared
+    private let wheelId: String
 
-    var canCreate: Bool {
-        !wheelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedThemeId != nil
+    init(wheel: WheelWithRelations) {
+        self.wheelId = wheel.id
+        self.wheelName = wheel.name
+        self.selectedThemeId = wheel.themeId
+        self.isPrivate = wheel.isPrivate
+    }
+
+    var canUpdate: Bool {
+        !wheelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func loadThemes() async {
@@ -34,27 +42,27 @@ final class CreateWheelFormViewModel: ObservableObject {
         isLoadingThemes = false
     }
 
-    func createWheel() async {
-        guard canCreate else { return }
+    func updateWheel() async {
+        guard canUpdate else { return }
 
-        isCreating = true
+        isUpdating = true
         error = nil
 
         do {
-            let request = WheelCreateRequest(
+            let request = WheelUpdateRequest(
+                id: wheelId,
                 name: wheelName.trimmingCharacters(in: .whitespacesAndNewlines),
-                themeId: selectedThemeId!,
-                status: .created,
-                userId: trpcService.currentUser?.id,
+                themeId: selectedThemeId,
+                status: nil,  // Не изменяем статус при редактировании
                 isPrivate: isPrivate
             )
 
-            let createdWheel = try await wheelService.createWheel(request)
+            let updatedWheel = try await wheelService.updateWheel(request)
 
-            // Уведомляем об успешном создании
+            // Уведомляем об успешном обновлении
             NotificationCenter.default.post(
                 name: .wheelDataUpdated,
-                object: createdWheel
+                object: updatedWheel
             )
 
             isSuccess = true
@@ -62,6 +70,6 @@ final class CreateWheelFormViewModel: ObservableObject {
             self.error = error.localizedDescription
         }
 
-        isCreating = false
+        isUpdating = false
     }
 }

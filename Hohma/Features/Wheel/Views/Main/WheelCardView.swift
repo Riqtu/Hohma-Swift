@@ -8,6 +8,7 @@ struct WheelCardView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingGame = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingEditForm = false
     @State private var dragOffset: CGFloat = 0
 
     let cardData: WheelWithRelations
@@ -122,6 +123,33 @@ struct WheelCardView: View {
             .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 16)
             .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
             .offset(x: dragOffset)
+            .contextMenu {
+                // Показываем кнопку редактирования только владельцу колеса
+                if currentUser?.id == cardData.userId {
+                    Button {
+                        print("🔧 WheelCardView: Edit button tapped for wheel: \(cardData.name)")
+                        DispatchQueue.main.async {
+                            showingEditForm = true
+                        }
+                    } label: {
+                        Label("Редактировать", systemImage: "pencil")
+                    }
+                }
+
+                Button {
+                    ShareService.shared.shareWheel(wheel: cardData)
+                } label: {
+                    Label("Поделиться", systemImage: "square.and.arrow.up")
+                }
+
+                if onDelete != nil {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Удалить", systemImage: "trash")
+                    }
+                }
+            }
             .gesture(
                 DragGesture(minimumDistance: 30)
                     .onChanged { value in
@@ -158,6 +186,19 @@ struct WheelCardView: View {
         .onChange(of: cardData.id) { _, _ in
             // Обновляем viewModel при изменении cardData
             viewModel.updateCardData(cardData)
+        }
+        .sheet(isPresented: $showingEditForm) {
+            EditWheelFormView(wheel: cardData)
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: showingEditForm) { _, newValue in
+            print("🔧 WheelCardView: showingEditForm changed to: \(newValue)")
+        }
+        .onAppear {
+            // Отладочная информация
+            print("🔧 WheelCardView: Current user ID: \(currentUser?.id ?? "nil")")
+            print("🔧 WheelCardView: Wheel user ID: \(cardData.userId ?? "nil")")
+            print("🔧 WheelCardView: Is owner: \(currentUser?.id == cardData.userId)")
         }
         .alert("Удаление колеса", isPresented: $showingDeleteConfirmation) {
             Button("Отмена", role: .cancel) {}

@@ -28,6 +28,13 @@ class FortuneWheelService: ObservableObject, TRPCServiceProtocol {
         )
     }
 
+    func updateWheel(_ wheelRequest: WheelUpdateRequest) async throws -> WheelWithRelations {
+        return try await trpcService.executePOST(
+            endpoint: "wheelList.update",
+            body: wheelRequest.dictionary
+        )
+    }
+
     // MARK: - Sector Operations
 
     func updateSector(_ id: String, eliminated: Bool, winner: Bool? = nil) async throws -> Sector {

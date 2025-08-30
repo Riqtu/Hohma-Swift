@@ -5,8 +5,8 @@
 //  Created by Artem Vydro on 06.08.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 // Пример интеграции компонента колеса фортуны в приложение
 struct WheelGameIntegrationExample: View {
@@ -19,6 +19,7 @@ struct WheelGameIntegrationExample: View {
         id: "example-wheel",
         name: "Колесо фильмов",
         status: .active,
+        isPrivate: false,
         createdAt: Date(),
         updatedAt: Date(),
         themeId: "theme1",
@@ -79,6 +80,7 @@ struct WheelGameNavigationExample: View {
                             id: "nav-example",
                             name: "Навигационный пример",
                             status: .active,
+                            isPrivate: false,
                             createdAt: Date(),
                             updatedAt: Date(),
                             themeId: "theme1",
@@ -162,6 +164,7 @@ struct CustomWheelGameExample: View {
                 id: "custom-wheel",
                 name: "Кастомное колесо",
                 status: .active,
+                isPrivate: false,
                 createdAt: Date(),
                 updatedAt: Date(),
                 themeId: "custom-theme",

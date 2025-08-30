@@ -330,6 +330,7 @@ struct FortuneWheelGameView: View {
             id: "test",
             name: "Тестовое колесо",
             status: .active,
+            isPrivate: false,
             createdAt: Date(),
             updatedAt: Date(),
             themeId: "theme1",

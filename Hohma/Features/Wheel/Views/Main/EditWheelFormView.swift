@@ -1,22 +1,25 @@
 import Inject
 import SwiftUI
 
-struct CreateWheelFormView: View {
+struct EditWheelFormView: View {
     @ObserveInjection var inject
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = CreateWheelFormViewModel()
+    @StateObject private var viewModel: EditWheelFormViewModel
+
+    init(wheel: WheelWithRelations) {
+        self._viewModel = StateObject(wrappedValue: EditWheelFormViewModel(wheel: wheel))
+    }
 
     var body: some View {
         NavigationView {
-
             VStack(spacing: 24) {
                 // Заголовок
                 VStack(spacing: 8) {
-                    Text("Создать колесо")
+                    Text("Редактировать колесо")
                         .font(.title2)
                         .fontWeight(.semibold)
 
-                    Text("Выберите название и тему для нового колеса")
+                    Text("Измените название, тему и настройки приватности")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -37,7 +40,7 @@ struct CreateWheelFormView: View {
                             .background(.thickMaterial)
                             .cornerRadius(12)
                     }
-                    .animation(nil, value: UUID())  // Отключаем анимацию только для контента
+                    .animation(nil, value: UUID())
 
                     // Настройки приватности
                     VStack(alignment: .leading, spacing: 8) {
@@ -103,7 +106,6 @@ struct CreateWheelFormView: View {
                             }
                         }
                     }
-
                 }
                 .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity)
@@ -114,34 +116,34 @@ struct CreateWheelFormView: View {
                 VStack(spacing: 12) {
                     Button(action: {
                         Task {
-                            await viewModel.createWheel()
+                            await viewModel.updateWheel()
                             if viewModel.isSuccess {
                                 dismiss()
                             }
                         }
                     }) {
                         HStack {
-                            if viewModel.isCreating {
+                            if viewModel.isUpdating {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .scaleEffect(0.8)
                             } else {
-                                Image(systemName: "plus.circle.fill")
+                                Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 16, weight: .medium))
                             }
 
-                            Text(viewModel.isCreating ? "Создание..." : "Создать колесо")
+                            Text(viewModel.isUpdating ? "Сохранение..." : "Сохранить изменения")
                                 .fontWeight(.semibold)
                         }
                         .foregroundColor(.white)
                         .padding(.vertical, 16)
                         .frame(maxWidth: .infinity)
                         .background(
-                            viewModel.canCreate ? Color("AccentColor") : Color.gray
+                            viewModel.canUpdate ? Color("AccentColor") : Color.gray
                         )
                         .cornerRadius(12)
                     }
-                    .disabled(!viewModel.canCreate || viewModel.isCreating)
+                    .disabled(!viewModel.canUpdate || viewModel.isUpdating)
 
                     Button("Отмена") {
                         dismiss()
@@ -162,72 +164,12 @@ struct CreateWheelFormView: View {
                 }
             }
         }
-
         .onAppear {
             Task {
                 await viewModel.loadThemes()
             }
         }
-        .animation(nil, value: UUID())  // Отключаем анимацию только для контента
-
+        .animation(nil, value: UUID())
         .enableInjection()
     }
-}
-
-struct ThemeCardView: View {
-    let theme: WheelTheme
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 12) {
-                // Превью темы
-                AsyncImage(url: URL(string: theme.backgroundImageURL)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                }
-                .frame(height: 100)
-                .clipped()
-                .cornerRadius(12)
-
-                VStack(spacing: 4) {
-                    Text(theme.title)
-                        .font(.headline)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-
-                    if let description = theme.description {
-                        Text(description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                    }
-                }
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(
-                        color: isSelected
-                            ? Color.accentColor.opacity(0.3) : Color.black.opacity(0.1), radius: 4,
-                        x: 0, y: 2)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-#Preview {
-    CreateWheelFormView()
 }

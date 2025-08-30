@@ -5,6 +5,7 @@ struct WheelCreateRequest {
     let themeId: String
     let status: WheelStatus
     let userId: String?
+    let isPrivate: Bool
 
     var dictionary: [String: Any] {
         return [
@@ -12,6 +13,7 @@ struct WheelCreateRequest {
             "themeId": themeId,
             "status": status.rawValue,
             "userId": userId ?? "",
+            "isPrivate": isPrivate,
         ]
     }
 }

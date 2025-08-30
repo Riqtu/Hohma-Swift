@@ -15,6 +15,7 @@ struct WheelCardComponent: View {
     @State private var isHovered: Bool = false
     @State private var showingDeleteAlert: Bool = false
     @State private var isImageLoaded: Bool = false
+    @State private var showingEditForm: Bool = false
 
     let wheel: WheelWithRelations
     let onTap: () -> Void
@@ -115,6 +116,17 @@ struct WheelCardComponent: View {
 
                             Spacer()
 
+                            // Индикатор приватности
+                            if wheel.isPrivate {
+                                Image(systemName: "lock.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.secondary.opacity(0.2))
+                                    .cornerRadius(4)
+                            }
+
                             // Статус колеса
                             StatusBadge(status: wheel.status)
                         }
@@ -185,11 +197,12 @@ struct WheelCardComponent: View {
                     isHovered = hovering
                 }
                 .contextMenu {
-                    if onDelete != nil {
-                        Button(role: .destructive) {
-                            showingDeleteAlert = true
+                    // Кнопка редактирования (показываем только владельцу)
+                    if wheel.userId == TRPCService.shared.currentUser?.id {
+                        Button {
+                            showingEditForm = true
                         } label: {
-                            Label("Удалить колесо", systemImage: "trash")
+                            Label("Редактировать", systemImage: "pencil")
                         }
                     }
 
@@ -199,6 +212,13 @@ struct WheelCardComponent: View {
                         Label("Поделиться", systemImage: "square.and.arrow.up")
                     }
 
+                    if onDelete != nil {
+                        Button(role: .destructive) {
+                            showingDeleteAlert = true
+                        } label: {
+                            Label("Удалить колесо", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .alert("Удалить колесо?", isPresented: $showingDeleteAlert) {
@@ -208,6 +228,10 @@ struct WheelCardComponent: View {
                 }
             } message: {
                 Text("Это действие нельзя отменить. Колесо '\(wheel.name)' будет удалено навсегда.")
+            }
+            .sheet(isPresented: $showingEditForm) {
+                EditWheelFormView(wheel: wheel)
+                    .presentationDragIndicator(.visible)
             }
             .enableInjection()
         }

@@ -11,6 +11,7 @@ struct Wheel: Codable, Identifiable {
     let id: String
     let name: String
     let status: WheelStatus?
+    let isPrivate: Bool
     let createdAt: Date
     let updatedAt: Date
 
@@ -23,6 +24,7 @@ struct WheelWithRelations: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let status: WheelStatus?
+    let isPrivate: Bool
     let createdAt: Date
     let updatedAt: Date
     let themeId: String?
