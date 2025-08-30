@@ -234,7 +234,7 @@ struct ProfileView: View {
                 }
                 .padding(.vertical, 12)
                 .padding(.horizontal, 16)
-                .background(Color(.systemGray6))
+                .background(.ultraThinMaterial)
                 .cornerRadius(12)
             }
             .buttonStyle(PlainButtonStyle())
@@ -263,7 +263,7 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(Color(.systemGray6))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
     }
 

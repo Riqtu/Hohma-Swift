@@ -152,13 +152,13 @@ struct WheelCardComponent: View {
                             Spacer()
                         }
 
-                        // Дополнительная информация
+                        // Количество участников
                         HStack {
-                            Image(systemName: "clock")
+                            Image(systemName: "person.2")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            Text(wheel.createdAt, style: .relative)
+                            Text("\(wheel.sectors.count) участников")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 

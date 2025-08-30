@@ -69,10 +69,8 @@ struct ThemeOptionRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color("AccentColor") : Color(.systemGray6))
-            )
+            .background(isSelected ? Color("AccentColor") : Color.gray.opacity(0.1))
+            .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
     }
