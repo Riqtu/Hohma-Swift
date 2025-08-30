@@ -292,70 +292,75 @@ struct SearchUserProfileRow: View {
     @State private var isLoading = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Аватар
-            if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Image(systemName: "person.circle.fill")
-                        .foregroundColor(.gray)
-                }
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.gray)
-            }
-
-            // Информация о пользователе
-            VStack(alignment: .leading, spacing: 4) {
-                Text(user.displayName)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-
-                if let username = user.username {
-                    Text("@\(username)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
-
-            Spacer()
-
-            // Кнопка подписки/отписки
-            Button(action: {
-                Task {
-                    await handleFollowToggle()
-                }
-            }) {
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                        .frame(width: 60, height: 32)
+        NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
+            HStack(spacing: 12) {
+                // Аватар
+                if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(systemName: "person.circle.fill")
+                            .foregroundColor(.gray)
+                    }
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
                 } else {
-                    Text(isFollowing ? "Отписаться" : "Подписаться")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(isFollowing ? .red : .white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(isFollowing ? Color.red.opacity(0.1) : Color("AccentColor"))
-                        )
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
                 }
+
+                // Информация о пользователе
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(user.displayName)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    if let username = user.username {
+                        Text("@\(username)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Spacer()
+
+                // Кнопка подписки/отписки
+                Button(action: {
+                    Task {
+                        await handleFollowToggle()
+                    }
+                }) {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .frame(width: 60, height: 32)
+                    } else {
+                        Text(isFollowing ? "Отписаться" : "Подписаться")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(isFollowing ? .red : .white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        isFollowing ? Color.red.opacity(0.1) : Color("AccentColor"))
+                            )
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(isLoading)
             }
-            .disabled(isLoading)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(.thickMaterial)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(.thickMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .buttonStyle(PlainButtonStyle())
         .onAppear {
             Task {
                 await checkFollowingStatus()
@@ -397,59 +402,63 @@ struct UserProfileRow: View {
     let onFollowToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Аватар
-            if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
+        NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
+            HStack(spacing: 12) {
+                // Аватар
+                if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(systemName: "person.circle.fill")
+                            .foregroundColor(.gray)
+                    }
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
+                } else {
                     Image(systemName: "person.circle.fill")
+                        .font(.system(size: 50))
                         .foregroundColor(.gray)
                 }
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
-            } else {
-                Image(systemName: "person.circle.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.gray)
-            }
 
-            // Информация о пользователе
-            VStack(alignment: .leading, spacing: 4) {
-                Text(user.displayName)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                // Информация о пользователе
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(user.displayName)
+                        .font(.headline)
+                        .foregroundColor(.primary)
 
-                if let username = user.username {
-                    Text("@\(username)")
+                    if let username = user.username {
+                        Text("@\(username)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Spacer()
+
+                // Кнопка подписки/отписки
+                Button(action: onFollowToggle) {
+                    Text(isFollowing ? "Отписаться" : "Подписаться")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .fontWeight(.medium)
+                        .foregroundColor(isFollowing ? .red : .white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(isFollowing ? Color.red.opacity(0.1) : Color("AccentColor"))
+                        )
                 }
+                .buttonStyle(PlainButtonStyle())
             }
-
-            Spacer()
-
-            // Кнопка подписки/отписки
-            Button(action: onFollowToggle) {
-                Text(isFollowing ? "Отписаться" : "Подписаться")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(isFollowing ? .red : .white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(isFollowing ? Color.red.opacity(0.1) : Color("AccentColor"))
-                    )
-            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(.thickMaterial)
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(.thickMaterial)
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

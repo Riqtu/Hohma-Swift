@@ -32,6 +32,9 @@ struct UserProfile: Codable, Identifiable {
     let firstName: String?
     let lastName: String?
     let avatarUrl: String?
+    let email: String?
+    let coins: Int?
+    let clicks: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -40,6 +43,9 @@ struct UserProfile: Codable, Identifiable {
         case firstName
         case lastName
         case avatarUrl
+        case email
+        case coins
+        case clicks
     }
 
     // Вычисляемое свойство для отображения имени

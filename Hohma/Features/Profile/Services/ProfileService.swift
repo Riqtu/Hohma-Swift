@@ -39,42 +39,26 @@ final class ProfileService: TRPCServiceProtocol {
 
     func isFollowing(followingId: String) async throws -> Bool {
         let input: [String: Any] = ["followingId": followingId]
-
-        // tRPC expects input to be wrapped in a json object for GET requests
-        let trpcInput: [String: Any] = ["json": input]
-        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
-        let inputString = String(data: inputJSONData, encoding: .utf8)!
-
         let response: BooleanResponse = try await trpcService.executeGET(
-            endpoint: "subscription.isFollowing?input=\(inputString)"
+            endpoint: "subscription.isFollowing",
+            input: input
         )
-
         return response.value
     }
 
     func getFollowing(userId: String? = nil) async throws -> [UserProfile] {
         let input: [String: Any] = userId != nil ? ["userId": userId!] : [:]
-
-        // tRPC expects input to be wrapped in a json object for GET requests
-        let trpcInput: [String: Any] = ["json": input]
-        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
-        let inputString = String(data: inputJSONData, encoding: .utf8)!
-
         return try await trpcService.executeGET(
-            endpoint: "subscription.getFollowing?input=\(inputString)"
+            endpoint: "subscription.getFollowing",
+            input: input
         )
     }
 
     func getFollowers(userId: String? = nil) async throws -> [UserProfile] {
         let input: [String: Any] = userId != nil ? ["userId": userId!] : [:]
-
-        // tRPC expects input to be wrapped in a json object for GET requests
-        let trpcInput: [String: Any] = ["json": input]
-        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
-        let inputString = String(data: inputJSONData, encoding: .utf8)!
-
         return try await trpcService.executeGET(
-            endpoint: "subscription.getFollowers?input=\(inputString)"
+            endpoint: "subscription.getFollowers",
+            input: input
         )
     }
 
@@ -85,14 +69,27 @@ final class ProfileService: TRPCServiceProtocol {
             "query": query,
             "limit": limit,
         ]
-
-        // tRPC expects input to be wrapped in a json object for GET requests
-        let trpcInput: [String: Any] = ["json": input]
-        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
-        let inputString = String(data: inputJSONData, encoding: .utf8)!
-
         return try await trpcService.executeGET(
-            endpoint: "user.search?input=\(inputString)"
+            endpoint: "user.search",
+            input: input
+        )
+    }
+
+    // MARK: - Other User Profile Operations
+
+    func getUserProfile(userId: String) async throws -> UserProfile {
+        let input: [String: Any] = ["id": userId]
+        return try await trpcService.executeGET(
+            endpoint: "user.getById",
+            input: input
+        )
+    }
+
+    func getUserWheels(userId: String) async throws -> [Wheel] {
+        let input: [String: Any] = ["userId": userId]
+        return try await trpcService.executeGET(
+            endpoint: "wheelList.getByUserId",
+            input: input
         )
     }
 }

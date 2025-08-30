@@ -108,14 +108,9 @@ class FortuneWheelService: ObservableObject, TRPCServiceProtocol {
             "limit": limit,
             "filter": filter?.rawValue ?? "all",
         ]
-
-        // tRPC expects input to be wrapped in a json object for GET requests
-        let trpcInput: [String: Any] = ["json": input]
-        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
-        let inputString = String(data: inputJSONData, encoding: .utf8)!
-
         return try await trpcService.executeGET(
-            endpoint: "wheelList.getAllWithPagination?input=\(inputString)"
+            endpoint: "wheelList.getAllWithPagination",
+            input: input
         )
     }
 

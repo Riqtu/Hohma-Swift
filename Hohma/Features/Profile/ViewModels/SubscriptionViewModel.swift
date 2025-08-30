@@ -16,6 +16,7 @@ class SubscriptionViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isRefreshing = false
     @Published var isSearching = false
+    @Published var isFollowing = false
     @Published var error: String?
     @Published var searchQuery = ""
 
@@ -142,6 +143,19 @@ class SubscriptionViewModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
             return false
+        }
+    }
+
+    func checkFollowingStatus(userId: String) async {
+        do {
+            let isFollowing = try await service.isFollowing(followingId: userId)
+            await MainActor.run {
+                self.isFollowing = isFollowing
+            }
+        } catch {
+            await MainActor.run {
+                self.error = error.localizedDescription
+            }
         }
     }
 

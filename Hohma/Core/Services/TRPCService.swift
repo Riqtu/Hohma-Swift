@@ -113,6 +113,23 @@ class TRPCService {
         return try await execute(request)
     }
 
+    /// Выполняет GET запрос к tRPC endpoint с параметрами
+    /// - Parameters:
+    ///   - endpoint: tRPC endpoint (например, "user.search")
+    ///   - input: Параметры запроса в виде словаря
+    /// - Returns: Декодированный ответ указанного типа
+    /// - Throws: NetworkError при ошибках сети или авторизации
+    @MainActor
+    func executeGET<T: Decodable>(endpoint: String, input: [String: Any]) async throws -> T {
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        let request = try createGETRequest(endpoint: "\(endpoint)?input=\(inputString)")
+        return try await execute(request)
+    }
+
     @MainActor
     func executePOST<T: Decodable, U: Encodable>(endpoint: String, body: U) async throws -> T {
         let request = try createPOSTRequest(endpoint: endpoint, body: body)
