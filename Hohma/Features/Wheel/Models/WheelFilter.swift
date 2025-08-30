@@ -27,9 +27,3 @@ enum WheelFilter: String, CaseIterable, Codable {
         }
     }
 }
-
-
-
-
-
-

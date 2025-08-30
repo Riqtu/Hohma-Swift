@@ -45,10 +45,11 @@ final class ProfileService: TRPCServiceProtocol {
         let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
         let inputString = String(data: inputJSONData, encoding: .utf8)!
 
-        let response: IsFollowingResponse = try await trpcService.executeGET(
+        let response: BooleanResponse = try await trpcService.executeGET(
             endpoint: "subscription.isFollowing?input=\(inputString)"
         )
-        return response.result.data.json
+
+        return response.value
     }
 
     func getFollowing(userId: String? = nil) async throws -> [UserProfile] {
@@ -59,10 +60,9 @@ final class ProfileService: TRPCServiceProtocol {
         let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
         let inputString = String(data: inputJSONData, encoding: .utf8)!
 
-        let response: UserListResponse = try await trpcService.executeGET(
+        return try await trpcService.executeGET(
             endpoint: "subscription.getFollowing?input=\(inputString)"
         )
-        return response.result.data.json
     }
 
     func getFollowers(userId: String? = nil) async throws -> [UserProfile] {
@@ -73,9 +73,26 @@ final class ProfileService: TRPCServiceProtocol {
         let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
         let inputString = String(data: inputJSONData, encoding: .utf8)!
 
-        let response: UserListResponse = try await trpcService.executeGET(
+        return try await trpcService.executeGET(
             endpoint: "subscription.getFollowers?input=\(inputString)"
         )
-        return response.result.data.json
+    }
+
+    // MARK: - User Search
+
+    func searchUsers(query: String, limit: Int = 20) async throws -> [UserProfile] {
+        let input: [String: Any] = [
+            "query": query,
+            "limit": limit,
+        ]
+
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        return try await trpcService.executeGET(
+            endpoint: "user.search?input=\(inputString)"
+        )
     }
 }

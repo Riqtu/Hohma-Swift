@@ -167,7 +167,7 @@ struct WheelCardComponent: View {
                     }
                     .padding(16)
                     .frame(width: 200, height: 160)
-                    .background(.ultraThinMaterial.opacity(0.9))
+                    .background(.ultraThickMaterial.opacity(0.9))
                     .cornerRadius(16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
@@ -212,11 +212,14 @@ struct WheelCardComponent: View {
                         Label("Поделиться", systemImage: "square.and.arrow.up")
                     }
 
-                    if onDelete != nil {
-                        Button(role: .destructive) {
-                            showingDeleteAlert = true
-                        } label: {
-                            Label("Удалить колесо", systemImage: "trash")
+                    if wheel.userId == TRPCService.shared.currentUser?.id {
+
+                        if onDelete != nil {
+                            Button(role: .destructive) {
+                                showingDeleteAlert = true
+                            } label: {
+                                Label("Удалить колесо", systemImage: "trash")
+                            }
                         }
                     }
                 }

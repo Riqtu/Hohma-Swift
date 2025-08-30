@@ -12,11 +12,15 @@ import SwiftUI
 class SubscriptionViewModel: ObservableObject {
     @Published var following: [UserProfile] = []
     @Published var followers: [UserProfile] = []
+    @Published var searchResults: [UserProfile] = []
     @Published var isLoading = false
     @Published var isRefreshing = false
+    @Published var isSearching = false
     @Published var error: String?
+    @Published var searchQuery = ""
 
     private let service = ProfileService.shared
+    private var searchTask: Task<Void, Never>?
 
     // MARK: - Following Management
 
@@ -60,6 +64,54 @@ class SubscriptionViewModel: ObservableObject {
         defer { isRefreshing = false }
 
         await loadFollowers(userId: userId)
+    }
+
+    // MARK: - User Search
+
+    func searchUsers(query: String) async {
+        // Отменяем предыдущий поиск
+        searchTask?.cancel()
+
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searchResults = []
+            return
+        }
+
+        searchTask = Task {
+            await MainActor.run {
+                isSearching = true
+                error = nil
+            }
+
+            do {
+                let results = try await service.searchUsers(query: query, limit: 20)
+
+                // Проверяем, не была ли задача отменена
+                if Task.isCancelled { return }
+
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.searchResults = results
+                    }
+                    isSearching = false
+                }
+            } catch {
+                // Проверяем, не была ли задача отменена
+                if Task.isCancelled { return }
+
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    isSearching = false
+                }
+            }
+        }
+    }
+
+    func clearSearch() {
+        searchTask?.cancel()
+        searchResults = []
+        searchQuery = ""
+        error = nil
     }
 
     // MARK: - Follow/Unfollow Operations
