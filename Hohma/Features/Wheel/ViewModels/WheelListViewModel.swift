@@ -11,22 +11,39 @@ import SwiftUI
 @MainActor
 class WheelListViewModel: ObservableObject {
     @Published var wheels: [WheelWithRelations] = []
+    @Published var myWheels: [WheelWithRelations] = []
+    @Published var followingWheels: [WheelWithRelations] = []
+    @Published var allWheels: [WheelWithRelations] = []
     @Published var isLoading = false
     @Published var isRefreshing = false
-    @Published var isLoadingMore = false
     @Published var error: String?
-    @Published var paginationInfo: PaginationInfo?
 
-    let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String
+    // Состояние пагинации для каждой секции
+    @Published var allWheelsHasMore = true
+    @Published var myWheelsHasMore = true
+    @Published var followingWheelsHasMore = true
+
+    // Отдельные состояния загрузки для каждой секции
+    @Published var allWheelsLoadingMore = false
+    @Published var myWheelsLoadingMore = false
+    @Published var followingWheelsLoadingMore = false
+
+    // Текущие страницы для каждой секции
+    private var allWheelsPage = 1
+    private var myWheelsPage = 1
+    private var followingWheelsPage = 1
+
     let user: AuthResult?
 
     // Параметры пагинации
-    private var currentPage = 1
     private let pageSize = 7
-    private var hasMorePages = true
 
     init(user: AuthResult?) {
         self.user = user
+        // Инициализируем пустые списки
+        self.myWheels = []
+        self.followingWheels = []
+        self.allWheels = []
     }
 
     func loadWheels() async {
@@ -34,16 +51,22 @@ class WheelListViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let response = try await fetchWheelsWithPagination(page: 1)
+            // Загружаем все три типа колес параллельно
+            async let myWheelsResponse = fetchWheelsWithPagination(page: 1, filter: .my)
+            async let followingWheelsResponse = fetchWheelsWithPagination(
+                page: 1, filter: .following)
+            async let allWheelsResponse = fetchWheelsWithPagination(page: 1, filter: .all)
 
-            // Обновляем список с анимацией
+            let (myWheels, followingWheels, allWheels) = try await (
+                myWheelsResponse, followingWheelsResponse, allWheelsResponse
+            )
+
+            // Обновляем списки с анимацией
             withAnimation(.easeInOut(duration: 0.3)) {
-                self.wheels = response.data
+                self.myWheels = myWheels.data
+                self.followingWheels = followingWheels.data
+                self.allWheels = allWheels.data
             }
-
-            self.paginationInfo = response.pagination
-            self.currentPage = 1
-            self.hasMorePages = response.pagination.hasNextPage
 
         } catch is CancellationError {
             // Загрузка отменена
@@ -54,62 +77,89 @@ class WheelListViewModel: ObservableObject {
         }
     }
 
-    /// Загружает следующую страницу данных
-    func loadMoreWheels() async {
-        guard !isLoadingMore && hasMorePages else { return }
-
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-
-        do {
-            let nextPage = currentPage + 1
-            let response = try await fetchWheelsWithPagination(page: nextPage)
-
-            // Добавляем новые колеса к существующим
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.wheels.append(contentsOf: response.data)
-            }
-
-            self.paginationInfo = response.pagination
-            self.currentPage = nextPage
-            self.hasMorePages = response.pagination.hasNextPage
-
-        } catch is CancellationError {
-            // Загрузка дополнительных данных отменена
-        } catch URLError.userAuthenticationRequired {
-            // Требуется авторизация
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    /// Принудительно загружает данные, даже если список не пустой
-    func forceLoadWheels() async {
-        await loadWheels()
-    }
-
     func refreshWheels() async {
         isRefreshing = true
         defer { isRefreshing = false }
 
+        // Сбрасываем страницы
+        allWheelsPage = 1
+        myWheelsPage = 1
+        followingWheelsPage = 1
+
+        await loadWheels()
+    }
+
+    // MARK: - Пагинация для каждой секции
+
+    func loadMoreAllWheels() async {
+        guard allWheelsHasMore && !allWheelsLoadingMore else { return }
+
+        allWheelsLoadingMore = true
+        defer { allWheelsLoadingMore = false }
+
+        allWheelsPage += 1
+
         do {
-            // Используем Task.detached для изоляции запроса от отмены
-            let response = try await Task.detached(priority: .userInitiated) {
-                return try await self.fetchWheelsWithPaginationDirect(page: 1)
-            }.value
+            let response = try await fetchWheelsWithPagination(page: allWheelsPage, filter: .all)
 
-            // Обновляем список с анимацией
-            updateWheelsList(with: response.data)
-
-            self.paginationInfo = response.pagination
-            self.currentPage = 1
-            self.hasMorePages = response.pagination.hasNextPage
-
-        } catch is CancellationError {
-            // Обновление отменено
-        } catch URLError.userAuthenticationRequired {
-            // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
+            if response.data.isEmpty {
+                allWheelsHasMore = false
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.allWheels.append(contentsOf: response.data)
+                }
+            }
         } catch {
+            allWheelsPage -= 1  // Откатываем страницу при ошибке
+            self.error = error.localizedDescription
+        }
+    }
+
+    func loadMoreMyWheels() async {
+        guard myWheelsHasMore && !myWheelsLoadingMore else { return }
+
+        myWheelsLoadingMore = true
+        defer { myWheelsLoadingMore = false }
+
+        myWheelsPage += 1
+
+        do {
+            let response = try await fetchWheelsWithPagination(page: myWheelsPage, filter: .my)
+
+            if response.data.isEmpty {
+                myWheelsHasMore = false
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.myWheels.append(contentsOf: response.data)
+                }
+            }
+        } catch {
+            myWheelsPage -= 1  // Откатываем страницу при ошибке
+            self.error = error.localizedDescription
+        }
+    }
+
+    func loadMoreFollowingWheels() async {
+        guard followingWheelsHasMore && !followingWheelsLoadingMore else { return }
+
+        followingWheelsLoadingMore = true
+        defer { followingWheelsLoadingMore = false }
+
+        followingWheelsPage += 1
+
+        do {
+            let response = try await fetchWheelsWithPagination(
+                page: followingWheelsPage, filter: .following)
+
+            if response.data.isEmpty {
+                followingWheelsHasMore = false
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.followingWheels.append(contentsOf: response.data)
+                }
+            }
+        } catch {
+            followingWheelsPage -= 1  // Откатываем страницу при ошибке
             self.error = error.localizedDescription
         }
     }
@@ -160,18 +210,35 @@ class WheelListViewModel: ObservableObject {
         }
     }
 
-    /// Добавляет новое колесо в список
+    /// Добавляет новое колесо в соответствующий список
     func addWheel(_ newWheel: WheelWithRelations) {
+        // Добавляем в общий список
         if !wheels.contains(where: { $0.id == newWheel.id }) {
             wheels.append(newWheel)
-            // Сортируем по дате создания (новые сверху)
             wheels.sort { $0.createdAt > $1.createdAt }
+        }
+
+        // Добавляем в соответствующий список в зависимости от владельца
+        if newWheel.userId == user?.user.id {
+            if !myWheels.contains(where: { $0.id == newWheel.id }) {
+                myWheels.append(newWheel)
+                myWheels.sort { $0.createdAt > $1.createdAt }
+            }
+        }
+
+        // Добавляем в список всех колес
+        if !allWheels.contains(where: { $0.id == newWheel.id }) {
+            allWheels.append(newWheel)
+            allWheels.sort { $0.createdAt > $1.createdAt }
         }
     }
 
-    /// Удаляет колесо из списка
+    /// Удаляет колесо из всех списков
     func removeWheel(withId id: String) {
         wheels.removeAll { $0.id == id }
+        myWheels.removeAll { $0.id == id }
+        followingWheels.removeAll { $0.id == id }
+        allWheels.removeAll { $0.id == id }
     }
 
     /// Удаляет колесо через API
@@ -193,227 +260,28 @@ class WheelListViewModel: ObservableObject {
     }
 
     /// Обновляет конкретное колесо по ID
-    /// ИСПРАВЛЕНИЕ: Этот метод обновляет только одно колесо, не затрагивая остальные,
-    /// что позволяет сохранить позицию пользователя в списке
     func updateSpecificWheel(wheelId: String) async {
-        do {
-            let response = try await fetchWheelsWithPagination(page: 1)
-
-            // Ищем обновленное колесо в ответе
-            if let updatedWheel = response.data.first(where: { $0.id == wheelId }) {
-                // Обновляем только это колесо в списке
-                if let index = wheels.firstIndex(where: { $0.id == wheelId }) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        wheels[index] = updatedWheel
-                    }
-                }
-            }
-        } catch {
-            // Игнорируем ошибки при обновлении конкретного колеса
-            print("Ошибка обновления колеса \(wheelId): \(error.localizedDescription)")
-        }
+        // Перезагружаем все секции для обновления данных
+        await loadWheels()
     }
 
-    /// Обновляет только видимые колеса без полной перезагрузки
-    /// ИСПРАВЛЕНИЕ: Этот метод обновляет только первые колеса в списке,
-    /// сохраняя остальные загруженные страницы, что предотвращает потерю позиции
+    /// Обновляет все секции колес
     func refreshVisibleWheels() async {
-        do {
-            // Загружаем только первую страницу для обновления видимых колес
-            let response = try await fetchWheelsWithPagination(page: 1)
-
-            // Обновляем только первые колеса (видимые), сохраняя остальные
-            let visibleCount = min(wheels.count, response.data.count)
-
-            withAnimation(.easeInOut(duration: 0.3)) {
-                for i in 0..<visibleCount {
-                    if i < wheels.count && i < response.data.count {
-                        wheels[i] = response.data[i]
-                    }
-                }
-            }
-        } catch {
-            // Игнорируем ошибки при обновлении видимых колес
-            print("Ошибка обновления видимых колес: \(error.localizedDescription)")
-        }
+        await loadWheels()
     }
 
     private func deleteWheelFromAPI(_ id: String) async throws -> Wheel {
-        guard let apiURL = apiURL else {
-            throw NSError(
-                domain: "NetworkError", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
-        }
-
-        guard let url = URL(string: "\(apiURL)/wheelList.delete") else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body = wrapInTRPCFormat(["id": id])
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        // Передаём токен
-        if let user = user {
-            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601withMilliseconds
-
-        let response: WheelDeleteResponse = try await NetworkManager.shared.request(request)
-
-        return response.result.data.json
+        return try await FortuneWheelService.shared.deleteWheel(id: id)
     }
 
-    private func wrapInTRPCFormat(_ data: [String: Any]) -> [String: Any] {
-        return ["json": data]
-    }
-
-    private func fetchWheels() async throws -> [WheelWithRelations] {
-        guard let apiURL = apiURL else {
-            throw NSError(
-                domain: "NetworkError", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
-        }
-
-        guard let url = URL(string: "\(apiURL)/wheelList.getAll") else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-
-        // Передаём токен
-        if let user = user {
-            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601withMilliseconds
-
-        let response: WheelListResponse = try await NetworkManager.shared.request(request)
-
-        return response.result.data.json
-    }
-
-    private func fetchWheelsWithPagination(page: Int) async throws -> WheelListPaginationContent {
-        guard let apiURL = apiURL else {
-            throw NSError(
-                domain: "NetworkError", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
-        }
-
-        guard let url = URL(string: "\(apiURL)/wheelList.getAllWithPagination") else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        // Для tRPC query процедур используем GET запрос с параметрами в URL
-        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-
-        // tRPC ожидает параметры в формате: ?input={"json":{"page":1,"limit":20}}
-        let inputData = [
-            "json": [
-                "page": page,
-                "limit": pageSize,
-            ]
-        ]
-
-        do {
-            let inputJSONData = try JSONSerialization.data(withJSONObject: inputData)
-            let inputString = String(data: inputJSONData, encoding: .utf8)!
-            urlComponents.queryItems = [URLQueryItem(name: "input", value: inputString)]
-        } catch {
-            throw NSError(
-                domain: "NetworkError", code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Ошибка сериализации JSON"])
-        }
-
-        guard let finalURL = urlComponents.url else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        var request = URLRequest(url: finalURL)
-        request.httpMethod = "GET"
-
-        // Передаём токен
-        if let user = user {
-            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601withMilliseconds
-
-        let response: WheelListPaginationResponse = try await NetworkManager.shared.request(request)
-
-        return response.result.data.json
-    }
-
-    // Альтернативный метод для тестирования
-    private func fetchWheelsWithPaginationDirect(page: Int) async throws
+    private func fetchWheelsWithPagination(page: Int, filter: WheelFilter? = nil) async throws
         -> WheelListPaginationContent
     {
-        guard let apiURL = apiURL else {
-            throw NSError(
-                domain: "NetworkError", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "API URL не задан"])
-        }
-
-        guard let url = URL(string: "\(apiURL)/wheelList.getAllWithPagination") else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-        let inputData = ["json": ["page": page, "limit": pageSize]]
-
-        do {
-            let inputJSONData = try JSONSerialization.data(withJSONObject: inputData)
-            let inputString = String(data: inputJSONData, encoding: .utf8)!
-            urlComponents.queryItems = [URLQueryItem(name: "input", value: inputString)]
-        } catch {
-            throw NSError(
-                domain: "NetworkError", code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "Ошибка сериализации JSON"])
-        }
-
-        guard let finalURL = urlComponents.url else {
-            throw NSError(
-                domain: "NetworkError", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "URL некорректный"])
-        }
-
-        var request = URLRequest(url: finalURL)
-        request.httpMethod = "GET"
-
-        if let user = user {
-            request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601withMilliseconds
-
-        // Создаем отдельную URLSession конфигурацию
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 60
-        let session = URLSession(configuration: config)
-
-        let (data, _) = try await session.data(for: request)
-
-        let responseObject = try decoder.decode(WheelListPaginationResponse.self, from: data)
-        return responseObject.result.data.json
+        return try await FortuneWheelService.shared.getWheelsWithPagination(
+            page: page,
+            limit: pageSize,
+            filter: filter
+        )
     }
+
 }

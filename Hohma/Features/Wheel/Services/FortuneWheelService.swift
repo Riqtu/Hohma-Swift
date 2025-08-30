@@ -91,6 +91,37 @@ class FortuneWheelService: ObservableObject, TRPCServiceProtocol {
         return try await trpcService.executeGET(endpoint: "wheelTheme.getAllExpress")
     }
 
+    // MARK: - Wheel List with Filters
+
+    func getWheelsWithPagination(page: Int = 1, limit: Int = 20, filter: WheelFilter? = nil)
+        async throws -> WheelListPaginationContent
+    {
+        let input: [String: Any] = [
+            "page": page,
+            "limit": limit,
+            "filter": filter?.rawValue ?? "all",
+        ]
+
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        return try await trpcService.executeGET(
+            endpoint: "wheelList.getAllWithPagination?input=\(inputString)"
+        )
+    }
+
+    // MARK: - Wheel Deletion
+
+    func deleteWheel(id: String) async throws -> Wheel {
+        let response: WheelDeleteResponse = try await trpcService.executePOST(
+            endpoint: "wheelList.delete",
+            body: ["id": id]
+        )
+        return response.result.data.json
+    }
+
     // MARK: - Socket URL
     func getSocketURL() -> String {
         return Bundle.main.object(forInfoDictionaryKey: "WS_URL") as? String

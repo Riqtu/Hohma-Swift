@@ -60,16 +60,35 @@ struct WheelDeleteData: Codable {
     let json: Wheel
 }
 
-// MARK: - Параметры пагинации
+// MARK: - Параметры пагинации с фильтрами
 
 struct PaginationParams: Codable {
     let page: Int
     let limit: Int
     let cursor: String?
+    let filter: WheelFilter?
 
-    init(page: Int = 1, limit: Int = 20, cursor: String? = nil) {
+    init(page: Int = 1, limit: Int = 20, cursor: String? = nil, filter: WheelFilter? = nil) {
         self.page = page
         self.limit = limit
         self.cursor = cursor
+        self.filter = filter
+    }
+
+    var dictionary: [String: Any] {
+        var dict: [String: Any] = [
+            "page": page,
+            "limit": limit,
+        ]
+
+        if let cursor = cursor {
+            dict["cursor"] = cursor
+        }
+
+        if let filter = filter {
+            dict["filter"] = filter.rawValue
+        }
+
+        return dict
     }
 }

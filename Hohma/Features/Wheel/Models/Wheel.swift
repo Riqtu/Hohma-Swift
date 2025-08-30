@@ -7,20 +7,19 @@
 
 import Foundation
 
-
 struct Wheel: Codable, Identifiable {
     let id: String
     let name: String
     let status: WheelStatus?
     let createdAt: Date
     let updatedAt: Date
-    
+
     // Relations
     let themeId: String?
     let userId: String?
 }
 
-struct WheelWithRelations: Codable {
+struct WheelWithRelations: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let status: WheelStatus?
@@ -32,4 +31,13 @@ struct WheelWithRelations: Codable {
     let bets: [Bet]?
     let theme: WheelTheme?
     let user: AuthUser?
+
+    // MARK: - Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: WheelWithRelations, rhs: WheelWithRelations) -> Bool {
+        return lhs.id == rhs.id
+    }
 }

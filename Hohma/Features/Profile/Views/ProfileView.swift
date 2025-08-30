@@ -4,6 +4,7 @@ import SwiftUI
 struct ProfileView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel: ProfileViewModel
+    @StateObject private var subscriptionViewModel = SubscriptionViewModel()
     @State private var showEditProfile = false
 
     init(authViewModel: AuthViewModel) {
@@ -11,34 +12,45 @@ struct ProfileView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Заголовок
-                headerSection
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Заголовок
+                    headerSection
 
-                // Информация о пользователе
-                if let user = viewModel.user {
-                    userInfoSection(user: user)
+                    // Информация о пользователе
+                    if let user = viewModel.user {
+                        userInfoSection(user: user)
+                    }
+                    // Подписки
+                    subscriptionsSection
+
+                    // Кнопка редактирования
+                    editButtonSection
+
+                    Spacer()
+                    // Кнопки действий
+                    actionButtonsSection
                 }
-
-                // Кнопка редактирования
-                editButtonSection
-
-                Spacer()
-                // Кнопки действий
-                actionButtonsSection
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .appBackground()
+
         }
-        .appBackground()
         .navigationTitle("Профиль")
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
             viewModel.loadProfile()
+            await subscriptionViewModel.loadFollowing()
+            await subscriptionViewModel.loadFollowers()
         }
         .onAppear {
             viewModel.clearMessages()
+            Task {
+                await subscriptionViewModel.loadFollowing()
+                await subscriptionViewModel.loadFollowers()
+            }
         }
         .sheet(isPresented: $showEditProfile) {
             EditProfilePopup(viewModel: viewModel, isPresented: $showEditProfile)
@@ -101,6 +113,7 @@ struct ProfileView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+
             } else {
                 ProgressView()
                     .scaleEffect(1.2)
@@ -174,6 +187,84 @@ struct ProfileView: View {
         .padding(20)
         .background(.ultraThinMaterial)
         .cornerRadius(16)
+    }
+
+    // MARK: - Subscriptions Section
+    private var subscriptionsSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Подписки")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+
+            // Статистика подписок
+            HStack(spacing: 20) {
+                subscriptionStatCard(
+                    title: "Подписки",
+                    count: subscriptionViewModel.following.count,
+                    icon: "person.2.fill",
+                    color: Color("AccentColor")
+                )
+
+                subscriptionStatCard(
+                    title: "Подписчики",
+                    count: subscriptionViewModel.followers.count,
+                    icon: "person.3.fill",
+                    color: Color("AccentColor")
+
+                )
+            }
+
+            NavigationLink(destination: SubscriptionManagementView()) {
+                HStack {
+                    Image(systemName: "person.2.fill")
+                        .foregroundColor(.accentColor)
+                        .frame(width: 24)
+
+                    Text("Управление подписками")
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(20)
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
+    }
+
+    private func subscriptionStatCard(title: String, count: Int, icon: String, color: Color)
+        -> some View
+    {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+
+            Text("\(count)")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
 
     // MARK: - Action Buttons Section

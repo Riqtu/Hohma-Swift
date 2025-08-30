@@ -52,12 +52,14 @@ struct RootView: View {
                                 Label("Главная", systemImage: "house")
                             }
                             .tag("home")
-                        WheelListView(user: authViewModel.user)
-                            .withAppBackground()
-                            .tabItem {
-                                Label("Колесо", systemImage: "theatermasks.circle")
-                            }
-                            .tag("wheelList")
+                        NavigationStack {
+                            WheelListView(user: authViewModel.user)
+                                .withAppBackground()
+                        }
+                        .tabItem {
+                            Label("Колесо", systemImage: "theatermasks.circle")
+                        }
+                        .tag("wheelList")
 
                         ProfileView(authViewModel: authViewModel)
                             .tabItem {

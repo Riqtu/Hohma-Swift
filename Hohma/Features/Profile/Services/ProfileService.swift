@@ -20,4 +20,62 @@ final class ProfileService: TRPCServiceProtocol {
             body: ["id": userId]
         )
     }
+
+    // MARK: - Subscription Operations
+
+    func followUser(followingId: String) async throws -> Subscription {
+        return try await trpcService.executePOST(
+            endpoint: "subscription.follow",
+            body: ["followingId": followingId]
+        )
+    }
+
+    func unfollowUser(followingId: String) async throws {
+        let _: EmptyResponse = try await trpcService.executePOST(
+            endpoint: "subscription.unfollow",
+            body: ["followingId": followingId]
+        )
+    }
+
+    func isFollowing(followingId: String) async throws -> Bool {
+        let input: [String: Any] = ["followingId": followingId]
+
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        let response: IsFollowingResponse = try await trpcService.executeGET(
+            endpoint: "subscription.isFollowing?input=\(inputString)"
+        )
+        return response.result.data.json
+    }
+
+    func getFollowing(userId: String? = nil) async throws -> [UserProfile] {
+        let input: [String: Any] = userId != nil ? ["userId": userId!] : [:]
+
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        let response: UserListResponse = try await trpcService.executeGET(
+            endpoint: "subscription.getFollowing?input=\(inputString)"
+        )
+        return response.result.data.json
+    }
+
+    func getFollowers(userId: String? = nil) async throws -> [UserProfile] {
+        let input: [String: Any] = userId != nil ? ["userId": userId!] : [:]
+
+        // tRPC expects input to be wrapped in a json object for GET requests
+        let trpcInput: [String: Any] = ["json": input]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        let response: UserListResponse = try await trpcService.executeGET(
+            endpoint: "subscription.getFollowers?input=\(inputString)"
+        )
+        return response.result.data.json
+    }
 }
