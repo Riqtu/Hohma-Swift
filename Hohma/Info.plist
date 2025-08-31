@@ -47,5 +47,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>DOMAIN</key>
+	<string>https://hohma.su</string>
 </dict>
 </plist>

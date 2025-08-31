@@ -9,14 +9,14 @@ final class ShareService {
     func shareWheel(wheel: WheelWithRelations) {
         // Получаем домен из Info.plist
         let domain =
-            Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String
+            Bundle.main.object(forInfoDictionaryKey: "DOMAIN") as? String
             ?? "https://hohma.su"
 
         // Формируем ссылку на колесо
         let wheelURL = "\(domain)/fortune-wheel/\(wheel.id)"
 
         // Создаем текст для шаринга
-        let shareText = "🎡 Крутите колесо '\(wheel.name)' на Hohma!\n\n\(wheelURL)"
+        let shareText = "🎡 Крутите колесо '\(wheel.name)' на Hohma!"
 
         // Создаем URL для шаринга
         guard let url = URL(string: wheelURL) else { return }
