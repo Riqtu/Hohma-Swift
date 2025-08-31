@@ -135,6 +135,7 @@ struct SettingsView: View {
                 WebViewSheet(url: url, title: webViewTitle)
             }
         }
+
         .onChange(of: showingWebView) { _, newValue in
             if !newValue {
                 // Сбросить URL при закрытии

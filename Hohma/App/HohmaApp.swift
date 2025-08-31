@@ -8,12 +8,17 @@
 import AVFoundation
 import Inject
 import SwiftUI
+import UserNotifications
 
 @main
 struct hohmaApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let videoManager = VideoPlayerManager.shared
     @StateObject private var settingsViewModel = SettingsViewModel()
+    private let pushNotificationService = PushNotificationService.shared
+
+    // AppDelegate для обработки push-уведомлений
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         #if DEBUG
@@ -23,6 +28,7 @@ struct hohmaApp: App {
         setupAudioSession()
         preloadCommonVideos()
         setupOrientation()
+        setupPushNotifications()
     }
 
     private func setupAudioSession() {
@@ -58,6 +64,21 @@ struct hohmaApp: App {
         #endif
     }
 
+    private func setupPushNotifications() {
+        #if os(iOS)
+            // Настраиваем делегат для push-уведомлений
+            UNUserNotificationCenter.current().delegate = pushNotificationService
+
+            // Настраиваем категории уведомлений
+            pushNotificationService.setupNotificationCategories()
+
+            // Запрашиваем разрешение на уведомления
+            Task {
+                await pushNotificationService.requestAuthorization()
+            }
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -79,6 +100,12 @@ struct hohmaApp: App {
             // Приложение стало активным - возобновляем видео и применяем сохраненную тему
             videoManager.resumeAllPlayers()
             settingsViewModel.applySavedTheme()
+
+            // Очищаем badge при активации приложения
+            #if os(iOS)
+                pushNotificationService.clearBadge()
+            #endif
+
         case .inactive:
             // Приложение стало неактивным - приостанавливаем видео
             videoManager.pauseAllPlayers()

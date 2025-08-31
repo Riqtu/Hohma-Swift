@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>API_URL</key>
-	<string>https://riqtu.ru/api/trpc</string>
+	<string>https://hohma.su/api/trpc</string>
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
 	<key>CFBundleURLTypes</key>
@@ -43,5 +43,9 @@
 	</array>
 	<key>WS_URL</key>
 	<string>https://ws.hohma.su</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
