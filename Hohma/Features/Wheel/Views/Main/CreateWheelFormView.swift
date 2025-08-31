@@ -1,6 +1,13 @@
 import Inject
 import SwiftUI
 
+// Расширение для скрытия клавиатуры
+extension UIApplication {
+    func endEditing() {
+        sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
 struct CreateWheelFormView: View {
     @ObserveInjection var inject
     @Environment(\.dismiss) private var dismiss
@@ -9,19 +16,23 @@ struct CreateWheelFormView: View {
     var body: some View {
         NavigationView {
 
-            VStack(spacing: 24) {
+            VStack(spacing: 14) {
                 // Заголовок
                 VStack(spacing: 8) {
-                    Text("Создать колесо")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
+                    // Удаляем заголовок из VStack
                     Text("Выберите название и тему для нового колеса")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 20)
+                .padding(.top, 10)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("Создать колесо")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                }
 
                 // Форма
                 VStack(spacing: 20) {
@@ -171,6 +182,9 @@ struct CreateWheelFormView: View {
         .animation(nil, value: UUID())  // Отключаем анимацию только для контента
 
         .enableInjection()
+        .onTapGesture {
+            UIApplication.shared.endEditing()
+        }
     }
 }
 

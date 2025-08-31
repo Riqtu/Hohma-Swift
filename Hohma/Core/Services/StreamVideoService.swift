@@ -196,6 +196,18 @@ final class StreamPlayer: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Observer для зависания
+        player.publisher(for: \.timeControlStatus)
+            .sink { [weak self] status in
+                DispatchQueue.main.async {
+                    if status == .paused && !(self?.isLoading ?? true) {
+                        // Если видео зависло, перезапускаем его
+                        self?.player?.play()
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func handleStatusChange(_ status: AVPlayerItem.Status) {
@@ -205,6 +217,11 @@ final class StreamPlayer: ObservableObject {
             isReady = true
             hasError = false
             errorMessage = nil
+
+            // Запускаем воспроизведение сразу при готовности
+            DispatchQueue.main.async { [weak self] in
+                self?.play()
+            }
 
         case .failed:
             isLoading = false

@@ -27,13 +27,36 @@ struct FortuneWheelGameView: View {
     private var backgroundView: some View {
         let urlString = viewModel.wheelState.backVideo
         if !urlString.isEmpty, let url = URL(string: urlString) {
-            return AnyView(
-                StreamVideoView(url: url)
-                    .ignoresSafeArea())
-        } else if viewModel.isVideoReady {
-            return AnyView(
-                AnimatedGradientBackground()
-                    .ignoresSafeArea())
+            // Показываем видео только когда оно готово, иначе показываем градиент
+            if viewModel.isVideoReady {
+                return AnyView(
+                    StreamVideoView(url: url)
+                        .ignoresSafeArea()
+                        .onAppear {
+                            // Принудительно запускаем видео при появлении
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                viewModel.resumeVideo()
+                            }
+                        }
+                        .onChange(of: viewModel.isVideoReady) {
+                            // Запускаем видео когда оно становится готовым
+                            if viewModel.isVideoReady {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    viewModel.resumeVideo()
+                                }
+                            }
+                        })
+            } else {
+                return AnyView(
+                    ZStack {
+
+                        AnimatedGradientBackground()
+                            .ignoresSafeArea()
+                        ProgressView("Загружаем ресурсы...")
+
+                    }
+                )
+            }
         } else {
             return AnyView(
                 AnimatedGradientBackground()
@@ -213,8 +236,12 @@ struct FortuneWheelGameView: View {
         GeometryReader { geometry in
             ZStack {
                 backgroundView
-                mainContentView(geometry: geometry)
-                errorOverlay
+
+                // Показываем основной интерфейс только когда видео готово
+                if viewModel.isVideoReady {
+                    mainContentView(geometry: geometry)
+                    errorOverlay
+                }
             }
         }
         .gesture(

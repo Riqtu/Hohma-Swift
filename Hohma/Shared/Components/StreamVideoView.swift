@@ -1,6 +1,6 @@
 import AVFoundation
-import SwiftUI
 import Inject
+import SwiftUI
 
 /// Специализированный SwiftUI компонент для отображения потокового видео
 struct StreamVideoView: View {
@@ -16,16 +16,28 @@ struct StreamVideoView: View {
 
     var body: some View {
         ZStack {
+            // Показываем полупрозрачный градиентный фон, пока видео не готово
+            if !streamPlayer.isReady {
+                AnimatedGradientBackground()
+                    .opacity(0.5)  // Полупрозрачность
+            }
+
             // Показываем видео только когда оно готово
             if streamPlayer.isReady {
                 StreamVideoPlayerView(player: streamPlayer)
             } else if streamPlayer.isLoading {
-                // Индикатор загрузки
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
+                // Индикатор загрузки поверх градиента
+                VStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(1.5)
+                    Text("Загрузка видео...")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(.top, 8)
+                }
             } else if streamPlayer.hasError {
-                // Показываем ошибку
+                // Показываем ошибку поверх градиента
                 VStack {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
@@ -37,7 +49,12 @@ struct StreamVideoView: View {
             }
         }
         .onAppear {
-            // View появился
+            // View появился - принудительно запускаем загрузку
+            if streamPlayer.isReady {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    streamPlayer.play()
+                }
+            }
         }
         .onDisappear {
             // View исчез
@@ -78,6 +95,12 @@ struct StreamVideoView: View {
             playerLayer?.videoGravity = .resizeAspectFill
             playerLayer?.backgroundColor = UIColor.clear.cgColor
 
+            // Принудительно запускаем видео после настройки
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if player.isReady {
+                    player.play()
+                }
+            }
         }
 
         override func layoutSubviews() {

@@ -32,18 +32,31 @@ struct WheelCardComponent: View {
     }
 
     private var backgroundImage: some View {
-        AsyncImage(url: URL(string: wheel.theme?.backgroundImageURL ?? "")) { phase in
-            if let image = phase.image {
+        AsyncImage(
+            url: URL(string: wheel.theme?.backgroundImageURL ?? ""),
+            transaction: Transaction(animation: .easeInOut(duration: 0.5))
+        ) { phase in
+            switch phase {
+            case .success(let image):
                 image
                     .resizable()
                     .frame(width: 200, height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .opacity(isImageLoaded ? 1.0 : 0.0)
-                    .animation(.easeInOut(duration: 0.5), value: isImageLoaded)
                     .onAppear {
                         isImageLoaded = true
                     }
-            } else {
+            case .failure:
+                // Показываем ошибку загрузки
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.red.opacity(0.3))
+                    .frame(width: 200, height: 160)
+                    .overlay(
+                        Text("Ошибка загрузки")
+                            .foregroundColor(.white)
+                            .font(.caption)
+                    )
+            default:
                 // Placeholder пока загружается
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color.gray.opacity(0.3))

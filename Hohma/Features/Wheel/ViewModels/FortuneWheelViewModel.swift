@@ -91,6 +91,11 @@ class FortuneWheelViewModel: ObservableObject {
         wheelState.payoutBets = { [weak self] wheelId, winningSectorId in
             self?.handlePayoutBets(wheelId: wheelId, winningSectorId: winningSectorId)
         }
+
+        // Настраиваем видео фон если есть
+        if !wheelState.backVideo.isEmpty {
+            setupVideoBackground()
+        }
     }
 
     private func setupSocket() {

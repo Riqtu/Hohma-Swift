@@ -12,19 +12,15 @@ struct EditWheelFormView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                // Заголовок
+            VStack(spacing: 14) {
+                // Удаляем заголовок из VStack
                 VStack(spacing: 8) {
-                    Text("Редактировать колесо")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
                     Text("Измените название, тему и настройки приватности")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 20)
+                .padding(.top, 10)
 
                 // Форма
                 VStack(spacing: 20) {
@@ -157,11 +153,19 @@ struct EditWheelFormView: View {
             .appBackground(useVideo: false)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Редактировать колесо")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Отмена") {
                         dismiss()
                     }
                 }
+            }
+            .onTapGesture {
+                UIApplication.shared.endEditing()
             }
         }
         .onAppear {
