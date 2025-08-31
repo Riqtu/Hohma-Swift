@@ -30,6 +30,7 @@ struct WheelListView: View {
     @State private var showingCreateForm = false
     @State private var showingGame = false
     @State private var selectedWheel: WheelWithRelations?
+    @Environment(\.scenePhase) private var scenePhase
 
     init(user: AuthResult?) {
         self.user = user
@@ -143,15 +144,17 @@ struct WheelListView: View {
             .padding(.top, 20)
             .onAppear {
                 Task {
-                    await viewModel.loadWheels()
+                    await viewModel.loadWheelsSmartWithAutoLoad()
                 }
+            }
+            .onDisappear {
+                // Сохраняем состояние пагинации при уходе с экрана
+                viewModel.savePaginationStateNow()
             }
             .refreshable {
                 Task {
-
-                    await viewModel.loadWheels()
+                    await viewModel.refreshWheels()
                 }
-
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -176,7 +179,7 @@ struct WheelListView: View {
             } else {
                 // Если ID нет, обновляем только видимые колеса без полной перезагрузки
                 Task {
-                    await viewModel.refreshVisibleWheels()
+                    await viewModel.loadWheelsSmartWithAutoLoad()
                 }
             }
         }

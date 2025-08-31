@@ -132,6 +132,7 @@ struct HorizontalWheelSectionView: View {
             }
         }
         .padding(.bottom, 16)
+
         .enableInjection()
     }
 }
