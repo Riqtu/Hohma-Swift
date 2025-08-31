@@ -156,16 +156,14 @@ struct WheelListView: View {
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .appBackground()
-        .navigationDestination(isPresented: $showingGame) {
-            if let wheel = selectedWheel {
-                FortuneWheelGameView(wheelData: wheel, currentUser: user?.user)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar(.hidden, for: .tabBar)
-                    .onAppear {
-                        print("🎮 WheelListView: Открыта игра для колеса: \(wheel.name)")
-                    }
-            }
-        }
+        .modifier(
+            NavigationModifier(
+                showingGame: $showingGame,
+                selectedWheel: selectedWheel,
+                user: user,
+                isSidebarPreferred: UIDevice.current.userInterfaceIdiom == .pad
+            )
+        )
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { notification in
             print("🔄 WheelListView: Received wheel data update notification")
             // ИСПРАВЛЕНИЕ: Умное обновление данных без потери позиции в списке
@@ -193,4 +191,52 @@ struct WheelListView: View {
 
 #Preview {
     WheelListView(user: nil)
+}
+
+// MARK: - Navigation Modifier
+struct NavigationModifier: ViewModifier {
+    @Binding var showingGame: Bool
+    let selectedWheel: WheelWithRelations?
+    let user: AuthResult?
+    let isSidebarPreferred: Bool
+
+    func body(content: Content) -> some View {
+        if isSidebarPreferred {
+            // Для iPad используем fullScreenCover на весь экран
+            content
+                .fullScreenCover(isPresented: $showingGame) {
+                    if let wheel = selectedWheel {
+                        NavigationStack {
+                            FortuneWheelGameView(wheelData: wheel, currentUser: user?.user)
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar(.hidden, for: .tabBar)
+                                .toolbar {
+                                    ToolbarItem(placement: .navigationBarLeading) {
+                                        Button("Закрыть") {
+                                            showingGame = false
+                                        }
+                                        .foregroundColor(.white)
+                                    }
+                                }
+                                .onAppear {
+                                    print("🎮 WheelListView: Открыта игра для колеса: \(wheel.name)")
+                                }
+                        }
+                    }
+                }
+        } else {
+            // Для iPhone используем navigationDestination
+            content
+                .navigationDestination(isPresented: $showingGame) {
+                    if let wheel = selectedWheel {
+                        FortuneWheelGameView(wheelData: wheel, currentUser: user?.user)
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar(.hidden, for: .tabBar)
+                            .onAppear {
+                                print("🎮 WheelListView: Открыта игра для колеса: \(wheel.name)")
+                            }
+                    }
+                }
+        }
+    }
 }
