@@ -12,6 +12,7 @@ import Foundation
 extension Notification.Name {
     static let socketAuthorizationError = Notification.Name("socketAuthorizationError")
     static let roomUsersUpdated = Notification.Name("roomUsersUpdated")
+    static let deepLinkToWheel = Notification.Name("deepLinkToWheel")
 }
 
 // MARK: - Socket.IO Events

@@ -28,6 +28,8 @@ struct WheelListView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel: WheelListViewModel
     @State private var showingCreateForm = false
+    @StateObject private var deepLinkService = DeepLinkService.shared
+
     @State private var showingGame = false
     @State private var selectedWheel: WheelWithRelations?
     @Environment(\.scenePhase) private var scenePhase
@@ -146,6 +148,9 @@ struct WheelListView: View {
                 Task {
                     await viewModel.loadWheelsSmartWithAutoLoad()
                 }
+
+                // Проверяем, есть ли pending deep link
+                checkAndHandleDeepLink()
             }
             .onDisappear {
                 // Сохраняем состояние пагинации при уходе с экрана
@@ -154,6 +159,12 @@ struct WheelListView: View {
             .refreshable {
                 Task {
                     await viewModel.refreshWheels()
+                }
+            }
+            .onReceive(deepLinkService.$pendingWheelId) { wheelId in
+                // Обрабатываем deep link когда он становится доступным
+                if let wheelId = wheelId {
+                    handleDeepLinkWheel(wheelId: wheelId)
                 }
             }
         }
@@ -188,7 +199,53 @@ struct WheelListView: View {
                 .presentationDragIndicator(.visible)
         }
         .enableInjection()
+    }
 
+    // MARK: - Deep Link Handling
+
+    private func checkAndHandleDeepLink() {
+        if let wheelId = deepLinkService.getPendingWheelId() {
+            handleDeepLinkWheel(wheelId: wheelId)
+        }
+    }
+
+    private func handleDeepLinkWheel(wheelId: String) {
+        print("🔗 WheelListView: Handling deep link to wheel: \(wheelId)")
+
+        // Ищем колесо в загруженных данных
+        let allWheels = viewModel.allWheels + viewModel.myWheels + viewModel.followingWheels
+        if let wheel = allWheels.first(where: { $0.id == wheelId }) {
+            // Если колесо найдено, открываем его
+            selectedWheel = wheel
+            showingGame = true
+            print("🔗 WheelListView: Found wheel for deep link: \(wheel.name)")
+        } else {
+            // Если колесо не найдено, пытаемся загрузить его по ID
+            Task {
+                await loadWheelById(wheelId: wheelId)
+            }
+        }
+    }
+
+    private func loadWheelById(wheelId: String) async {
+        print("🔗 WheelListView: Loading wheel by ID: \(wheelId)")
+
+        // Здесь нужно добавить метод для загрузки колеса по ID
+        // Пока что просто обновляем список колес
+        await viewModel.refreshWheels()
+
+        // После обновления проверяем снова
+        DispatchQueue.main.async {
+            let allWheels =
+                self.viewModel.allWheels + self.viewModel.myWheels + self.viewModel.followingWheels
+            if let wheel = allWheels.first(where: { $0.id == wheelId }) {
+                self.selectedWheel = wheel
+                self.showingGame = true
+                print("🔗 WheelListView: Found wheel after refresh: \(wheel.name)")
+            } else {
+                print("🔗 WheelListView: Wheel not found after refresh: \(wheelId)")
+            }
+        }
     }
 }
 

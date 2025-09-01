@@ -26,6 +26,71 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
+    // MARK: - Universal Links & Deep Linking
+
+    func application(
+        _ application: UIApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
+        // Обрабатываем Universal Links
+        if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+            let url = userActivity.webpageURL
+        {
+            return handleUniversalLink(url: url)
+        }
+        return false
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        // Обрабатываем custom URL schemes
+        return handleCustomURL(url: url)
+    }
+
+    private func handleUniversalLink(url: URL) -> Bool {
+        print("🔗 AppDelegate: Received Universal Link: \(url)")
+
+        // Парсим URL для извлечения ID колеса
+        if let wheelId = extractWheelId(from: url) {
+            // Отправляем уведомление для навигации к колесу
+            NotificationCenter.default.post(
+                name: .deepLinkToWheel,
+                object: nil,
+                userInfo: ["wheelId": wheelId]
+            )
+            return true
+        }
+
+        return false
+    }
+
+    private func handleCustomURL(url: URL) -> Bool {
+        print("🔗 AppDelegate: Received Custom URL: \(url)")
+
+        // Обрабатываем custom URL schemes если понадобится в будущем
+        return false
+    }
+
+    private func extractWheelId(from url: URL) -> String? {
+        // Парсим URL вида: https://hohma.su/fortune-wheel/{wheelId}
+        let pathComponents = url.pathComponents
+
+        // Ищем индекс "fortune-wheel" в пути
+        if let fortuneWheelIndex = pathComponents.firstIndex(of: "fortune-wheel"),
+            fortuneWheelIndex + 1 < pathComponents.count
+        {
+            let wheelId = pathComponents[fortuneWheelIndex + 1]
+            print("🔗 AppDelegate: Extracted wheel ID: \(wheelId)")
+            return wheelId
+        }
+
+        return nil
+    }
+
     // MARK: - Push Notification Methods
 
     func application(
