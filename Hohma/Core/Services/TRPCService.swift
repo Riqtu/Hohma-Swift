@@ -126,7 +126,70 @@ class TRPCService {
         let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
         let inputString = String(data: inputJSONData, encoding: .utf8)!
 
-        let request = try createGETRequest(endpoint: "\(endpoint)?input=\(inputString)")
+        // Properly URL encode the input parameter
+        guard
+            let encodedInput = inputString.addingPercentEncoding(
+                withAllowedCharacters: .urlQueryAllowed)
+        else {
+            throw NetworkError.encodingError
+        }
+
+        let request = try createGETRequest(endpoint: "\(endpoint)?input=\(encodedInput)")
+        return try await execute(request)
+    }
+
+    /// Выполняет GET запрос к tRPC endpoint с простым параметром (например, ID)
+    /// - Parameters:
+    ///   - endpoint: tRPC endpoint (например, "wheelList.getById")
+    ///   - paramName: Имя параметра (например, "id")
+    ///   - paramValue: Значение параметра
+    /// - Returns: Декодированный ответ указанного типа
+    /// - Throws: NetworkError при ошибках сети или авторизации
+    @MainActor
+    func executeGET<T: Decodable>(endpoint: String, paramName: String, paramValue: String)
+        async throws -> T
+    {
+        // Create the full URL with query parameters
+        guard let url = URL(string: "\(self.baseURL)/\(endpoint)") else {
+            throw NetworkError.invalidURL
+        }
+
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: paramName, value: paramValue)]
+
+        guard let finalURL = components?.url else {
+            throw NetworkError.invalidURL
+        }
+
+        var request = URLRequest(url: finalURL)
+        request.httpMethod = "GET"
+        try addAuthorizationHeader(to: &request)
+
+        return try await execute(request)
+    }
+
+    /// Выполняет GET запрос к tRPC endpoint с простым значением (например, ID как строка)
+    /// - Parameters:
+    ///   - endpoint: tRPC endpoint (например, "wheelList.getById")
+    ///   - value: Простое значение (например, ID)
+    /// - Returns: Декодированный ответ указанного типа
+    /// - Throws: NetworkError при ошибках сети или авторизации
+    @MainActor
+    func executeGET<T: Decodable>(endpoint: String, value: String) async throws -> T {
+        // tRPC expects simple values to be wrapped in a json object
+        let trpcInput: [String: Any] = ["json": value]
+        let inputJSONData = try JSONSerialization.data(withJSONObject: trpcInput)
+        let inputString = String(data: inputJSONData, encoding: .utf8)!
+
+        // Properly URL encode the input parameter
+        guard
+            let encodedInput = inputString.addingPercentEncoding(
+                withAllowedCharacters: .urlQueryAllowed)
+        else {
+            throw NetworkError.encodingError
+        }
+
+        let request = try createGETRequest(endpoint: "\(endpoint)?input=\(encodedInput)")
         return try await execute(request)
     }
 

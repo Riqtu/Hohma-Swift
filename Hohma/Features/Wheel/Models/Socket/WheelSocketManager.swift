@@ -73,7 +73,8 @@ class WheelSocketManager: WheelSocketProtocol {
         socket.on(.syncSectors) { [weak self] data in
             do {
                 let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                // WebSocket события используют timestamp формат
+                decoder.dateDecodingStrategy = .secondsSince1970
                 let sectors = try decoder.decode([Sector].self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorsSync?(sectors)
@@ -87,7 +88,8 @@ class WheelSocketManager: WheelSocketProtocol {
         socket.on(.sectorUpdated) { [weak self] data in
             do {
                 let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                // WebSocket события используют timestamp формат
+                decoder.dateDecodingStrategy = .secondsSince1970
                 let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorUpdated?(sector)
@@ -101,7 +103,8 @@ class WheelSocketManager: WheelSocketProtocol {
         socket.on(.sectorCreated) { [weak self] data in
             do {
                 let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                // WebSocket события используют timestamp формат
+                decoder.dateDecodingStrategy = .secondsSince1970
                 let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.onSectorCreated?(sector)

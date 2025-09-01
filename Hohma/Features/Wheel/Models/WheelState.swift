@@ -14,6 +14,7 @@ extension Notification.Name {
     static let wheelCompleted = Notification.Name("wheelCompleted")
     static let wheelDataUpdated = Notification.Name("wheelDataUpdated")
     static let navigationRequested = Notification.Name("navigationRequested")
+    static let sectorsUpdated = Notification.Name("sectorsUpdated")
 }
 
 @MainActor
@@ -85,7 +86,12 @@ class WheelState: ObservableObject {
 
     func addSector(_ sector: Sector) {
         print("➕ WheelState: Adding sector \(sector.label) from server")
+        print("➕ WheelState: Current sectors count: \(sectors.count)")
         sectors.append(sector)
+        print("➕ WheelState: New sectors count: \(sectors.count)")
+
+        // Уведомляем об обновлении секторов
+        NotificationCenter.default.post(name: .sectorsUpdated, object: sectors)
     }
 
     func updateSector(_ sector: Sector) {
@@ -295,8 +301,8 @@ class WheelState: ObservableObject {
             } ?? [],
             "poster": sector.poster ?? "",
             "genre": sector.genre ?? "",
-            "rating": sector.rating ?? 0,
-            "year": sector.year ?? 0,
+            "rating": sector.rating ?? "",
+            "year": sector.year ?? "",
             "labelColor": sector.labelColor ?? "",
             "labelHidden": sector.labelHidden,
             "wheelId": sector.wheelId,
@@ -308,6 +314,9 @@ class WheelState: ObservableObject {
                     "firstName": user.firstName ?? "",
                     "lastName": user.lastName ?? "",
                     "coins": user.coins,
+                    "clicks": user.clicks,
+                    "createdAt": "",
+                    "updatedAt": "",
                     "avatarUrl": user.avatarUrl?.absoluteString ?? "",
                     "role": user.role,
                 ]
@@ -450,6 +459,7 @@ class WheelState: ObservableObject {
 
             do {
                 let decoder = JSONDecoder()
+                // WebSocket события используют timestamp формат
                 decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
                 // Конвертируем обратно в JSON Data для декодирования
@@ -471,7 +481,12 @@ class WheelState: ObservableObject {
     }
 
     private func setupSocketEventHandlers() {
-        guard let socket = socket else { return }
+        print("🔧 WheelState: Setting up socket event handlers")
+        guard let socket = socket else {
+            print("❌ WheelState: Cannot setup handlers - socket is nil")
+            return
+        }
+        print("✅ WheelState: Socket event handlers setup completed")
 
         // Handle connect event
         socket.on(.connect) { data in
@@ -509,7 +524,8 @@ class WheelState: ObservableObject {
         socket.on(.syncSectors) { [weak self] data in
             do {
                 let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                // WebSocket события используют timestamp формат
+                decoder.dateDecodingStrategy = .secondsSince1970
                 let sectors = try decoder.decode([Sector].self, from: data)
                 DispatchQueue.main.async {
                     self?.setSectors(sectors)
@@ -523,7 +539,8 @@ class WheelState: ObservableObject {
         socket.on(.sectorUpdated) { [weak self] data in
             do {
                 let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                // WebSocket события используют timestamp формат
+                decoder.dateDecodingStrategy = .secondsSince1970
                 let sector = try decoder.decode(Sector.self, from: data)
                 DispatchQueue.main.async {
                     self?.updateSector(sector)
@@ -535,15 +552,47 @@ class WheelState: ObservableObject {
 
         // Handle sector creation
         socket.on(.sectorCreated) { [weak self] data in
+            print(
+                "📥 WheelState: Received sector:created event with data: \(String(data: data, encoding: .utf8) ?? "invalid")"
+            )
             do {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
-                let sector = try decoder.decode(Sector.self, from: data)
-                DispatchQueue.main.async {
-                    self?.addSector(sector)
+                // WebSocket событие приходит в формате: ["sector:created", roomId, sectorData]
+                // Нам нужен только третий элемент - данные сектора
+                let jsonData = try JSONSerialization.jsonObject(with: data)
+
+                if let jsonArray = jsonData as? [Any], jsonArray.count >= 3 {
+                    // Берем третий элемент - данные сектора
+                    if let sectorData = jsonArray[2] as? [String: Any] {
+                        let sectorJsonData = try JSONSerialization.data(withJSONObject: sectorData)
+                        let decoder = JSONDecoder()
+                        // Используем .secondsSince1970 для timestamp полей
+                        decoder.dateDecodingStrategy = .secondsSince1970
+                        let sector = try decoder.decode(Sector.self, from: sectorJsonData)
+
+                        print("✅ WheelState: Successfully decoded sector: \(sector.name)")
+                        DispatchQueue.main.async {
+                            self?.addSector(sector)
+                            print("✅ WheelState: Added sector to wheel state: \(sector.name)")
+                        }
+                    } else {
+                        print("❌ WheelState: Third element is not a dictionary")
+                    }
+                } else {
+                    // Попробуем декодировать как обычный сектор (fallback)
+                    let decoder = JSONDecoder()
+                    // Используем .secondsSince1970 для timestamp полей
+                    decoder.dateDecodingStrategy = .secondsSince1970
+                    let sector = try decoder.decode(Sector.self, from: data)
+                    print("✅ WheelState: Successfully decoded sector (fallback): \(sector.name)")
+                    DispatchQueue.main.async {
+                        self?.addSector(sector)
+                        print(
+                            "✅ WheelState: Added sector to wheel state (fallback): \(sector.name)")
+                    }
                 }
             } catch {
                 print("❌ WheelState: Failed to decode sector creation: \(error)")
+                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
             }
         }
 
@@ -634,7 +683,8 @@ class WheelState: ObservableObject {
 
                     if let sectorsArray = sectorsArray {
                         let decoder = JSONDecoder()
-                        decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                        // WebSocket события используют timestamp формат
+                        decoder.dateDecodingStrategy = .secondsSince1970
 
                         // Конвертируем обратно в JSON Data для декодирования
                         let sectorsData = try JSONSerialization.data(withJSONObject: sectorsArray)

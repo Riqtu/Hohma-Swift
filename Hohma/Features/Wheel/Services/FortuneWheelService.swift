@@ -18,7 +18,8 @@ class FortuneWheelService: ObservableObject, TRPCServiceProtocol {
     // MARK: - Wheel Operations
 
     func getWheelById(_ id: String) async throws -> WheelWithRelations {
-        return try await trpcService.executePOST(endpoint: "wheelList.getById", body: ["id": id])
+        return try await trpcService.executeGET(
+            endpoint: "wheelList.getById", value: id)
     }
 
     func updateWheelStatus(_ id: String, status: WheelStatus) async throws -> Wheel {

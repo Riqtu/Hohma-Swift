@@ -156,16 +156,34 @@ class FortuneWheelViewModel: ObservableObject {
                 self?.checkSocketHealth()
             }
         }
+
+        // Обновляем данные колеса каждые 60 секунд для поддержания актуальности
+        Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refreshWheelDataSilently()
+            }
+        }
+
         print("🏥 FortuneWheelViewModel: Socket health monitoring started")
+        print("🔄 FortuneWheelViewModel: Wheel data auto-refresh started (every 60 seconds)")
     }
 
     private func joinRoom() {
+        print("🔌 FortuneWheelViewModel: Joining room: \(wheelData.id)")
         wheelState.joinRoom(wheelData.id, userId: currentUser)
 
         // Инициализируем список пользователей с текущим пользователем
         if let currentUser = currentUser {
             updateRoomUsers([currentUser])
-            print("👥 FortuneWheelViewModel: Initialized room users with current user")
+            print(
+                "👥 FortuneWheelViewModel: Initialized room users with current user: \(String(describing: currentUser.username))"
+            )
+        }
+
+        // Обновляем данные колеса при подключении к комнате
+        Task {
+            print("🔄 FortuneWheelViewModel: Refreshing wheel data after joining room")
+            await refreshWheelDataSilently()
         }
     }
 
@@ -416,18 +434,24 @@ class FortuneWheelViewModel: ObservableObject {
     func addSector(_ sector: Sector) {
         Task {
             do {
+                print("🔄 FortuneWheelViewModel: Creating sector: \(sector.name)")
                 let createdSector = try await wheelService.createSector(sector)
+                print("✅ FortuneWheelViewModel: Sector created successfully: \(createdSector.name)")
 
                 // Отправляем сокет событие
                 let sectorData = try JSONEncoder().encode(createdSector)
                 if let sectorDict = try JSONSerialization.jsonObject(with: sectorData)
                     as? [String: Any]
                 {
+                    print(
+                        "📤 FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)"
+                    )
                     socketService.emitToRoom(.sectorCreated, roomId: wheelData.id, data: sectorDict)
                 }
 
                 // Обновляем состояние колеса
                 wheelState.addSector(createdSector)
+                print("✅ FortuneWheelViewModel: Wheel state updated with new sector")
 
             } catch URLError.userAuthenticationRequired {
                 print("🔐 FortuneWheelViewModel: Authorization required for sector creation")
@@ -476,6 +500,59 @@ class FortuneWheelViewModel: ObservableObject {
                 self.error = "Ошибка удаления сектора: \(error.localizedDescription)"
                 print("❌ FortuneWheelViewModel: Sector deletion error: \(error)")
             }
+        }
+    }
+
+    // MARK: - Wheel Data Refresh
+
+    func refreshWheelData() {
+        Task {
+            do {
+                print("🔄 FortuneWheelViewModel: Refreshing wheel data for ID: \(wheelData.id)")
+                let updatedWheelData = try await wheelService.getWheelById(wheelData.id)
+
+                // Обновляем секторы
+                wheelState.setSectors(updatedWheelData.sectors)
+
+                // Обновляем тему если она изменилась
+                if let theme = updatedWheelData.theme {
+                    wheelState.accentColor = theme.accentColor
+                    wheelState.mainColor = theme.mainColor
+                    wheelState.font = theme.font
+                    wheelState.backVideo = theme.backgroundVideoURL
+                }
+
+                print("✅ FortuneWheelViewModel: Wheel data refreshed successfully")
+
+            } catch {
+                print("❌ FortuneWheelViewModel: Failed to refresh wheel data: \(error)")
+                self.error = "Не удалось обновить данные колеса: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func refreshWheelDataSilently() async {
+        do {
+            print("🔄 FortuneWheelViewModel: Silently refreshing wheel data for ID: \(wheelData.id)")
+            let updatedWheelData = try await wheelService.getWheelById(wheelData.id)
+
+            // Обновляем секторы
+            wheelState.setSectors(updatedWheelData.sectors)
+
+            // Обновляем тему если она изменилась
+            if let theme = updatedWheelData.theme {
+                wheelState.accentColor = theme.accentColor
+                wheelState.mainColor = theme.mainColor
+                wheelState.font = theme.font
+                wheelState.backVideo = theme.backgroundVideoURL
+            }
+
+            print("✅ FortuneWheelViewModel: Wheel data silently refreshed successfully")
+
+        } catch {
+            print("❌ FortuneWheelViewModel: Failed to silently refresh wheel data: \(error)")
+            // Не показываем ошибку пользователю при тихом обновлении
+            // При ошибке сети просто логируем и продолжаем работу
         }
     }
 

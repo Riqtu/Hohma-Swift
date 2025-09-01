@@ -268,11 +268,14 @@ struct FortuneWheelGameView: View {
         }
         .onAppear {
             viewModel.setupVideoBackground()
+            // Обновляем данные колеса при заходе
+            viewModel.refreshWheelData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Если получаем уведомление об обновлении данных колеса,
-            // это может означать, что пользователь хочет перейти к другому экрану
-            print("🔄 FortuneWheelGameView: Received wheel data update, checking navigation state")
+            // обновляем данные колеса
+            print("🔄 FortuneWheelGameView: Received wheel data update, refreshing wheel data")
+            viewModel.refreshWheelData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
             notification in
