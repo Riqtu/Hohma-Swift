@@ -164,7 +164,22 @@ struct SectorSlideRowView: View {
                 sector.userId == currentUser.id
             {
                 Button(action: {
-                    viewModel.deleteSector(sector)
+                    // Проверяем подключение сокета перед удалением
+                    if viewModel.isSocketConnected {
+                        viewModel.deleteSector(sector)
+                    } else {
+                        print("⚠️ SectorsSlideView: Socket not connected, attempting to connect...")
+                        viewModel.connectSocket()
+
+                        // Ждем подключения и повторяем попытку (уменьшили задержку)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if viewModel.isSocketConnected {
+                                viewModel.deleteSector(sector)
+                            } else {
+                                print("❌ SectorsSlideView: Socket still not connected after retry")
+                            }
+                        }
+                    }
                 }) {
                     Image(systemName: "trash.circle.fill")
                         .foregroundColor(.red)

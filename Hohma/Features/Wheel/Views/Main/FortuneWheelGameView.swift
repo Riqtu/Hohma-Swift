@@ -270,6 +270,10 @@ struct FortuneWheelGameView: View {
             viewModel.setupVideoBackground()
             // Обновляем данные колеса при заходе
             viewModel.refreshWheelData()
+            // Переподключаемся к комнате при возврате на экран
+            Task {
+                viewModel.rejoinRoom()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Если получаем уведомление об обновлении данных колеса,

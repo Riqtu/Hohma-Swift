@@ -113,6 +113,27 @@ class WheelState: ObservableObject {
         losers = losers.filter { $0.id != id }
     }
 
+    func emitSectorRemovalEvent(sectorId: String) {
+        if let socket = socket, socket.isConnected, isAuthorized {
+            print("📤 WheelState: Emitting sector:removed event")
+            // Отправляем в том же формате, что и веб-клиент: (roomId, data)
+            socket.emitToRoom(.sectorRemoved, roomId: roomId ?? "", data: sectorId)
+        } else {
+            print(
+                "⚠️ WheelState: Cannot emit sector removal event - socket not connected or not authorized"
+            )
+        }
+    }
+
+    func resetAuthorization() {
+        isAuthorized = true
+        print("✅ WheelState: Authorization flag reset to true")
+    }
+
+    func isSocketAuthorized() -> Bool {
+        return isAuthorized
+    }
+
     // MARK: - Wheel Actions
     func spinWheel() {
         guard !spinning && sectors.count > 1 else {
@@ -331,6 +352,12 @@ class WheelState: ObservableObject {
     }
 
     private func emitSpinEvent(_ spinData: [String: Any]) {
+        print("🔍 WheelState: Debug info for spin event:")
+        print("   - socket exists: \(socket != nil)")
+        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
+        print("   - isAuthorized: \(isAuthorized)")
+        print("   - roomId: \(roomId ?? "nil")")
+
         if let socket = socket, socket.isConnected, isAuthorized {
             print("📤 WheelState: Emitting wheel:spin event")
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
@@ -341,6 +368,12 @@ class WheelState: ObservableObject {
     }
 
     private func emitShuffleEvent(_ shuffleData: [String: Any]) {
+        print("🔍 WheelState: Debug info for shuffle event:")
+        print("   - socket exists: \(socket != nil)")
+        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
+        print("   - isAuthorized: \(isAuthorized)")
+        print("   - roomId: \(roomId ?? "nil")")
+
         if let socket = socket, socket.isConnected, isAuthorized {
             print("📤 WheelState: Emitting sectors:shuffle event")
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
@@ -352,14 +385,24 @@ class WheelState: ObservableObject {
 
     // MARK: - Socket Integration (упрощенная версия)
     func setupSocket(_ socket: SocketIOServiceV2, roomId: String) {
+        print("🔧 WheelState: Setting up socket...")
+        print("   - roomId: \(roomId)")
+        print("   - clientId: \(socket.clientId)")
+
         self.socket = socket
         self.roomId = roomId
         self.clientId = socket.clientId
 
         setupSocketEventHandlers()
+        print("✅ WheelState: Socket setup completed")
     }
 
     func joinRoom(_ roomId: String, userId: AuthUser?) {
+        print("🔌 WheelState: Attempting to join room \(roomId)")
+        print("   - socket exists: \(socket != nil)")
+        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
+        print("   - isAuthorized: \(isAuthorized)")
+
         var userData: [String: Any] = [:]
         if let user = userId {
             userData = [
@@ -379,7 +422,9 @@ class WheelState: ObservableObject {
             "clientId": clientId ?? "",
         ]
 
-        if let socket = socket, socket.isConnected, isAuthorized {
+        if let socket = socket, socket.isConnected {
+            // Сбрасываем флаг авторизации при попытке подключения к комнате
+            isAuthorized = true
             print("🔌 WheelState: Joining room \(roomId)")
             socket.emit(.joinRoom, data: joinData)
 
@@ -388,7 +433,7 @@ class WheelState: ObservableObject {
                 self.requestSectors()
             }
         } else {
-            print("⚠️ WheelState: Cannot join room - socket not connected or not authorized")
+            print("⚠️ WheelState: Cannot join room - socket not connected")
         }
     }
 
@@ -489,8 +534,11 @@ class WheelState: ObservableObject {
         print("✅ WheelState: Socket event handlers setup completed")
 
         // Handle connect event
-        socket.on(.connect) { data in
+        socket.on(.connect) { [weak self] data in
             print("🔌 WheelState: Socket connected, ready to join room")
+            // Сбрасываем флаг авторизации при успешном подключении
+            self?.isAuthorized = true
+            print("✅ WheelState: Authorization flag reset to true")
         }
 
         // Handle wheel spin from server

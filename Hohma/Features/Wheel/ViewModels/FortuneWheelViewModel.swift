@@ -42,6 +42,35 @@ class FortuneWheelViewModel: ObservableObject {
         return currentUser
     }
 
+    var isSocketConnected: Bool {
+        return socketService.isConnected
+    }
+
+    func connectSocket() {
+        socketService.connect()
+    }
+
+    func rejoinRoom() {
+        print("🔄 FortuneWheelViewModel: Rejoining room on view appear")
+
+        // Проверяем подключение сокета
+        if !socketService.isConnected {
+            print("⚠️ FortuneWheelViewModel: Socket not connected, connecting...")
+            socketService.connect()
+        }
+
+        // Настраиваем сокет в wheelState если он не настроен
+        if wheelState.socket == nil {
+            print("🔧 FortuneWheelViewModel: Setting up socket in wheelState")
+            wheelState.setupSocket(socketService, roomId: wheelData.id)
+        }
+
+        // Присоединяемся к комнате
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.joinRoom()
+        }
+    }
+
     init(wheelData: WheelWithRelations, currentUser: AuthUser?) {
         self.wheelData = wheelData
         self.currentUser = currentUser
@@ -99,13 +128,28 @@ class FortuneWheelViewModel: ObservableObject {
     }
 
     private func setupSocket() {
+        print("🔧 FortuneWheelViewModel: Setting up socket...")
+        print("   - socketService.isConnected: \(socketService.isConnected)")
+
         // Подписываемся на изменения состояния сокета
         socketService.$isConnected
             .sink { [weak self] isConnected in
+                print("🔧 FortuneWheelViewModel: Socket connection state changed: \(isConnected)")
                 self?.isSocketReady = isConnected
                 if isConnected {
-                    // Добавляем небольшую задержку для стабилизации соединения
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Сбрасываем флаг авторизации при успешном подключении
+                    self?.wheelState.resetAuthorization()
+
+                    // Настраиваем сокет в wheelState если он еще не настроен
+                    if self?.wheelState.socket == nil {
+                        print("🔧 FortuneWheelViewModel: Setting up socket in wheelState")
+                        self?.wheelState.setupSocket(
+                            self?.socketService ?? SocketIOServiceV2(),
+                            roomId: self?.wheelData.id ?? "")
+                    }
+
+                    // Добавляем небольшую задержку для стабилизации соединения (уменьшили)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         self?.joinRoom()
                     }
                 }
@@ -170,6 +214,8 @@ class FortuneWheelViewModel: ObservableObject {
 
     private func joinRoom() {
         print("🔌 FortuneWheelViewModel: Joining room: \(wheelData.id)")
+        print("   - socketService.isConnected: \(socketService.isConnected)")
+        print("   - wheelState.socket exists: \(wheelState.socket != nil)")
         wheelState.joinRoom(wheelData.id, userId: currentUser)
 
         // Инициализируем список пользователей с текущим пользователем
@@ -476,12 +522,42 @@ class FortuneWheelViewModel: ObservableObject {
             return
         }
 
+        // Проверяем подключение сокета
+
+        if !socketService.isConnected {
+            print("⚠️ FortuneWheelViewModel: Socket not connected, attempting to connect...")
+            socketService.connect()
+
+            // Ждем подключения (уменьшили задержку)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if self.socketService.isConnected {
+                    print("✅ FortuneWheelViewModel: Socket connected, proceeding with deletion")
+                    self.performSectorDeletion(sector)
+                } else {
+                    print("❌ FortuneWheelViewModel: Socket still not connected after retry")
+                    self.error = "Не удается подключиться к серверу. Попробуйте еще раз."
+                }
+            }
+            return
+        }
+
+        // Проверяем, что wheelState настроен с сокетом
+        if wheelState.socket == nil {
+            print("⚠️ FortuneWheelViewModel: wheelState not configured with socket, setting up...")
+            wheelState.setupSocket(socketService, roomId: wheelData.id)
+        }
+
+        performSectorDeletion(sector)
+    }
+
+    private func performSectorDeletion(_ sector: Sector) {
+
         Task {
             do {
                 _ = try await wheelService.deleteSector(sector.id)
 
-                // Отправляем сокет событие
-                socketService.emitToRoom(.sectorRemoved, roomId: wheelData.id, data: sector.id)
+                // Отправляем сокет событие через WheelState (как и другие методы)
+                wheelState.emitSectorRemovalEvent(sectorId: sector.id)
 
                 // Обновляем состояние колеса
                 wheelState.removeSector(id: sector.id)
