@@ -44,6 +44,92 @@ struct Sector: Codable, Identifiable {
     let createdAt: Date
     let updatedAt: Date
 
+    // CodingKeys for custom decoding
+    private enum CodingKeys: String, CodingKey {
+        case id, label, color, name, eliminated, winner
+        case description, pattern, patternPosition, poster, genre, rating, year
+        case labelColor, labelHidden, wheelId, userId, user, createdAt, updatedAt
+    }
+
+    // Regular initializer for mock objects
+    init(
+        id: String, label: String, color: ColorJSON, name: String, eliminated: Bool, winner: Bool,
+        description: String?, pattern: String?, patternPosition: PatternPositionJSON?,
+        poster: String?, genre: String?, rating: String?, year: String?, labelColor: String?,
+        labelHidden: Bool, wheelId: String, userId: String?, user: AuthUser?, createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.label = label
+        self.color = color
+        self.name = name
+        self.eliminated = eliminated
+        self.winner = winner
+        self.description = description
+        self.pattern = pattern
+        self.patternPosition = patternPosition
+        self.poster = poster
+        self.genre = genre
+        self.rating = rating
+        self.year = year
+        self.labelColor = labelColor
+        self.labelHidden = labelHidden
+        self.wheelId = wheelId
+        self.userId = userId
+        self.user = user
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    // Custom decoding to handle numeric boolean values
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+        label = try container.decode(String.self, forKey: .label)
+        color = try container.decode(ColorJSON.self, forKey: .color)
+        name = try container.decode(String.self, forKey: .name)
+
+        // Handle boolean fields that might come as numbers
+        if let boolValue = try? container.decode(Bool.self, forKey: .eliminated) {
+            eliminated = boolValue
+        } else if let intValue = try? container.decode(Int.self, forKey: .eliminated) {
+            eliminated = intValue != 0
+        } else {
+            eliminated = false
+        }
+
+        if let boolValue = try? container.decode(Bool.self, forKey: .winner) {
+            winner = boolValue
+        } else if let intValue = try? container.decode(Int.self, forKey: .winner) {
+            winner = intValue != 0
+        } else {
+            winner = false
+        }
+
+        if let boolValue = try? container.decode(Bool.self, forKey: .labelHidden) {
+            labelHidden = boolValue
+        } else if let intValue = try? container.decode(Int.self, forKey: .labelHidden) {
+            labelHidden = intValue != 0
+        } else {
+            labelHidden = false
+        }
+
+        description = try? container.decode(String.self, forKey: .description)
+        pattern = try? container.decode(String.self, forKey: .pattern)
+        patternPosition = try? container.decode(PatternPositionJSON.self, forKey: .patternPosition)
+        poster = try? container.decode(String.self, forKey: .poster)
+        genre = try? container.decode(String.self, forKey: .genre)
+        rating = try? container.decode(String.self, forKey: .rating)
+        year = try? container.decode(String.self, forKey: .year)
+        labelColor = try? container.decode(String.self, forKey: .labelColor)
+        wheelId = try container.decode(String.self, forKey: .wheelId)
+        userId = try? container.decode(String.self, forKey: .userId)
+        user = try? container.decode(AuthUser.self, forKey: .user)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+
     static let mock = Sector(
         id: "681e3151041024f3c3a92b3b",
         label: "1",

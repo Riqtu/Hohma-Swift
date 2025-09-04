@@ -340,8 +340,8 @@ class WheelState: ObservableObject {
                     "updatedAt": "",
                     "avatarUrl": user.avatarUrl?.absoluteString ?? "",
                     "role": user.role,
-                ]
-            } ?? [],
+                ] as [String: Any]
+            } as Any,
             "createdAt": ISO8601DateFormatter().string(from: sector.createdAt),
             "updatedAt": ISO8601DateFormatter().string(from: sector.updatedAt),
         ]
@@ -505,7 +505,7 @@ class WheelState: ObservableObject {
             do {
                 let decoder = JSONDecoder()
                 // WebSocket события используют timestamp формат
-                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                decoder.dateDecodingStrategy = .iso8601
 
                 // Конвертируем обратно в JSON Data для декодирования
                 let sectorsJsonData = try JSONSerialization.data(withJSONObject: sectorsData)
@@ -516,6 +516,12 @@ class WheelState: ObservableObject {
                     print(
                         "✅ WheelState: Updated sectors from shuffle event (\(shuffledSectors.count) sectors)"
                     )
+                    // Debug: print labels to verify they are decoded correctly
+                    for (index, sector) in shuffledSectors.enumerated() {
+                        print(
+                            "🔍 Sector \(index): label='\(sector.label)', name='\(sector.name)', labelHidden=\(sector.labelHidden)"
+                        )
+                    }
                 }
             } catch {
                 print("❌ WheelState: Failed to decode shuffle sectors: \(error)")
