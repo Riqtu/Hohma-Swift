@@ -145,12 +145,15 @@ struct WheelListView: View {
             }
             .padding(.top, 20)
             .onAppear {
+                print("🔗 WheelListView: ===== VIEW APPEARED =====")
                 Task {
                     await viewModel.loadWheelsSmartWithAutoLoad()
                 }
 
                 // Проверяем, есть ли pending deep link
+                print("🔗 WheelListView: Checking for pending deep link...")
                 checkAndHandleDeepLink()
+                print("🔗 WheelListView: ===== VIEW APPEAR COMPLETE =====")
             }
             .onDisappear {
                 // Сохраняем состояние пагинации при уходе с экрана
@@ -194,6 +197,29 @@ struct WheelListView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
+            // Обрабатываем уведомления о навигации к колесу
+            print("🔗 WheelListView: Received navigationRequested notification")
+            print("🔗 WheelListView: Notification userInfo: \(notification.userInfo ?? [:])")
+            print(
+                "🔗 WheelListView: Current view state - showingGame: \(showingGame), selectedWheel: \(selectedWheel?.id ?? "nil")"
+            )
+
+            if let destination = notification.userInfo?["destination"] as? String {
+                print("🔗 WheelListView: Destination: \(destination)")
+                if destination == "wheel",
+                    let wheelId = notification.userInfo?["wheelId"] as? String
+                {
+                    print("🔗 WheelListView: Navigation requested to wheel: \(wheelId)")
+                    handleDeepLinkWheel(wheelId: wheelId)
+                } else {
+                    print("🔗 WheelListView: Not a wheel navigation or no wheelId")
+                }
+            } else {
+                print("🔗 WheelListView: No destination in notification")
+            }
+        }
         .sheet(isPresented: $showingCreateForm) {
             CreateWheelFormView()
                 .presentationDragIndicator(.visible)
@@ -204,9 +230,14 @@ struct WheelListView: View {
     // MARK: - Deep Link Handling
 
     private func checkAndHandleDeepLink() {
+        print("🔗 WheelListView: ===== CHECKING PENDING DEEP LINK =====")
         if let wheelId = deepLinkService.getPendingWheelId() {
+            print("🔗 WheelListView: ✅ Found pending wheel ID: \(wheelId)")
             handleDeepLinkWheel(wheelId: wheelId)
+        } else {
+            print("🔗 WheelListView: ❌ No pending wheel ID found")
         }
+        print("🔗 WheelListView: ===== PENDING DEEP LINK CHECK COMPLETE =====")
     }
 
     private func handleDeepLinkWheel(wheelId: String) {
@@ -214,13 +245,18 @@ struct WheelListView: View {
 
         // Ищем колесо в загруженных данных
         let allWheels = viewModel.allWheels + viewModel.myWheels + viewModel.followingWheels
+        print("🔗 WheelListView: Total wheels loaded: \(allWheels.count)")
+        print("🔗 WheelListView: All wheels IDs: \(allWheels.map { $0.id })")
+
         if let wheel = allWheels.first(where: { $0.id == wheelId }) {
             // Если колесо найдено, открываем его
+            print("🔗 WheelListView: Found wheel for deep link: \(wheel.name)")
             selectedWheel = wheel
             showingGame = true
-            print("🔗 WheelListView: Found wheel for deep link: \(wheel.name)")
+            print("🔗 WheelListView: Set selectedWheel and showingGame = true")
         } else {
             // Если колесо не найдено, пытаемся загрузить его по ID
+            print("🔗 WheelListView: Wheel not found in loaded data, trying to load by ID")
             Task {
                 await loadWheelById(wheelId: wheelId)
             }
