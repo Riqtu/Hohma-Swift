@@ -34,6 +34,11 @@ struct WheelSectorView: View {
         let textOffsetX = (radius * 0.7) * cos(textAngle * .pi / 180)
         let textOffsetY = (radius * 0.7) * sin(textAngle * .pi / 180)
 
+        // Отладочная информация
+        let _ = print(
+            "🎯 WheelSectorView: Building view for sector \(index) '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)"
+        )
+
         // Вычисляем центр сектора для точного позиционирования изображения
         let sectorCenterAngle = startAngle + anglePerSector / 2
         let sectorCenterRadius = radius * 0.6  // Позиция изображения в секторе (60% от радиуса)
@@ -130,7 +135,7 @@ struct WheelSectorView: View {
                 Text(truncatedLabel)
                     .font(.system(size: min(size / 12, 16), weight: .bold))
                     .foregroundColor(
-                        sector.labelColor != nil
+                        sector.labelColor != nil && !sector.labelColor!.isEmpty
                             ? Color(hex: sector.labelColor!)
                             : .white
                     )

@@ -7,13 +7,13 @@
 
 import Foundation
 
-struct ColorJSON: Codable {
+struct ColorJSON: Codable, Equatable {
     let h: Double
     let s: Double
     let l: Double
 }
 
-struct PatternPositionJSON: Codable {
+struct PatternPositionJSON: Codable, Equatable {
     let x: Double
     let y: Double
     let z: Double
@@ -329,6 +329,16 @@ extension Sector {
         if let userId = userId { dict["userId"] = userId }
 
         return dict
+    }
+}
+
+// MARK: - Equatable
+extension Sector: Equatable {
+    static func == (lhs: Sector, rhs: Sector) -> Bool {
+        return lhs.id == rhs.id && lhs.label == rhs.label && lhs.name == rhs.name
+            && lhs.eliminated == rhs.eliminated && lhs.winner == rhs.winner
+            && lhs.labelHidden == rhs.labelHidden && lhs.wheelId == rhs.wheelId
+            && lhs.userId == rhs.userId
     }
 }
 

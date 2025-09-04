@@ -319,7 +319,14 @@ class FortuneWheelViewModel: ObservableObject {
         Task {
             do {
                 let updatedSector = try await wheelService.updateSector(sectorId, eliminated: true)
-                wheelState.updateSector(updatedSector)
+                print(
+                    "✅ FortuneWheelViewModel: Sector eliminated successfully: \(updatedSector.name)"
+                )
+
+                // Обновляем данные с сервера
+                wheelState.requestSectors()
+                print("✅ FortuneWheelViewModel: Wheel state updated from server")
+
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
                 print("🔐 FortuneWheelViewModel: Authorization required for sector update")
@@ -339,7 +346,14 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 let updatedSector = try await wheelService.updateSector(
                     sectorId, eliminated: false, winner: true)
-                wheelState.updateSector(updatedSector)
+                print(
+                    "✅ FortuneWheelViewModel: Sector winner set successfully: \(updatedSector.name)"
+                )
+
+                // Обновляем данные с сервера
+                wheelState.requestSectors()
+                print("✅ FortuneWheelViewModel: Wheel state updated from server")
+
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
                 print("🔐 FortuneWheelViewModel: Authorization required for winner update")
@@ -484,20 +498,35 @@ class FortuneWheelViewModel: ObservableObject {
                 let createdSector = try await wheelService.createSector(sector)
                 print("✅ FortuneWheelViewModel: Sector created successfully: \(createdSector.name)")
 
-                // Отправляем сокет событие
-                let sectorData = try JSONEncoder().encode(createdSector)
-                if let sectorDict = try JSONSerialization.jsonObject(with: sectorData)
-                    as? [String: Any]
-                {
-                    print(
-                        "📤 FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)"
-                    )
-                    socketService.emitToRoom(.sectorCreated, roomId: wheelData.id, data: sectorDict)
-                }
+                // Запрашиваем актуальные данные с сервера
+                print("🔄 FortuneWheelViewModel: Refreshing sectors from server...")
+                let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
+                print(
+                    "✅ FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server")
 
-                // Обновляем состояние колеса
-                wheelState.addSector(createdSector)
-                print("✅ FortuneWheelViewModel: Wheel state updated with new sector")
+                // Находим созданный сектор с полными данными
+                if let sectorWithFullData = updatedSectors.first(where: {
+                    $0.id == createdSector.id
+                }) {
+                    // Обновляем состояние колеса актуальными данными
+                    wheelState.setSectors(updatedSectors)
+                    print("✅ FortuneWheelViewModel: Wheel state updated with fresh data")
+
+                    // Отправляем событие в том же формате, что и веб-клиент
+                    let sectorData = try JSONEncoder().encode(sectorWithFullData)
+                    if let sectorDict = try JSONSerialization.jsonObject(with: sectorData)
+                        as? [String: Any]
+                    {
+                        print(
+                            "📤 FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)"
+                        )
+                        socketService.emitToRoom(
+                            .sectorCreated, roomId: wheelData.id, data: sectorDict)
+                    }
+                } else {
+                    print("⚠️ FortuneWheelViewModel: Created sector not found in updated data")
+                    wheelState.setSectors(updatedSectors)
+                }
 
             } catch URLError.userAuthenticationRequired {
                 print("🔐 FortuneWheelViewModel: Authorization required for sector creation")
@@ -555,12 +584,23 @@ class FortuneWheelViewModel: ObservableObject {
         Task {
             do {
                 _ = try await wheelService.deleteSector(sector.id)
+                print("✅ FortuneWheelViewModel: Sector deleted successfully: \(sector.name)")
 
-                // Отправляем сокет событие через WheelState (как и другие методы)
-                wheelState.emitSectorRemovalEvent(sectorId: sector.id)
+                // Запрашиваем актуальные данные с сервера
+                print("🔄 FortuneWheelViewModel: Refreshing sectors from server...")
+                let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
+                print(
+                    "✅ FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server")
 
-                // Обновляем состояние колеса
-                wheelState.removeSector(id: sector.id)
+                // Обновляем состояние колеса актуальными данными
+                wheelState.setSectors(updatedSectors)
+                print("✅ FortuneWheelViewModel: Wheel state updated with fresh data")
+
+                // Отправляем событие в том же формате, что и веб-клиент
+                print(
+                    "📤 FortuneWheelViewModel: Emitting sector:removed event to room \(wheelData.id)"
+                )
+                socketService.emitToRoom(.sectorRemoved, roomId: wheelData.id, data: sector.id)
 
                 // Показываем уведомление об успехе
                 self.successMessage = "Сектор успешно удален"

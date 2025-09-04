@@ -38,6 +38,11 @@ class FortuneWheelService: ObservableObject, TRPCServiceProtocol {
 
     // MARK: - Sector Operations
 
+    func getSectorsByWheelId(_ wheelId: String) async throws -> [Sector] {
+        return try await trpcService.executeGET(
+            endpoint: "sector.getByWheelId", value: wheelId)
+    }
+
     func updateSector(_ id: String, eliminated: Bool, winner: Bool? = nil) async throws -> Sector {
         var bodyData: [String: Any] = ["id": id, "eliminated": eliminated]
         if let winner = winner {

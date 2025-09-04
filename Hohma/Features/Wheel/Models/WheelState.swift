@@ -113,6 +113,23 @@ class WheelState: ObservableObject {
         losers = losers.filter { $0.id != id }
     }
 
+    func reorderSectors(by newOrder: [Sector]) {
+        print("🔄 WheelState: Reordering sectors by new order")
+
+        // Создаем словарь для быстрого поиска секторов по ID
+        let sectorMap = Dictionary(uniqueKeysWithValues: sectors.map { ($0.id, $0) })
+
+        // Сортируем секторы по новому порядку, сохраняя существующие объекты
+        let reorderedSectors = newOrder.compactMap { newSector in
+            sectorMap[newSector.id]
+        }
+
+        // Обновляем массив секторов
+        sectors = reorderedSectors
+
+        print("✅ WheelState: Reordered \(sectors.count) sectors")
+    }
+
     func emitSectorRemovalEvent(sectorId: String) {
         if let socket = socket, socket.isConnected, isAuthorized {
             print("📤 WheelState: Emitting sector:removed event")
@@ -450,38 +467,43 @@ class WheelState: ObservableObject {
     }
 
     func requestSectors() {
-        print("📋 WheelState: Requesting sectors from other clients")
+        print("📋 WheelState: Requesting sectors from server")
 
-        if let socket = socket, socket.isConnected, isAuthorized {
-            let requestData: [String: Any] = ["request": "sectors"]
-            socket.emit(.requestSectors, data: requestData)
-        } else {
-            print("⚠️ WheelState: Cannot request sectors - socket not connected or not authorized")
+        guard let roomId = roomId else {
+            print("⚠️ WheelState: Cannot request sectors - no roomId")
+            return
+        }
+
+        Task {
+            do {
+                let updatedSectors = try await FortuneWheelService.shared.getSectorsByWheelId(
+                    roomId)
+                print("✅ WheelState: Received \(updatedSectors.count) sectors from server")
+
+                DispatchQueue.main.async {
+                    self.setSectors(updatedSectors)
+                    print("✅ WheelState: Updated sectors from server")
+                }
+            } catch {
+                print("❌ WheelState: Failed to fetch sectors from server: \(error)")
+            }
         }
     }
 
     func spinWheelFromServer(_ spinData: [String: Any]) {
-        let senderClientId =
-            spinData["senderClientId"] as? String ?? spinData["clientId"] as? String
-
-        guard let senderClientId = senderClientId,
-            let rotation = spinData["rotation"] as? Double,
+        guard let rotation = spinData["rotation"] as? Double,
             let speed = spinData["speed"] as? Double,
             let winningIndex = spinData["winningIndex"] as? Int
         else {
-            print("❌ WheelState: Invalid spin data received")
+            print("❌ WheelState: Invalid spin data received from server")
             return
         }
 
-        // Ignore if this event was initiated by this client
-        if senderClientId == clientId {
-            print("Ignoring spin event initiated by this client")
-            return
-        }
-
+        let generatedByServer = spinData["generatedByServer"] as? Bool ?? false
         print(
-            "Received spin event from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex)"
+            "🎯 WheelState: Received spin result from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex), generatedByServer=\(generatedByServer)"
         )
+
         spinning = true
         self.rotation = rotation
 
@@ -504,20 +526,21 @@ class WheelState: ObservableObject {
 
             do {
                 let decoder = JSONDecoder()
-                // WebSocket события используют timestamp формат
-                decoder.dateDecodingStrategy = .iso8601
+                // Используем .iso8601withMilliseconds для ISO 8601 строк
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
                 // Конвертируем обратно в JSON Data для декодирования
                 let sectorsJsonData = try JSONSerialization.data(withJSONObject: sectorsData)
                 let shuffledSectors = try decoder.decode([Sector].self, from: sectorsJsonData)
 
                 DispatchQueue.main.async {
-                    self.sectors = shuffledSectors
+                    // Вместо замены массива, сортируем существующий массив по новому порядку
+                    self.reorderSectors(by: shuffledSectors)
                     print(
-                        "✅ WheelState: Updated sectors from shuffle event (\(shuffledSectors.count) sectors)"
+                        "✅ WheelState: Reordered sectors from shuffle event (\(shuffledSectors.count) sectors)"
                     )
-                    // Debug: print labels to verify they are decoded correctly
-                    for (index, sector) in shuffledSectors.enumerated() {
+                    // Debug: print labels to verify they are reordered correctly
+                    for (index, sector) in self.sectors.enumerated() {
                         print(
                             "🔍 Sector \(index): label='\(sector.label)', name='\(sector.name)', labelHidden=\(sector.labelHidden)"
                         )
@@ -576,96 +599,37 @@ class WheelState: ObservableObject {
 
         // Handle sectors sync
         socket.on(.syncSectors) { [weak self] data in
-            do {
-                let decoder = JSONDecoder()
-                // WebSocket события используют timestamp формат
-                decoder.dateDecodingStrategy = .secondsSince1970
-                let sectors = try decoder.decode([Sector].self, from: data)
-                DispatchQueue.main.async {
-                    self?.setSectors(sectors)
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode sectors data: \(error)")
+            print("📥 WheelState: Received sectors:sync event")
+            // Просто запрашиваем актуальные данные с сервера
+            DispatchQueue.main.async {
+                self?.requestSectors()
             }
         }
 
         // Handle sector updates
         socket.on(.sectorUpdated) { [weak self] data in
-            do {
-                let decoder = JSONDecoder()
-                // WebSocket события используют timestamp формат
-                decoder.dateDecodingStrategy = .secondsSince1970
-                let sector = try decoder.decode(Sector.self, from: data)
-                DispatchQueue.main.async {
-                    self?.updateSector(sector)
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode sector update: \(error)")
+            print("📥 WheelState: Received sector:updated event")
+            // Просто запрашиваем свежие данные с сервера для единообразия
+            DispatchQueue.main.async {
+                self?.requestSectors()
             }
         }
 
         // Handle sector creation
         socket.on(.sectorCreated) { [weak self] data in
-            print(
-                "📥 WheelState: Received sector:created event with data: \(String(data: data, encoding: .utf8) ?? "invalid")"
-            )
-            do {
-                // WebSocket событие приходит в формате: ["sector:created", roomId, sectorData]
-                // Нам нужен только третий элемент - данные сектора
-                let jsonData = try JSONSerialization.jsonObject(with: data)
-
-                if let jsonArray = jsonData as? [Any], jsonArray.count >= 3 {
-                    // Берем третий элемент - данные сектора
-                    if let sectorData = jsonArray[2] as? [String: Any] {
-                        let sectorJsonData = try JSONSerialization.data(withJSONObject: sectorData)
-                        let decoder = JSONDecoder()
-                        // Используем .secondsSince1970 для timestamp полей
-                        decoder.dateDecodingStrategy = .secondsSince1970
-                        let sector = try decoder.decode(Sector.self, from: sectorJsonData)
-
-                        print("✅ WheelState: Successfully decoded sector: \(sector.name)")
-                        DispatchQueue.main.async {
-                            self?.addSector(sector)
-                            print("✅ WheelState: Added sector to wheel state: \(sector.name)")
-                        }
-                    } else {
-                        print("❌ WheelState: Third element is not a dictionary")
-                    }
-                } else {
-                    // Попробуем декодировать как обычный сектор (fallback)
-                    let decoder = JSONDecoder()
-                    // Используем .secondsSince1970 для timestamp полей
-                    decoder.dateDecodingStrategy = .secondsSince1970
-                    let sector = try decoder.decode(Sector.self, from: data)
-                    print("✅ WheelState: Successfully decoded sector (fallback): \(sector.name)")
-                    DispatchQueue.main.async {
-                        self?.addSector(sector)
-                        print(
-                            "✅ WheelState: Added sector to wheel state (fallback): \(sector.name)")
-                    }
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode sector creation: \(error)")
-                print("❌ WheelState: Raw data: \(String(data: data, encoding: .utf8) ?? "invalid")")
+            print("📥 WheelState: Received sector:created event")
+            // Просто запрашиваем свежие данные с сервера для единообразия
+            DispatchQueue.main.async {
+                self?.requestSectors()
             }
         }
 
         // Handle sector removal
         socket.on(.sectorRemoved) { [weak self] data in
-            do {
-                // Сервер отправляет простую строку с ID сектора
-                let sectorId = try JSONDecoder().decode(String.self, from: data)
-                DispatchQueue.main.async {
-                    self?.removeSector(id: sectorId)
-                }
-            } catch {
-                print("❌ WheelState: Failed to decode sector removal: \(error)")
-                // Попробуем как простую строку в случае ошибки
-                if let sectorId = String(data: data, encoding: .utf8) {
-                    DispatchQueue.main.async {
-                        self?.removeSector(id: sectorId)
-                    }
-                }
+            print("📥 WheelState: Received sector:removed event")
+            // Просто запрашиваем свежие данные с сервера для единообразия
+            DispatchQueue.main.async {
+                self?.requestSectors()
             }
         }
 
@@ -737,17 +701,18 @@ class WheelState: ObservableObject {
 
                     if let sectorsArray = sectorsArray {
                         let decoder = JSONDecoder()
-                        // WebSocket события используют timestamp формат
-                        decoder.dateDecodingStrategy = .secondsSince1970
+                        // Используем .iso8601withMilliseconds для ISO 8601 строк
+                        decoder.dateDecodingStrategy = .iso8601withMilliseconds
 
                         // Конвертируем обратно в JSON Data для декодирования
                         let sectorsData = try JSONSerialization.data(withJSONObject: sectorsArray)
                         let sectors = try decoder.decode([Sector].self, from: sectorsData)
 
                         DispatchQueue.main.async {
-                            self?.setSectors(sectors)
+                            // Вместо замены массива, сортируем существующий массив по новому порядку
+                            self?.reorderSectors(by: sectors)
                             print(
-                                "✅ WheelState: Updated sectors from other client (\(sectors.count) sectors)"
+                                "✅ WheelState: Reordered sectors from other client (\(sectors.count) sectors)"
                             )
                         }
                     } else {

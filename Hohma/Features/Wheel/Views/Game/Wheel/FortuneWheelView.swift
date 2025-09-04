@@ -58,11 +58,17 @@ struct FortuneWheelView: View {
                         totalSectors: wheelState.sectors.count,
                         size: size + 10
                     )
+                    .onAppear {
+                        print(
+                            "🎨 FortuneWheelView: Rendering sector \(index) with label '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)"
+                        )
+                    }
                 }
                 .rotationEffect(.degrees(wheelState.rotation))
                 .animation(
                     wheelState.spinning ? .easeInOut(duration: wheelState.speed) : .default,
-                    value: wheelState.rotation)
+                    value: wheelState.rotation
+                )
             }
 
             // Центральная кнопка
