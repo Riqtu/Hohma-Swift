@@ -41,9 +41,9 @@ struct ProfileView: View {
         .navigationTitle("Профиль")
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
-            viewModel.loadProfile()
-            await subscriptionViewModel.loadFollowing()
-            await subscriptionViewModel.loadFollowers()
+            Task {
+                await refreshData()
+            }
         }
         .onAppear {
             viewModel.clearMessages()
@@ -286,6 +286,22 @@ struct ProfileView: View {
     }
 
     // MARK: - Helper Methods
+
+    private func refreshData() async {
+        // Обновляем профиль пользователя
+        viewModel.loadProfile()
+
+        // Обновляем подписки и подписчиков
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await self.subscriptionViewModel.refreshFollowing()
+            }
+            group.addTask {
+                await self.subscriptionViewModel.refreshFollowers()
+            }
+        }
+    }
+
     private func formatDate(_ dateString: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
