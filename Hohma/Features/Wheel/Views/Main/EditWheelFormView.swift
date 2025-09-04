@@ -82,11 +82,10 @@ struct EditWheelFormView: View {
                                 .foregroundColor(.red)
                                 .font(.caption)
                         } else {
-                            ScrollView {
+                            ScrollView(.vertical, showsIndicators: false) {
                                 LazyVGrid(
                                     columns: [
-                                        GridItem(.flexible()),
-                                        GridItem(.flexible()),
+                                        GridItem(.adaptive(minimum: 150, maximum: 200))
                                     ], spacing: 16
                                 ) {
                                     ForEach(viewModel.themes) { theme in
@@ -94,6 +93,10 @@ struct EditWheelFormView: View {
                                             theme: theme,
                                             isSelected: viewModel.selectedThemeId == theme.id
                                         ) {
+                                            // Добавляем haptic feedback для лучшего UX
+                                            let impactFeedback = UIImpactFeedbackGenerator(
+                                                style: .light)
+                                            impactFeedback.impactOccurred()
                                             viewModel.selectedThemeId = theme.id
                                         }
                                     }
@@ -164,9 +167,14 @@ struct EditWheelFormView: View {
                     }
                 }
             }
-            .onTapGesture {
-                UIApplication.shared.endEditing()
-            }
+            .background(
+                // Невидимый фон для скрытия клавиатуры
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.endEditing()
+                    }
+            )
         }
         .onAppear {
             Task {

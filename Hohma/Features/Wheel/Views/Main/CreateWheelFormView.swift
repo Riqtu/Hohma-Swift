@@ -94,11 +94,10 @@ struct CreateWheelFormView: View {
                                 .foregroundColor(.red)
                                 .font(.caption)
                         } else {
-                            ScrollView {
+                            ScrollView(.vertical, showsIndicators: false) {
                                 LazyVGrid(
                                     columns: [
-                                        GridItem(.flexible()),
-                                        GridItem(.flexible()),
+                                        GridItem(.adaptive(minimum: 150, maximum: 200))
                                     ], spacing: 16
                                 ) {
                                     ForEach(viewModel.themes) { theme in
@@ -106,6 +105,10 @@ struct CreateWheelFormView: View {
                                             theme: theme,
                                             isSelected: viewModel.selectedThemeId == theme.id
                                         ) {
+                                            // Добавляем haptic feedback для лучшего UX
+                                            let impactFeedback = UIImpactFeedbackGenerator(
+                                                style: .light)
+                                            impactFeedback.impactOccurred()
                                             viewModel.selectedThemeId = theme.id
                                         }
                                     }
@@ -182,9 +185,14 @@ struct CreateWheelFormView: View {
         .animation(nil, value: UUID())  // Отключаем анимацию только для контента
 
         .enableInjection()
-        .onTapGesture {
-            UIApplication.shared.endEditing()
-        }
+        .background(
+            // Невидимый фон для скрытия клавиатуры
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.endEditing()
+                }
+        )
     }
 }
 
@@ -238,7 +246,19 @@ struct ThemeCardView: View {
                     .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(width: 150)  // Фиксированная ширина для одинакового размера карточек
+        .buttonStyle(ThemeCardButtonStyle(isSelected: isSelected))
+        .allowsHitTesting(true)  // Явно разрешаем обработку нажатий
+    }
+}
+
+struct ThemeCardButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
 

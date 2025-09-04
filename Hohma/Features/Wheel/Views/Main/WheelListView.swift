@@ -220,9 +220,8 @@ struct WheelListView: View {
                 print("🔗 WheelListView: No destination in notification")
             }
         }
-        .sheet(isPresented: $showingCreateForm) {
+        .fullScreenCover(isPresented: $showingCreateForm) {
             CreateWheelFormView()
-                .presentationDragIndicator(.visible)
         }
         .enableInjection()
     }

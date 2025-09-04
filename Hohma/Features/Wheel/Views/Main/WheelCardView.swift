@@ -187,9 +187,8 @@ struct WheelCardView: View {
             // Обновляем viewModel при изменении cardData
             viewModel.updateCardData(cardData)
         }
-        .sheet(isPresented: $showingEditForm) {
+        .fullScreenCover(isPresented: $showingEditForm) {
             EditWheelFormView(wheel: cardData)
-                .presentationDragIndicator(.visible)
         }
         .onChange(of: showingEditForm) { _, newValue in
             print("🔧 WheelCardView: showingEditForm changed to: \(newValue)")

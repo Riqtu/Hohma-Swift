@@ -245,9 +245,8 @@ struct WheelCardComponent: View {
             } message: {
                 Text("Это действие нельзя отменить. Колесо '\(wheel.name)' будет удалено навсегда.")
             }
-            .sheet(isPresented: $showingEditForm) {
+            .fullScreenCover(isPresented: $showingEditForm) {
                 EditWheelFormView(wheel: wheel)
-                    .presentationDragIndicator(.visible)
             }
             .enableInjection()
         }
