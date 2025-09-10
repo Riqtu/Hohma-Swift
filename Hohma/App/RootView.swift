@@ -66,14 +66,12 @@ struct RootView: View {
                         }
                         .tag("wheelList")
 
-                        NavigationStack {
-                            RaceListView()
-                                .withAppBackground()
-                        }
-                        .tabItem {
-                            Label("Скачки", systemImage: "trophy")
-                        }
-                        .tag("race")
+                        RaceListView()
+                            .withAppBackground()
+                            .tabItem {
+                                Label("Скачки", systemImage: "trophy")
+                            }
+                            .tag("race")
 
                         ProfileView(authViewModel: authViewModel)
                             .tabItem {

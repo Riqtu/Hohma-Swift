@@ -98,7 +98,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     private func updateGameState() {
         guard let race = race else { return }
 
-        // Определяем, может ли текущий пользователь сделать ход
+        // Все участники могут делать ход одновременно, если скачка активна
         canMakeMove =
             race.status == .running && currentUserParticipant != nil
             && !(currentUserParticipant?.isFinished ?? true)
@@ -113,7 +113,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         isLoading = true
         errorMessage = nil
 
-        // Генерируем случайный бросок кубика (1-6)
+        // Генерируем случайный бросок кубика (1-6) для всех участников
         let diceRoll = Int.random(in: 1...6)
         self.diceRoll = diceRoll
 

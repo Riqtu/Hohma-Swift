@@ -26,15 +26,18 @@ struct RaceCellView: View {
             if cellData.position == participant.currentPosition {
                 Circle()
                     .fill(participant.isFinished ? .green : .blue)
-                    .frame(width: 8, height: 8)
+                    .frame(width: 50, height: 50)
+                    .padding(.bottom, 13)
                     .overlay(
                         Circle()
                             .stroke(.white, lineWidth: 1)
                     )
+                    .zIndex(10)  // Повышаем z-index, чтобы участник был поверх дороги
             }
         }
         .padding(5)
         .padding(.horizontal, 5)
+        .zIndex(cellData.position == participant.currentPosition ? 5 : 1)  // Повышаем z-index для ячейки с участником
         .enableInjection()
     }
 

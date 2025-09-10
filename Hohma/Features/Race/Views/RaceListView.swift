@@ -18,11 +18,16 @@ struct RaceListView: View {
                 } else if viewModel.filteredRaces.isEmpty {
                     emptyStateView
                 } else {
-                    raceListView
+                    ScrollView {
+                        raceListView
+                    }
+                    .refreshable {
+                        viewModel.loadRaces()
+                    }
                 }
             }
             .navigationTitle("Скачки")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { viewModel.showingCreateRace = true }) {
@@ -61,7 +66,7 @@ struct RaceListView: View {
 
     // MARK: - Header View
     private var headerView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             // Stats cards
             HStack(spacing: 12) {
                 RaceStatCard(
@@ -113,25 +118,21 @@ struct RaceListView: View {
                 .padding(.horizontal)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.bottom, 8)
         .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Race List View
     private var raceListView: some View {
-        List {
+        LazyVStack(spacing: 12) {
             ForEach(viewModel.filteredRaces) { race in
                 RaceCard(race: race) {
                     viewModel.showRaceDetail(race)
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
+                .padding(.horizontal, 16)
             }
         }
-        .listStyle(PlainListStyle())
-        .refreshable {
-            viewModel.loadRaces()
-        }
+        .padding(.vertical, 8)
     }
 
     // MARK: - Loading View

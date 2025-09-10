@@ -48,12 +48,12 @@ struct RaceSceneView: View {
                         }
                     }
                     .padding(.top, -40)
+
                 }
             }
             .scrollBounceBehavior(.basedOnSize)
             .padding(.top, -50)
 
-            // Нижний бар с информацией и кнопкой хода
             bottomBar
         }
         .onAppear {
@@ -75,33 +75,33 @@ struct RaceSceneView: View {
     private var bottomBar: some View {
         VStack(spacing: 12) {
             // Информация о текущем состоянии
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Скачка: \(viewModel.race?.name ?? "Загрузка...")")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+            // HStack {
+            //     VStack(alignment: .leading, spacing: 4) {
+            //         Text("Скачка: \(viewModel.race?.name ?? "Загрузка...")")
+            //             .font(.headline)
+            //             .foregroundColor(.primary)
 
-                    if let participant = viewModel.currentUserParticipant {
-                        Text("Ваша позиция: \(participant.currentPosition + 1)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
+            //         if let participant = viewModel.currentUserParticipant {
+            //             Text("Ваша позиция: \(participant.currentPosition + 1)")
+            //                 .font(.subheadline)
+            //                 .foregroundColor(.secondary)
+            //         }
+            //     }
 
-                Spacer()
+            //     Spacer()
 
-                // Показываем результат броска кубика
-                if viewModel.diceRoll > 0 {
-                    VStack {
-                        Text("🎲")
-                            .font(.title)
-                        Text("\(viewModel.diceRoll)")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                }
-            }
-            .padding(.horizontal)
+            //     // Показываем результат броска кубика
+            //     if viewModel.diceRoll > 0 {
+            //         VStack {
+            //             Text("🎲")
+            //                 .font(.title)
+            //             Text("\(viewModel.diceRoll)")
+            //                 .font(.headline)
+            //                 .fontWeight(.bold)
+            //         }
+            //     }
+            // }
+            // .padding(.horizontal)
 
             // Кнопка хода
             Button(action: {
@@ -115,7 +115,7 @@ struct RaceSceneView: View {
                         Image(systemName: "play.fill")
                     }
 
-                    Text(viewModel.isLoading ? "Ход..." : "Сделать ход")
+                    Text(viewModel.isLoading ? "Ход..." : "Ход всех участников")
                         .fontWeight(.semibold)
                 }
                 .foregroundColor(.white)
@@ -130,7 +130,7 @@ struct RaceSceneView: View {
             .padding(.horizontal)
         }
         .padding(.vertical)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.gray.opacity(0.2))
     }
 
     // MARK: - Helper Functions
