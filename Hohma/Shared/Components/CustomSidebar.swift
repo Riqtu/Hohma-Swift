@@ -76,6 +76,22 @@ struct CustomSidebar: View {
                 }
 
                 SidebarButton(
+                    title: "Скачки",
+                    icon: "trophy",
+                    isSelected: selection == "race"
+                ) {
+                    print("🔄 CustomSidebar: Switching to race")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "race"])
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "race"
+                    }
+                }
+
+                SidebarButton(
                     title: "Профиль",
                     icon: "person",
                     isSelected: selection == "profile"
