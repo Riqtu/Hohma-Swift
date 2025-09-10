@@ -9,6 +9,7 @@ struct RaceDetailView: View {
 
     @State private var showingDeleteAlert = false
     @State private var showingJoinAlert = false
+    @State private var showingRaceScene = false
 
     var body: some View {
         NavigationView {
@@ -42,15 +43,20 @@ struct RaceDetailView: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        if canStartRace {
-                            Button("Начать скачку") {
-                                viewModel.startRace(raceId: race.id)
+                        if isCurrentUserParticipant {
+                            Button("Вход в скачку") {
+                                showingRaceScene = true
+                            }
+                        } else if canJoinRace {
+                            Button("Присоединиться") {
+                                showingJoinAlert = true
                             }
                         }
 
-                        if canJoinRace {
-                            Button("Присоединиться") {
-                                showingJoinAlert = true
+                        if canStartRace {
+                            Button("Начать скачку") {
+                                viewModel.startRace(raceId: race.id)
+                                showingRaceScene = true
                             }
                         }
 
@@ -80,6 +86,19 @@ struct RaceDetailView: View {
                 }
             } message: {
                 Text("Это действие нельзя отменить")
+            }
+            .fullScreenCover(isPresented: $showingRaceScene) {
+                NavigationView {
+                    RaceSceneView()
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Назад") {
+                                    showingRaceScene = false
+                                }
+                            }
+                        }
+                }
             }
         }
         .enableInjection()
@@ -222,7 +241,19 @@ struct RaceDetailView: View {
     // MARK: - Actions Section
     private var actionsSection: some View {
         VStack(spacing: 12) {
-            if canJoinRace {
+            if isCurrentUserParticipant {
+                // Пользователь уже участник - показываем кнопку "Вход"
+                Button("Вход в скачку") {
+                    showingRaceScene = true
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color("AccentColor"))
+                .cornerRadius(8)
+                .frame(maxWidth: .infinity)
+            } else if canJoinRace {
+                // Пользователь может присоединиться
                 Button("Присоединиться к скачке") {
                     showingJoinAlert = true
                 }
@@ -237,6 +268,7 @@ struct RaceDetailView: View {
             if canStartRace {
                 Button("Начать скачку") {
                     viewModel.startRace(raceId: race.id)
+                    showingRaceScene = true
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 16)
@@ -259,6 +291,11 @@ struct RaceDetailView: View {
 
     private var canDeleteRace: Bool {
         race.status == .created || race.status == .cancelled
+    }
+
+    private var isCurrentUserParticipant: Bool {
+        guard let currentUserId = viewModel.trpcService.currentUser?.id else { return false }
+        return race.participants?.contains { $0.userId == currentUserId } ?? false
     }
 }
 
