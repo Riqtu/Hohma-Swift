@@ -552,3 +552,106 @@ struct SuccessResponse: Codable {
         }
     }
 }
+
+// MARK: - Make Move Response
+struct MakeMoveResponse: Codable {
+    let racePosition: RacePosition
+    let participant: MakeMoveParticipant
+    let isFinished: Bool
+}
+
+// Simplified participant for makeMove response (without user data)
+struct MakeMoveParticipant: Codable {
+    let id: String
+    let raceId: String
+    let userId: String
+    let currentPosition: Int
+    let totalMoves: Int
+    let boostUsed: Int
+    let obstaclesHit: Int
+    let finalPosition: Int?
+    let prize: Int?
+    let isFinished: Bool
+    let joinedAt: String
+    let finishedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, currentPosition, totalMoves, boostUsed, obstaclesHit
+        case finalPosition, prize, isFinished, joinedAt, finishedAt
+        case raceId = "raceId"
+        case userId = "userId"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+        raceId = try container.decode(String.self, forKey: .raceId)
+        userId = try container.decode(String.self, forKey: .userId)
+
+        // Handle numeric fields that might come as different types
+        if let currentPositionInt = try? container.decode(Int.self, forKey: .currentPosition) {
+            currentPosition = currentPositionInt
+        } else if let currentPositionString = try? container.decode(
+            String.self, forKey: .currentPosition)
+        {
+            currentPosition = Int(currentPositionString) ?? 0
+        } else {
+            currentPosition = 0
+        }
+
+        if let totalMovesInt = try? container.decode(Int.self, forKey: .totalMoves) {
+            totalMoves = totalMovesInt
+        } else if let totalMovesString = try? container.decode(String.self, forKey: .totalMoves) {
+            totalMoves = Int(totalMovesString) ?? 0
+        } else {
+            totalMoves = 0
+        }
+
+        if let boostUsedInt = try? container.decode(Int.self, forKey: .boostUsed) {
+            boostUsed = boostUsedInt
+        } else if let boostUsedString = try? container.decode(String.self, forKey: .boostUsed) {
+            boostUsed = Int(boostUsedString) ?? 0
+        } else {
+            boostUsed = 0
+        }
+
+        if let obstaclesHitInt = try? container.decode(Int.self, forKey: .obstaclesHit) {
+            obstaclesHit = obstaclesHitInt
+        } else if let obstaclesHitString = try? container.decode(String.self, forKey: .obstaclesHit)
+        {
+            obstaclesHit = Int(obstaclesHitString) ?? 0
+        } else {
+            obstaclesHit = 0
+        }
+
+        if let finishedInt = try? container.decode(Int.self, forKey: .isFinished) {
+            isFinished = finishedInt != 0
+        } else {
+            isFinished = try container.decode(Bool.self, forKey: .isFinished)
+        }
+
+        joinedAt = try container.decode(String.self, forKey: .joinedAt)
+
+        if let finalPos = try? container.decodeIfPresent(Int.self, forKey: .finalPosition) {
+            finalPosition = finalPos
+        } else if let finalPosString = try? container.decodeIfPresent(
+            String.self, forKey: .finalPosition)
+        {
+            finalPosition = finalPosString == "<null>" ? nil : Int(finalPosString)
+        } else {
+            finalPosition = nil
+        }
+
+        if let prizeValue = try? container.decodeIfPresent(Int.self, forKey: .prize) {
+            prize = prizeValue
+        } else if let prizeString = try? container.decodeIfPresent(String.self, forKey: .prize) {
+            prize = prizeString == "<null>" ? nil : Int(prizeString)
+        } else {
+            prize = nil
+        }
+
+        let finishedAtValue = try container.decodeIfPresent(String.self, forKey: .finishedAt)
+        finishedAt = finishedAtValue == "<null>" ? nil : finishedAtValue
+    }
+}

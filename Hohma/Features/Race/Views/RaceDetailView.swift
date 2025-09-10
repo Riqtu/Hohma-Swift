@@ -89,7 +89,7 @@ struct RaceDetailView: View {
             }
             .fullScreenCover(isPresented: $showingRaceScene) {
                 NavigationView {
-                    RaceSceneView()
+                    RaceSceneView(race: race)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
