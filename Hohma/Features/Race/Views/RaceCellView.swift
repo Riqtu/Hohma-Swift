@@ -26,17 +26,21 @@ struct RaceCellView: View {
             if cellData.position == participant.currentPosition {
                 Circle()
                     .fill(participant.isFinished ? .green : .blue)
-                    .frame(width: 50, height: 50)
-                    .padding(.bottom, 13)
+                    .frame(width: 60, height: 60)  // Увеличиваем размер
+                    .padding(.bottom, 50)
                     .overlay(
                         Circle()
-                            .stroke(.white, lineWidth: 1)
+                            .stroke(.white, lineWidth: 2)
+                            .padding(.bottom, 50)
+
                     )
+                    .padding(.horizontal, -25)
                     .zIndex(10)  // Повышаем z-index, чтобы участник был поверх дороги
             }
         }
         .padding(5)
         .padding(.horizontal, 5)
+        .padding(.vertical, 15)  // Добавляем вертикальные отступы для участника
         .zIndex(cellData.position == participant.currentPosition ? 5 : 1)  // Повышаем z-index для ячейки с участником
         .enableInjection()
     }

@@ -18,7 +18,8 @@ struct RaceRoadView: View {
             }
             .padding(.horizontal, 10)
         }
-        .frame(height: 30)
+        .frame(height: 120)
+        .padding(.bottom, -90)
         .enableInjection()
     }
 }

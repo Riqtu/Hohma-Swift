@@ -48,6 +48,7 @@ struct RaceSceneView: View {
                         }
                     }
                     .padding(.top, -40)
+                    .padding(.vertical, 20)  // Добавляем вертикальные отступы для участников
 
                 }
             }
