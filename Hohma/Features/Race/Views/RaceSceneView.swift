@@ -22,13 +22,17 @@ struct RaceSceneView: View {
             // Основная область с дорогой
             ScrollView(.horizontal, showsIndicators: false) {
                 ZStack {
+                    // Рассчитываем ширину дороги на основе количества ячеек
+                    let cellWidth: CGFloat = 40 + 10  // ширина ячейки + отступы
+                    let roadWidth = CGFloat(viewModel.raceCells.count) * cellWidth + 20  // +20 для padding
+
                     Image("SceneRace")
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .ignoresSafeArea()
-                        .padding(.horizontal, -250)
+                        .frame(width: roadWidth)  // Ограничиваем ширину
 
-                    LazyVStack(spacing: 10) {
+                    VStack(spacing: 10) {
                         ForEach(0..<max(1, viewModel.participants.count), id: \.self) {
                             participantIndex in
                             if participantIndex < viewModel.participants.count {
@@ -46,10 +50,9 @@ struct RaceSceneView: View {
                                 .id("road_\(participantIndex)")
                             }
                         }
-                    }
-                    .padding(.top, -40)
-                    .padding(.vertical, 20)  // Добавляем вертикальные отступы для участников
 
+                    }
+                    .padding(.top, -200)
                 }
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -59,6 +62,10 @@ struct RaceSceneView: View {
         }
         .onAppear {
             if let race = race {
+                print(
+                    "🔍 RaceSceneView: Loading race with \(race.participants?.count ?? 0) participants"
+                )
+
                 viewModel.loadRace(race)
             }
         }

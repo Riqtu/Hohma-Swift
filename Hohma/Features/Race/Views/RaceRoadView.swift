@@ -7,7 +7,7 @@ struct RaceRoadView: View {
     let participant: RaceParticipant
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        VStack {
             LazyHStack(spacing: 0) {
                 ForEach(cells) { cellData in
                     RaceCellView(
