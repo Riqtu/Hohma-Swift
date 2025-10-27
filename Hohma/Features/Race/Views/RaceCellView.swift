@@ -118,26 +118,12 @@ struct RaceCellView: View {
     private var participantImage: some View {
         Group {
             if let avatarUrl = participant.user.avatarUrl, !avatarUrl.isEmpty {
-                AsyncImage(url: URL(string: avatarUrl)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 56, height: 56)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(.white, lineWidth: 1))
-                    case .failure(_):
-                        // При ошибке загрузки показываем инициалы
-                        participantInitialsView
-                    case .empty:
-                        // Показываем инициалы во время загрузки
-                        participantInitialsView
-                    @unknown default:
-                        participantInitialsView
-                    }
-                }
-                .id("avatar_\(participant.user.id)_\(avatarUrl)")  // Стабильный ID для кэширования
+                RaceAvatarView(
+                    participant: participant,
+                    size: 56,
+                    showBorder: true,
+                    borderColor: .white
+                )
             } else {
                 participantInitialsView
             }

@@ -60,6 +60,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Инициализация с пустыми данными для preview
     }
 
+    deinit {
+        // Очищаем кэш аватарок при уничтожении ViewModel
+        clearAvatarCache()
+    }
+
     func loadRace(_ race: Race) {
         self.race = race
         self.raceId = race.id
@@ -80,6 +85,9 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         if race.status == .finished {
             handleFinishedRace()
         }
+
+        // Предзагружаем аватарки участников для оптимизации отображения
+        preloadParticipantAvatars()
     }
 
     private func initializeParticipantPositions() {
@@ -88,6 +96,19 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             currentStepPosition[participant.id] = Double(participant.currentPosition)
             isJumping[participant.id] = false
             animationStepProgress[participant.id] = 1.0
+        }
+    }
+
+    /// Предзагрузка аватарок участников для оптимизации отображения
+    private func preloadParticipantAvatars() {
+        AvatarCacheService.shared.preloadAvatars(for: participants)
+    }
+
+    /// Очистка кэша аватарок при завершении скачки
+    private func clearAvatarCache() {
+        // Очищаем кэш аватарок для освобождения памяти
+        for participant in participants {
+            AvatarCacheService.shared.clearCache(for: participant.user.id)
         }
     }
 
@@ -101,6 +122,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.raceFinished = true
             }
+        }
+
+        // Очищаем кэш аватарок при завершении скачки для освобождения памяти
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            self.clearAvatarCache()
         }
     }
 

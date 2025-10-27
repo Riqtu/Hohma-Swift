@@ -24,27 +24,14 @@ struct AvatarView: View {
     }
 
     var body: some View {
-        AsyncImage(url: avatarUrl) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            case .failure, .empty:
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundColor(fallbackColor)
-            @unknown default:
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .foregroundColor(fallbackColor)
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .overlay(
-            Circle()
-                .stroke(borderColor, lineWidth: showBorder ? 1 : 0)
+        // Используем кэшированный компонент для лучшей производительности
+        CachedAvatarView(
+            userId: "unknown",  // Для общего AvatarView используем неизвестный ID
+            avatarUrl: avatarUrl?.absoluteString,
+            size: size,
+            fallbackColor: fallbackColor,
+            showBorder: showBorder,
+            borderColor: borderColor
         )
         .enableInjection()
     }

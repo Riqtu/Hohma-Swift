@@ -114,6 +114,11 @@ struct RaceSceneView: View {
                 viewModel.loadRace(race)
                 // Обновляем состояние скачки при переходе в скачку
                 viewModel.refreshRace()
+
+                // Предзагружаем аватарки участников для оптимизации отображения
+                if let participants = race.participants {
+                    AvatarCacheService.shared.preloadAvatars(for: participants)
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .raceUpdated)) { _ in
@@ -121,6 +126,19 @@ struct RaceSceneView: View {
             if let race = race {
                 themeManager.setThemeFromRace(race.road.theme)
                 viewModel.refreshRace()
+
+                // Предзагружаем аватарки участников при обновлении скачки
+                if let participants = race.participants {
+                    AvatarCacheService.shared.preloadAvatars(for: participants)
+                }
+            }
+        }
+        .onDisappear {
+            // Очищаем кэш аватарок при выходе из скачки для освобождения памяти
+            if let participants = race?.participants {
+                for participant in participants {
+                    AvatarCacheService.shared.clearCache(for: participant.user.id)
+                }
             }
         }
         .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
