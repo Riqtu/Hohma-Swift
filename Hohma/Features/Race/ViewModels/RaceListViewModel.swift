@@ -231,8 +231,22 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     var myRaces: [Race] {
-        // This would need to be filtered by current user ID
-        // For now, return all races
-        return races
+        guard let currentUserId = try? trpcService.getCurrentUserId() else {
+            return []
+        }
+
+        return races.filter { race in
+            // Проверяем, является ли пользователь создателем скачки
+            if race.creator.id == currentUserId {
+                return true
+            }
+
+            // Проверяем, является ли пользователь участником скачки
+            if let participants = race.participants {
+                return participants.contains { $0.userId == currentUserId }
+            }
+
+            return false
+        }
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Inject
 
 /// Сервис для кэширования аватарок пользователей
 class AvatarCacheService: ObservableObject {
@@ -103,6 +104,7 @@ class AvatarCacheService: ObservableObject {
 
 /// Оптимизированный компонент для отображения аватарок с кэшированием
 struct CachedAvatarView: View {
+    @ObserveInjection var inject
     let userId: String
     let avatarUrl: String?
     let size: CGFloat
@@ -208,6 +210,7 @@ struct CachedAvatarView: View {
 
 /// Специальный компонент для аватарок в скачках с максимальной оптимизацией
 struct RaceAvatarView: View {
+    @ObserveInjection var inject
     let participant: RaceParticipant
     let size: CGFloat
     let showBorder: Bool
