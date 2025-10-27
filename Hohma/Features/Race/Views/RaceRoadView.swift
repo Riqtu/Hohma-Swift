@@ -5,6 +5,14 @@ struct RaceRoadView: View {
     @ObserveInjection var inject
     let cells: [RaceCellData]
     let participant: RaceParticipant
+    let isAnimating: Bool
+    let animationProgress: Double
+    let previousPosition: Int?
+
+    // Новые параметры для пошаговой анимации
+    let currentStepPosition: Double?
+    let isJumping: Bool
+    let animationStepProgress: Double?
 
     var body: some View {
         VStack {
@@ -12,7 +20,13 @@ struct RaceRoadView: View {
                 ForEach(cells) { cellData in
                     RaceCellView(
                         cellData: cellData,
-                        participant: participant
+                        participant: participant,
+                        isAnimating: isAnimating,
+                        animationProgress: animationProgress,
+                        previousPosition: previousPosition,
+                        currentStepPosition: currentStepPosition,
+                        isJumping: isJumping,
+                        animationStepProgress: animationStepProgress
                     )
                 }
             }
@@ -107,5 +121,14 @@ struct MockRaceParticipant {
 
     let participant = try! JSONDecoder().decode(RaceParticipant.self, from: jsonData)
 
-    return RaceRoadView(cells: raceCells, participant: participant)
+    return RaceRoadView(
+        cells: raceCells,
+        participant: participant,
+        isAnimating: false,
+        animationProgress: 0.0,
+        previousPosition: nil,
+        currentStepPosition: nil,
+        isJumping: false,
+        animationStepProgress: nil
+    )
 }

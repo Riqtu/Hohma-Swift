@@ -38,14 +38,38 @@ struct RaceSceneView: View {
                             if participantIndex < viewModel.participants.count {
                                 RaceRoadView(
                                     cells: viewModel.raceCells,
-                                    participant: viewModel.participants[participantIndex]
+                                    participant: viewModel.participants[participantIndex],
+                                    isAnimating: viewModel.isAnimating,
+                                    animationProgress: viewModel.animationProgress,
+                                    previousPosition: viewModel.previousPositions[
+                                        viewModel.participants[participantIndex].id],
+                                    currentStepPosition: {
+                                        let stepPos = viewModel.currentStepPosition[
+                                            viewModel.participants[participantIndex].id]
+                                        if let pos = stepPos {
+                                            print(
+                                                "🔄 RaceSceneView: участник \(participantIndex), currentStepPosition = \(pos)"
+                                            )
+                                        }
+                                        return stepPos
+                                    }(),
+                                    isJumping: viewModel.isJumping[
+                                        viewModel.participants[participantIndex].id] ?? false,
+                                    animationStepProgress: viewModel.animationStepProgress[
+                                        viewModel.participants[participantIndex].id]
                                 )
                                 .id("road_\(participantIndex)")
                             } else {
                                 // Показываем пустую дорогу для preview
                                 RaceRoadView(
                                     cells: viewModel.raceCells,
-                                    participant: createMockParticipant()
+                                    participant: createMockParticipant(),
+                                    isAnimating: false,
+                                    animationProgress: 0.0,
+                                    previousPosition: nil,
+                                    currentStepPosition: nil,
+                                    isJumping: false,
+                                    animationStepProgress: nil
                                 )
                                 .id("road_\(participantIndex)")
                             }
@@ -82,59 +106,43 @@ struct RaceSceneView: View {
     // MARK: - Bottom Bar
     private var bottomBar: some View {
         VStack(spacing: 12) {
-            // Информация о текущем состоянии
-            // HStack {
-            //     VStack(alignment: .leading, spacing: 4) {
-            //         Text("Скачка: \(viewModel.race?.name ?? "Загрузка...")")
-            //             .font(.headline)
-            //             .foregroundColor(.primary)
-
-            //         if let participant = viewModel.currentUserParticipant {
-            //             Text("Ваша позиция: \(participant.currentPosition + 1)")
-            //                 .font(.subheadline)
-            //                 .foregroundColor(.secondary)
-            //         }
-            //     }
-
-            //     Spacer()
-
-            //     // Показываем результат броска кубика
-            //     if viewModel.diceRoll > 0 {
-            //         VStack {
-            //             Text("🎲")
-            //                 .font(.title)
-            //             Text("\(viewModel.diceRoll)")
-            //                 .font(.headline)
-            //                 .fontWeight(.bold)
-            //         }
-            //     }
-            // }
-            // .padding(.horizontal)
-
             // Кнопка хода
             Button(action: {
+                // Добавляем тактильную обратную связь
+                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                impactFeedback.impactOccurred()
+
                 viewModel.makeMove()
             }) {
                 HStack {
-                    if viewModel.isLoading {
+                    if viewModel.isLoading || viewModel.isAnimating {
                         ProgressView()
                             .scaleEffect(0.8)
                     } else {
-                        Image(systemName: "play.fill")
+                        Image(
+                            systemName: viewModel.isAnimating
+                                ? "arrow.right.circle.fill" : "play.fill")
                     }
 
-                    Text(viewModel.isLoading ? "Ход..." : "Ход всех участников")
-                        .fontWeight(.semibold)
+                    Text(
+                        viewModel.isAnimating
+                            ? "Движение..."
+                            : (viewModel.isLoading ? "Ход..." : "Ход всех участников")
+                    )
+                    .fontWeight(.semibold)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(
-                    viewModel.canMakeMove ? Color("AccentColor") : Color.gray
+                    (viewModel.canMakeMove && !viewModel.isAnimating)
+                        ? Color("AccentColor") : Color.gray
                 )
                 .cornerRadius(12)
+                .scaleEffect(viewModel.isAnimating ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.isAnimating)
             }
-            .disabled(!viewModel.canMakeMove || viewModel.isLoading)
+            .disabled(!viewModel.canMakeMove || viewModel.isLoading || viewModel.isAnimating)
             .padding(.horizontal)
         }
         .padding(.vertical)

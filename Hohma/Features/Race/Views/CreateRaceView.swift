@@ -24,9 +24,11 @@ struct CreateRaceView: View {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(road.name)
-                                    Text("\(road.length) клеток • \(road.difficulty.displayName)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                    Text(
+                                        "\(road.length) клеток • \(road.difficulty.displayName)"
+                                    )
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                                 }
                                 Spacer()
                             }
@@ -38,7 +40,8 @@ struct CreateRaceView: View {
                 Section("Настройки") {
                     Stepper("Максимум игроков: \(maxPlayers)", value: $maxPlayers, in: 2...8)
 
-                    Stepper("Взнос: \(entryFee) монет", value: $entryFee, in: 0...1000, step: 10)
+                    Stepper(
+                        "Взнос: \(entryFee) монет", value: $entryFee, in: 0...1000, step: 10)
 
                     Toggle("Приватная скачка", isOn: $isPrivate)
                 }

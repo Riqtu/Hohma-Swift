@@ -26,6 +26,7 @@ struct RaceListView: View {
                     }
                 }
             }
+            .appBackground()
             .navigationTitle("Скачки")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -119,7 +120,6 @@ struct RaceListView: View {
             }
         }
         .padding(.bottom, 8)
-        .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Race List View
@@ -195,7 +195,6 @@ struct RaceStatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
@@ -296,7 +295,7 @@ struct RaceCard: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            .background(.ultraThinMaterial)
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
         }

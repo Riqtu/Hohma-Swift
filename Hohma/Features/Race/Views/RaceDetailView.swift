@@ -32,6 +32,7 @@ struct RaceDetailView: View {
                 }
                 .padding()
             }
+            .appBackground()
             .navigationTitle(race.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -134,7 +135,7 @@ struct RaceDetailView: View {
             .foregroundColor(.secondary)
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
     }
 
@@ -161,7 +162,7 @@ struct RaceDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
     }
 
@@ -185,7 +186,7 @@ struct RaceDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
     }
 
@@ -234,7 +235,7 @@ struct RaceDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(.ultraThinMaterial)
         .cornerRadius(12)
     }
 
