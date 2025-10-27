@@ -8,7 +8,7 @@ struct RaceCellView: View {
     let isAnimating: Bool
     let animationProgress: Double
     let previousPosition: Int?
-    
+
     // Новые параметры для пошаговой анимации
     let currentStepPosition: Double?
     let isJumping: Bool
@@ -118,16 +118,26 @@ struct RaceCellView: View {
     private var participantImage: some View {
         Group {
             if let avatarUrl = participant.user.avatarUrl, !avatarUrl.isEmpty {
-                AsyncImage(url: URL(string: avatarUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 56, height: 56)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(.white, lineWidth: 1))
-                } placeholder: {
-                    participantInitialsView
+                AsyncImage(url: URL(string: avatarUrl)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 56, height: 56)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(.white, lineWidth: 1))
+                    case .failure(_):
+                        // При ошибке загрузки показываем инициалы
+                        participantInitialsView
+                    case .empty:
+                        // Показываем инициалы во время загрузки
+                        participantInitialsView
+                    @unknown default:
+                        participantInitialsView
+                    }
                 }
+                .id("avatar_\(participant.user.id)_\(avatarUrl)")  // Стабильный ID для кэширования
             } else {
                 participantInitialsView
             }
@@ -159,11 +169,13 @@ struct RaceCellView: View {
             // Показываем участника только на точной позиции
             let shouldShow = cellData.position == Int(stepPosition)
             if shouldShow {
-                print("🎯 Клетка \(cellData.position): показываем участника на позиции \(stepPosition)")
+                print(
+                    "🎯 Клетка \(cellData.position): показываем участника на позиции \(stepPosition)"
+                )
             }
             return shouldShow
         }
-        
+
         // Если не идет анимация, показываем участника на его текущей позиции
         if !isAnimating {
             let shouldShow = cellData.position == participant.currentPosition
@@ -172,20 +184,21 @@ struct RaceCellView: View {
             }
             return shouldShow
         }
-        
+
         // Fallback к старой логике для совместимости
         if let previousPos = previousPosition {
             let currentPos = participant.currentPosition
             let totalDistance = currentPos - previousPos
-            
+
             if totalDistance == 0 {
                 return cellData.position == currentPos
             }
-            
-            let currentAnimationPosition = previousPos + Int(Double(totalDistance) * animationProgress)
+
+            let currentAnimationPosition =
+                previousPos + Int(Double(totalDistance) * animationProgress)
             return cellData.position == currentAnimationPosition
         }
-        
+
         return false
     }
 
@@ -195,25 +208,26 @@ struct RaceCellView: View {
             // Участник полностью виден только на точной позиции
             return cellData.position == Int(stepPosition) ? 1.0 : 0.0
         }
-        
+
         // Если не идет анимация, показываем участника полностью
         if !isAnimating {
             return cellData.position == participant.currentPosition ? 1.0 : 0.0
         }
-        
+
         // Fallback к старой логике
         if let previousPos = previousPosition {
             let currentPos = participant.currentPosition
             let totalDistance = currentPos - previousPos
-            
+
             if totalDistance == 0 {
                 return cellData.position == currentPos ? 1.0 : 0.0
             }
-            
-            let currentAnimationPosition = previousPos + Int(Double(totalDistance) * animationProgress)
+
+            let currentAnimationPosition =
+                previousPos + Int(Double(totalDistance) * animationProgress)
             return cellData.position == currentAnimationPosition ? 1.0 : 0.0
         }
-        
+
         return 0.0
     }
 
@@ -222,23 +236,23 @@ struct RaceCellView: View {
         if isJumping && shouldShowParticipant {
             return CGFloat.random(in: -2...2)
         }
-        
+
         // Fallback к старой логике
         guard isAnimating, let previousPos = previousPosition else { return 0 }
-        
+
         let currentPos = participant.currentPosition
         let totalDistance = currentPos - previousPos
-        
+
         if totalDistance == 0 { return 0 }
-        
+
         let animationProgress = self.animationProgress
         let currentAnimationPosition = previousPos + Int(Double(totalDistance) * animationProgress)
-        
+
         if cellData.position == currentAnimationPosition {
             let randomOffset = sin(animationProgress * .pi * 4) * 2
             return randomOffset
         }
-        
+
         return 0
     }
 
@@ -247,23 +261,23 @@ struct RaceCellView: View {
         if isJumping && shouldShowParticipant {
             return -15  // Высокий прыжок
         }
-        
+
         // Fallback к старой логике
         guard isAnimating, let previousPos = previousPosition else { return 0 }
-        
+
         let currentPos = participant.currentPosition
         let totalDistance = currentPos - previousPos
-        
+
         if totalDistance == 0 { return 0 }
-        
+
         let animationProgress = self.animationProgress
         let currentAnimationPosition = previousPos + Int(Double(totalDistance) * animationProgress)
-        
+
         if cellData.position == currentAnimationPosition {
             let jumpHeight = sin(animationProgress * .pi) * 3
             return -jumpHeight
         }
-        
+
         return 0
     }
 

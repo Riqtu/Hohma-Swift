@@ -70,12 +70,24 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             currentUserParticipant = participants.first { $0.userId == currentUserId }
         }
 
+        // Инициализируем позиции участников для отображения аватарок
+        initializeParticipantPositions()
+
         generateRaceCells()
         updateGameState()
 
         // Проверяем, завершена ли гонка
         if race.status == .finished {
             handleFinishedRace()
+        }
+    }
+
+    private func initializeParticipantPositions() {
+        // Инициализируем позиции участников для корректного отображения аватарок
+        for participant in participants {
+            currentStepPosition[participant.id] = Double(participant.currentPosition)
+            isJumping[participant.id] = false
+            animationStepProgress[participant.id] = 1.0
         }
     }
 
@@ -326,15 +338,23 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // Очищаем состояние анимации
+                // Очищаем только состояние анимации, но НЕ сбрасываем позиции участников
                 self.animationProgress = 0.0
                 self.currentAnimationStep = 0
                 self.totalAnimationSteps = 0
                 self.previousPositions.removeAll()
                 self.participantAnimationSteps.removeAll()
-                self.currentStepPosition.removeAll()
-                self.isJumping.removeAll()
-                self.animationStepProgress.removeAll()
+
+                // НЕ очищаем currentStepPosition, isJumping и animationStepProgress
+                // чтобы аватарки участников остались видимыми на их финальных позициях
+                // Эти значения будут обновлены при следующей анимации
+
+                // Устанавливаем финальные позиции участников
+                for participant in self.participants {
+                    self.currentStepPosition[participant.id] = Double(participant.currentPosition)
+                    self.isJumping[participant.id] = false
+                    self.animationStepProgress[participant.id] = 1.0
+                }
             }
         }
     }
