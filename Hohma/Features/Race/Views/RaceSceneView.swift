@@ -4,6 +4,7 @@ import SwiftUI
 struct RaceSceneView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = RaceViewModel()
+    @StateObject private var themeManager = RaceThemeManager()
     let race: Race?
 
     init(race: Race? = nil) {
@@ -13,11 +14,17 @@ struct RaceSceneView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Верхняя часть с фоном
-            Image("SceneBackground")
+            Image(themeManager.currentTheme.sceneBackgroundImageName)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .ignoresSafeArea()
                 .frame(maxWidth: .infinity, minHeight: 0, maxHeight: 140)
+                .id(themeManager.currentTheme.sceneBackgroundImageName)
+                .onAppear {
+                    print(
+                        "🎨 RaceSceneView: Using background image: \(themeManager.currentTheme.sceneBackgroundImageName)"
+                    )
+                }
 
             // Основная область с дорогой
             ScrollView(.horizontal, showsIndicators: false) {
@@ -26,11 +33,17 @@ struct RaceSceneView: View {
                     let cellWidth: CGFloat = 40 + 10  // ширина ячейки + отступы
                     let roadWidth = CGFloat(viewModel.raceCells.count) * cellWidth + 20  // +20 для padding
 
-                    Image("SceneRace")
+                    Image(themeManager.currentTheme.sceneRaceImageName)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .ignoresSafeArea()
                         .frame(width: roadWidth)  // Ограничиваем ширину
+                        .id(themeManager.currentTheme.sceneRaceImageName)
+                        .onAppear {
+                            print(
+                                "🎨 RaceSceneView: Using race image: \(themeManager.currentTheme.sceneRaceImageName)"
+                            )
+                        }
 
                     VStack(spacing: 10) {
                         ForEach(0..<max(1, viewModel.participants.count), id: \.self) {
@@ -90,6 +103,14 @@ struct RaceSceneView: View {
                     "🔍 RaceSceneView: Loading race with \(race.participants?.count ?? 0) participants"
                 )
 
+                // Устанавливаем тему из данных гонки
+                print("🎨 RaceSceneView: Race theme from API: '\(race.theme)'")
+                print("🎨 RaceSceneView: Road theme from API: '\(race.road.theme)'")
+                themeManager.setThemeFromRace(race.road.theme)
+                print(
+                    "🎨 RaceSceneView: Current theme after setting: \(themeManager.currentTheme.rawValue)"
+                )
+
                 viewModel.loadRace(race)
                 // Обновляем состояние скачки при переходе в скачку
                 viewModel.refreshRace()
@@ -97,7 +118,8 @@ struct RaceSceneView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .raceUpdated)) { _ in
             // Обновляем данные при получении уведомления об изменении скачки
-            if race != nil {
+            if let race = race {
+                themeManager.setThemeFromRace(race.road.theme)
                 viewModel.refreshRace()
             }
         }
