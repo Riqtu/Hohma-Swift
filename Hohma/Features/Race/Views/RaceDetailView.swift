@@ -108,6 +108,7 @@ struct RaceDetailView: View {
                             }
                         }
                 }
+                .navigationViewStyle(StackNavigationViewStyle())
             }
         }
         .enableInjection()

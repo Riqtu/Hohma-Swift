@@ -7,60 +7,58 @@ struct RaceListView: View {
     @State private var showingFilters = false
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Header with filters
-                headerView
+        VStack(spacing: 0) {
+            // Header with filters
+            headerView
 
-                // Content
-                if viewModel.isLoading && viewModel.races.isEmpty {
-                    loadingView
-                } else if viewModel.filteredRaces.isEmpty {
-                    emptyStateView
-                } else {
-                    ScrollView {
-                        raceListView
-                    }
-                    .refreshable {
-                        viewModel.loadRaces()
-                    }
+            // Content
+            if viewModel.isLoading && viewModel.races.isEmpty {
+                loadingView
+            } else if viewModel.filteredRaces.isEmpty {
+                emptyStateView
+            } else {
+                ScrollView {
+                    raceListView
+                }
+                .refreshable {
+                    viewModel.loadRaces()
                 }
             }
-            .appBackground()
-            .navigationTitle("Скачки")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { viewModel.showingCreateRace = true }) {
-                        Image(systemName: "plus")
-                    }
-                    .disabled(!viewModel.canCreateRace)
+        }
+        .appBackground()
+        .navigationTitle("Скачки")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { viewModel.showingCreateRace = true }) {
+                    Image(systemName: "plus")
                 }
+                .disabled(!viewModel.canCreateRace)
+            }
 
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingFilters = true }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                    }
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { showingFilters = true }) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateRace) {
-                CreateRaceView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $viewModel.showingCreateRace) {
+            CreateRaceView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingFilters) {
+            RaceFiltersView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $viewModel.showingRaceDetail) {
+            if let race = viewModel.selectedRace {
+                RaceDetailView(race: race, viewModel: viewModel)
             }
-            .sheet(isPresented: $showingFilters) {
-                RaceFiltersView(viewModel: viewModel)
+        }
+        .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") {
+                viewModel.errorMessage = nil
             }
-            .sheet(isPresented: $viewModel.showingRaceDetail) {
-                if let race = viewModel.selectedRace {
-                    RaceDetailView(race: race, viewModel: viewModel)
-                }
-            }
-            .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") {
-                    viewModel.errorMessage = nil
-                }
-            } message: {
-                Text(viewModel.errorMessage ?? "")
-            }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
         }
         .enableInjection()
     }
@@ -164,7 +162,7 @@ struct RaceListView: View {
             Button("Создать скачку") {
                 viewModel.showingCreateRace = true
             }
-            .buttonStyle(.borderedProminent)
+
             .disabled(!viewModel.canCreateRace)
         }
         .padding()
