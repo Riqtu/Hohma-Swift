@@ -50,7 +50,10 @@ struct RaceListView: View {
         }
         .sheet(isPresented: $viewModel.showingRaceDetail) {
             if let race = viewModel.selectedRace {
-                RaceDetailView(race: race, viewModel: viewModel)
+                RaceDetailView(race: race, viewModel: viewModel) {
+                    // Функция навигации к списку гонок (уже находимся в списке)
+                    // Просто закрываем sheet
+                }
             }
         }
         .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -253,18 +256,30 @@ struct RaceCard: View {
 
                     Spacer()
 
-                    if race.entryFee > 0 {
-                        Label("\(race.entryFee) монет", systemImage: "dollarsign.circle")
+                    if race.status == .finished {
+                        // Для завершенных гонок показываем победителя
+                        if let winner = race.participants?.first(where: { $0.finalPosition == 1 }) {
+                            Label(
+                                "🏆 \(winner.user.name ?? winner.user.username ?? "Неизвестно")",
+                                systemImage: "crown.fill"
+                            )
                             .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                            .foregroundColor(.purple)
+                        }
+                    } else {
+                        if race.entryFee > 0 {
+                            Label("\(race.entryFee) монет", systemImage: "dollarsign.circle")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
 
-                    Spacer()
+                        Spacer()
 
-                    if race.prizePool > 0 {
-                        Label("\(race.prizePool) монет", systemImage: "trophy")
-                            .font(.caption)
-                            .foregroundColor(.orange)
+                        if race.prizePool > 0 {
+                            Label("\(race.prizePool) монет", systemImage: "trophy")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
                     }
                 }
 

@@ -130,50 +130,115 @@ struct RaceSceneView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        .sheet(isPresented: $viewModel.showingWinnerSelection) {
+            WinnerSelectionView(
+                isPresented: $viewModel.showingWinnerSelection,
+                finishingParticipants: viewModel.finishingParticipants,
+                participants: viewModel.participants,
+                onWinnerSelected: { winnerId in
+                    // Показываем экран победителя
+                    if let winner = viewModel.participants.first(where: { $0.id == winnerId }) {
+                        // Здесь можно добавить логику для показа экрана победителя
+                        print(
+                            "🏆 Победитель выбран: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
+                        )
+                    }
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $viewModel.raceFinished) {
+            if let winnerId = viewModel.winnerId,
+                let winner = viewModel.participants.first(where: { $0.id == winnerId }),
+                let race = viewModel.race
+            {
+                RaceWinnerView(
+                    isPresented: $viewModel.raceFinished,
+                    winner: winner,
+                    race: race,
+                    onDismiss: {
+                        viewModel.raceFinished = false
+                    },
+                    onNavigateToRaceList: {
+                        // Отправляем уведомление о навигации к списку гонок
+                        NotificationCenter.default.post(
+                            name: .navigationRequested,
+                            object: nil,
+                            userInfo: ["destination": "race", "force": true]
+                        )
+                    }
+                )
+            }
+        }
         .enableInjection()
     }
 
     // MARK: - Bottom Bar
     private var bottomBar: some View {
         VStack(spacing: 12) {
-            // Кнопка хода
-            Button(action: {
-                // Добавляем тактильную обратную связь
-                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                impactFeedback.impactOccurred()
-
-                viewModel.makeMove()
-            }) {
-                HStack {
-                    if viewModel.isLoading || viewModel.isAnimating {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(
-                            systemName: viewModel.isAnimating
-                                ? "arrow.right.circle.fill" : "play.fill")
+            // Кнопка хода или статус гонки
+            if let race = viewModel.race, race.status == .finished {
+                // Показываем статус завершенной гонки
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "flag.checkered")
+                        Text("Гонка завершена")
                     }
+                    .font(.headline)
+                    .foregroundColor(.white)
 
-                    Text(
-                        viewModel.isAnimating
-                            ? "Движение..."
-                            : (viewModel.isLoading ? "Ход..." : "Ход всех участников")
-                    )
-                    .fontWeight(.semibold)
+                    if let winner = viewModel.participants.first(where: { $0.finalPosition == 1 }) {
+                        Text(
+                            "Победитель: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
+                        )
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                    }
                 }
-                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(
-                    (viewModel.canMakeMove && !viewModel.isAnimating)
-                        ? Color("AccentColor") : Color.gray
-                )
+                .background(Color.gray.opacity(0.3))
                 .cornerRadius(12)
-                .scaleEffect(viewModel.isAnimating ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: viewModel.isAnimating)
+                .padding(.horizontal)
+            } else {
+                // Кнопка хода для активных гонок
+                Button(action: {
+                    // Добавляем тактильную обратную связь
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                    impactFeedback.impactOccurred()
+
+                    viewModel.makeMove()
+                }) {
+                    HStack {
+                        if viewModel.isLoading || viewModel.isAnimating {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(
+                                systemName: viewModel.isAnimating
+                                    ? "arrow.right.circle.fill" : "play.fill")
+                        }
+
+                        Text(
+                            viewModel.isAnimating
+                                ? "Движение..."
+                                : (viewModel.isLoading ? "Ход..." : "Ход всех участников")
+                        )
+                        .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        (viewModel.canMakeMove && !viewModel.isAnimating)
+                            ? Color("AccentColor") : Color.gray
+                    )
+                    .cornerRadius(12)
+                    .scaleEffect(viewModel.isAnimating ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 0.1), value: viewModel.isAnimating)
+                }
+                .disabled(!viewModel.canMakeMove || viewModel.isLoading || viewModel.isAnimating)
+                .padding(.horizontal)
             }
-            .disabled(!viewModel.canMakeMove || viewModel.isLoading || viewModel.isAnimating)
-            .padding(.horizontal)
         }
         .padding(.vertical)
         .background(Color.gray.opacity(0.2))

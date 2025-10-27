@@ -6,10 +6,17 @@ struct RaceDetailView: View {
     let race: Race
     @ObservedObject var viewModel: RaceListViewModel
     @Environment(\.dismiss) private var dismiss
+    let onNavigateToRaceList: (() -> Void)?
 
     @State private var showingDeleteAlert = false
     @State private var showingJoinAlert = false
     @State private var showingRaceScene = false
+
+    init(race: Race, viewModel: RaceListViewModel, onNavigateToRaceList: (() -> Void)? = nil) {
+        self.race = race
+        self.viewModel = viewModel
+        self.onNavigateToRaceList = onNavigateToRaceList
+    }
 
     // Получаем актуальные данные скачки из viewModel
     private var currentRace: Race {
@@ -109,6 +116,18 @@ struct RaceDetailView: View {
                         }
                 }
                 .navigationViewStyle(StackNavigationViewStyle())
+                .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+                    notification in
+                    if let destination = notification.userInfo?["destination"] as? String,
+                        destination == "race"
+                    {
+                        // Закрываем RaceSceneView и RaceDetailView, возвращаемся к списку гонок
+                        showingRaceScene = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            dismiss()
+                        }
+                    }
+                }
             }
         }
         .enableInjection()
@@ -251,7 +270,18 @@ struct RaceDetailView: View {
     // MARK: - Actions Section
     private var actionsSection: some View {
         VStack(spacing: 12) {
-            if isCurrentUserParticipant {
+            if currentRace.status == .finished {
+                // Гонка завершена - показываем кнопку "Посмотреть результаты"
+                Button("Посмотреть результаты") {
+                    showingRaceScene = true
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color("AccentColor"))
+                .cornerRadius(8)
+                .frame(maxWidth: .infinity)
+            } else if isCurrentUserParticipant {
                 // Пользователь уже участник - показываем кнопку "Вход"
                 Button("Вход в скачку") {
                     showingRaceScene = true

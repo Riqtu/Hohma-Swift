@@ -35,6 +35,12 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var diceRoll: Int = 0
     @Published var canMakeMove: Bool = false
 
+    // Состояние финиширования
+    @Published var raceFinished: Bool = false
+    @Published var finishingParticipants: [String] = []
+    @Published var winnerId: String?
+    @Published var showingWinnerSelection: Bool = false
+
     // Состояние анимации
     @Published var isAnimating: Bool = false
     @Published var animationProgress: Double = 0.0
@@ -66,6 +72,24 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         generateRaceCells()
         updateGameState()
+
+        // Проверяем, завершена ли гонка
+        if race.status == .finished {
+            handleFinishedRace()
+        }
+    }
+
+    private func handleFinishedRace() {
+        // Находим победителя (участника с finalPosition = 1)
+        if let winner = participants.first(where: { $0.finalPosition == 1 }) {
+            self.winnerId = winner.id
+            self.raceFinished = true
+
+            // Показываем экран победителя через небольшую задержку
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.raceFinished = true
+            }
+        }
     }
 
     private func generateRaceCells() {
@@ -115,6 +139,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         canMakeMove =
             race.status == .running && currentUserParticipant != nil
             && !(currentUserParticipant?.isFinished ?? true)
+            && !raceFinished
 
         // Определяем, очередь ли текущего пользователя (упрощенная логика)
         isMyTurn = canMakeMove
@@ -152,7 +177,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         Task {
             do {
                 print("🌐 Отправляем запрос на сервер...")
-                let _: MakeMoveResponse = try await trpcService.executePOST(
+                let response: MakeMoveResponse = try await trpcService.executePOST(
                     endpoint: "race.makeMove",
                     body: request
                 )
@@ -160,6 +185,24 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
                 await MainActor.run {
                     print("🔄 Обновляем данные после хода...")
+
+                    // Проверяем, завершилась ли гонка
+                    if response.raceFinished {
+                        self.raceFinished = true
+                        self.finishingParticipants = response.finishingParticipants ?? []
+                        self.winnerId = response.winnerId
+
+                        // Если несколько участников финишировали одновременно, показываем экран выбора победителя
+                        if self.finishingParticipants.count > 1 {
+                            self.showingWinnerSelection = true
+                        } else {
+                            // Если один участник финишировал, сразу показываем экран победителя
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                                self?.raceFinished = true
+                            }
+                        }
+                    }
+
                     // Сначала обновляем данные после хода
                     self.refreshRaceAndStartAnimation(withPreviousPositions: currentPositions)
                     self.isLoading = false

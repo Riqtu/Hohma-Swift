@@ -442,7 +442,7 @@ enum RaceStatus: String, Codable, CaseIterable {
         case .created: return .blue
         case .waiting: return .yellow
         case .running: return .green
-        case .finished: return .gray
+        case .finished: return .purple
         case .cancelled: return .red
         }
     }
@@ -555,9 +555,12 @@ struct SuccessResponse: Codable {
 
 // MARK: - Make Move Response
 struct MakeMoveResponse: Codable {
-    let racePosition: RacePosition
+    let racePosition: RacePosition?
     let participant: MakeMoveParticipant
     let isFinished: Bool
+    let raceFinished: Bool
+    let finishingParticipants: [String]?
+    let winnerId: String?
 }
 
 // Simplified participant for makeMove response (without user data)
