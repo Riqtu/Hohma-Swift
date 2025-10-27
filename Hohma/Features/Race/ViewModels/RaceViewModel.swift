@@ -262,14 +262,14 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         impactFeedback.impactOccurred()
 
         // Пауза на клетке перед переходом к следующему шагу
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             // Завершаем прыжки всех участников
             for participant in self.participants {
                 self.isJumping[participant.id] = false
             }
 
             // Переходим к следующему шагу
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.animateStep(stepIndex: stepIndex + 1, maxSteps: maxSteps)
             }
         }
@@ -277,12 +277,12 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
     private func finishAnimation() {
         // Финальная пауза
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation(.easeOut(duration: 0.3)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.2)) {
                 self.isAnimating = false
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 // Очищаем состояние анимации
                 self.animationProgress = 0.0
                 self.currentAnimationStep = 0

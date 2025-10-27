@@ -89,7 +89,7 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     // MARK: - Join Race
-    func joinRace(raceId: String) {
+    func joinRace(raceId: String, completion: (() -> Void)? = nil) {
         isLoading = true
         errorMessage = nil
 
@@ -102,11 +102,18 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
                     body: request
                 )
 
-                loadRaces()  // Reload races
-                isLoading = false
+                await MainActor.run {
+                    loadRaces()  // Reload races
+                    isLoading = false
+                    // Отправляем уведомление об обновлении скачки
+                    NotificationCenter.default.post(name: .raceUpdated, object: nil)
+                    completion?()  // Вызываем callback после успешного присоединения
+                }
             } catch {
-                errorMessage = "Ошибка присоединения к скачке: \(error.localizedDescription)"
-                isLoading = false
+                await MainActor.run {
+                    errorMessage = "Ошибка присоединения к скачке: \(error.localizedDescription)"
+                    isLoading = false
+                }
             }
         }
     }
@@ -125,6 +132,8 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
 
                 loadRaces()  // Reload races
                 isLoading = false
+                // Отправляем уведомление об обновлении скачки
+                NotificationCenter.default.post(name: .raceUpdated, object: nil)
             } catch {
                 errorMessage = "Ошибка запуска скачки: \(error.localizedDescription)"
                 isLoading = false
@@ -157,6 +166,8 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
     func showRaceDetail(_ race: Race) {
         selectedRace = race
         showingRaceDetail = true
+        // Обновляем состояние скачек при переходе к деталям
+        loadRaces()
     }
 
     // MARK: - Filters

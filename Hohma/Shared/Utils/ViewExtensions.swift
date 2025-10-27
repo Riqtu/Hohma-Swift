@@ -48,3 +48,8 @@ extension View {
         )
     }
 }
+
+// MARK: - NotificationCenter Extensions
+extension Notification.Name {
+    static let raceUpdated = Notification.Name("raceUpdated")
+}

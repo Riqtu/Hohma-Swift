@@ -11,6 +11,11 @@ struct RaceDetailView: View {
     @State private var showingJoinAlert = false
     @State private var showingRaceScene = false
 
+    // Получаем актуальные данные скачки из viewModel
+    private var currentRace: Race {
+        viewModel.races.first { $0.id == race.id } ?? race
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -33,7 +38,7 @@ struct RaceDetailView: View {
                 .padding()
             }
             .appBackground()
-            .navigationTitle(race.name)
+            .navigationTitle(currentRace.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -56,7 +61,7 @@ struct RaceDetailView: View {
 
                         if canStartRace {
                             Button("Начать скачку") {
-                                viewModel.startRace(raceId: race.id)
+                                viewModel.startRace(raceId: currentRace.id)
                                 showingRaceScene = true
                             }
                         }
@@ -74,15 +79,18 @@ struct RaceDetailView: View {
             .alert("Присоединиться к скачке", isPresented: $showingJoinAlert) {
                 Button("Отмена", role: .cancel) {}
                 Button("Присоединиться") {
-                    viewModel.joinRace(raceId: race.id)
+                    viewModel.joinRace(raceId: currentRace.id) {
+                        // После успешного присоединения переходим в скачку
+                        showingRaceScene = true
+                    }
                 }
             } message: {
-                Text("Взнос за участие: \(race.entryFee) монет")
+                Text("Взнос за участие: \(currentRace.entryFee) монет")
             }
             .alert("Удалить скачку", isPresented: $showingDeleteAlert) {
                 Button("Отмена", role: .cancel) {}
                 Button("Удалить", role: .destructive) {
-                    viewModel.deleteRace(raceId: race.id)
+                    viewModel.deleteRace(raceId: currentRace.id)
                     dismiss()
                 }
             } message: {
@@ -90,7 +98,7 @@ struct RaceDetailView: View {
             }
             .fullScreenCover(isPresented: $showingRaceScene) {
                 NavigationView {
-                    RaceSceneView(race: race)
+                    RaceSceneView(race: currentRace)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
@@ -109,26 +117,26 @@ struct RaceDetailView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                RaceStatusBadge(status: race.status)
+                RaceStatusBadge(status: currentRace.status)
                 Spacer()
-                if race.isPrivate {
+                if currentRace.isPrivate {
                     Label("Приватная", systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
 
-            Text(race.road.name)
+            Text(currentRace.road.name)
                 .font(.title2)
                 .fontWeight(.semibold)
 
             HStack {
                 Label(
-                    "\(race.participantCount ?? 0)/\(race.maxPlayers) игроков",
+                    "\(currentRace.participantCount ?? 0)/\(currentRace.maxPlayers) игроков",
                     systemImage: "person.2")
                 Spacer()
-                if race.entryFee > 0 {
-                    Label("\(race.entryFee) монет", systemImage: "dollarsign.circle")
+                if currentRace.entryFee > 0 {
+                    Label("\(currentRace.entryFee) монет", systemImage: "dollarsign.circle")
                 }
             }
             .font(.subheadline)
@@ -148,15 +156,15 @@ struct RaceDetailView: View {
             VStack(spacing: 8) {
                 InfoRow(
                     label: "Создатель",
-                    value: race.creator.name ?? race.creator.username ?? "Неизвестно")
-                InfoRow(label: "Призовой фонд", value: "\(race.prizePool) монет")
-                InfoRow(label: "Создана", value: race.createdAt.formattedDate)
+                    value: currentRace.creator.name ?? currentRace.creator.username ?? "Неизвестно")
+                InfoRow(label: "Призовой фонд", value: "\(currentRace.prizePool) монет")
+                InfoRow(label: "Создана", value: currentRace.createdAt.formattedDate)
 
-                if let startTime = race.startTime {
+                if let startTime = currentRace.startTime {
                     InfoRow(label: "Начата", value: startTime.formattedDate)
                 }
 
-                if let endTime = race.endTime {
+                if let endTime = currentRace.endTime {
                     InfoRow(label: "Завершена", value: endTime.formattedDate)
                 }
             }
@@ -172,7 +180,7 @@ struct RaceDetailView: View {
             Text("Участники")
                 .font(.headline)
 
-            if let participants = race.participants, !participants.isEmpty {
+            if let participants = currentRace.participants, !participants.isEmpty {
                 LazyVStack(spacing: 8) {
                     ForEach(participants) { participant in
                         ParticipantRow(participant: participant)
@@ -197,11 +205,11 @@ struct RaceDetailView: View {
                 .font(.headline)
 
             VStack(spacing: 8) {
-                InfoRow(label: "Длина", value: "\(race.road.length) клеток")
-                InfoRow(label: "Сложность", value: race.road.difficulty.displayName)
-                InfoRow(label: "Тема", value: race.road.theme)
+                InfoRow(label: "Длина", value: "\(currentRace.road.length) клеток")
+                InfoRow(label: "Сложность", value: currentRace.road.difficulty.displayName)
+                InfoRow(label: "Тема", value: currentRace.road.theme)
 
-                if let description = race.road.description, !description.isEmpty {
+                if let description = currentRace.road.description, !description.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Описание")
                             .font(.subheadline)
@@ -214,7 +222,7 @@ struct RaceDetailView: View {
             }
 
             // Road cells preview
-            if let cells = race.road.cells, !cells.isEmpty {
+            if let cells = currentRace.road.cells, !cells.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
                         ForEach(cells.prefix(20)) { cell in
@@ -256,7 +264,10 @@ struct RaceDetailView: View {
             } else if canJoinRace {
                 // Пользователь может присоединиться
                 Button("Присоединиться к скачке") {
-                    showingJoinAlert = true
+                    viewModel.joinRace(raceId: currentRace.id) {
+                        // После успешного присоединения переходим в скачку
+                        showingRaceScene = true
+                    }
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 16)
@@ -268,7 +279,7 @@ struct RaceDetailView: View {
 
             if canStartRace {
                 Button("Начать скачку") {
-                    viewModel.startRace(raceId: race.id)
+                    viewModel.startRace(raceId: currentRace.id)
                     showingRaceScene = true
                 }
                 .foregroundColor(.white)
@@ -283,20 +294,21 @@ struct RaceDetailView: View {
 
     // MARK: - Computed Properties
     private var canJoinRace: Bool {
-        race.status == .created && (race.participantCount ?? 0) < race.maxPlayers
+        currentRace.status == .created
+            && (currentRace.participantCount ?? 0) < currentRace.maxPlayers
     }
 
     private var canStartRace: Bool {
-        race.status == .created && (race.participantCount ?? 0) >= 2
+        currentRace.status == .created && (currentRace.participantCount ?? 0) >= 2
     }
 
     private var canDeleteRace: Bool {
-        race.status == .created || race.status == .cancelled
+        currentRace.status == .created || currentRace.status == .cancelled
     }
 
     private var isCurrentUserParticipant: Bool {
         guard let currentUserId = viewModel.trpcService.currentUser?.id else { return false }
-        return race.participants?.contains { $0.userId == currentUserId } ?? false
+        return currentRace.participants?.contains { $0.userId == currentUserId } ?? false
     }
 }
 

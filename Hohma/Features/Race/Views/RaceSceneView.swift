@@ -91,6 +91,14 @@ struct RaceSceneView: View {
                 )
 
                 viewModel.loadRace(race)
+                // Обновляем состояние скачки при переходе в скачку
+                viewModel.refreshRace()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .raceUpdated)) { _ in
+            // Обновляем данные при получении уведомления об изменении скачки
+            if race != nil {
+                viewModel.refreshRace()
             }
         }
         .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -140,7 +148,7 @@ struct RaceSceneView: View {
                 )
                 .cornerRadius(12)
                 .scaleEffect(viewModel.isAnimating ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.isAnimating)
+                .animation(.easeInOut(duration: 0.1), value: viewModel.isAnimating)
             }
             .disabled(!viewModel.canMakeMove || viewModel.isLoading || viewModel.isAnimating)
             .padding(.horizontal)
