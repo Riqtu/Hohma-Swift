@@ -167,8 +167,16 @@ struct RaceSceneView: View {
         .fullScreenCover(isPresented: $viewModel.showingDiceRoll) {
             RaceDiceRollView(
                 participants: viewModel.participants,
+                initialDiceResults: viewModel.diceResults,
+                isInitiator: viewModel.isDiceInitiator,
+                onNext: {
+                    viewModel.diceNext()
+                },
                 onDiceRollComplete: { diceResults in
-                    viewModel.executeMoveWithDiceResults(diceResults)
+                    // Только инициатор делает HTTP ход
+                    if viewModel.isDiceInitiator {
+                        viewModel.executeMoveWithDiceResults(diceResults)
+                    }
                 },
                 onDismiss: {
                     viewModel.showingDiceRoll = false

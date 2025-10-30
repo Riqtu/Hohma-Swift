@@ -1,6 +1,152 @@
 import Foundation
 import SwiftUI
 
+final class RaceSocketManager {
+    private let socket: SocketIOServiceAdapter
+
+    // Callbacks to VM/UI
+    var onRaceUpdate: (([String: Any]) -> Void)?
+    var onRaceState: (([String: Any]) -> Void)?
+    var onRaceDiceOpen: (([String: Any]) -> Void)?
+    var onRaceDiceResults: (([String: Any]) -> Void)?
+    var onRaceDiceNext: (([String: Any]) -> Void)?
+    var onRaceFinish: (([String: Any]) -> Void)?
+
+    init(socket: SocketIOServiceAdapter) {
+        self.socket = socket
+        setupHandlers()
+    }
+
+    private func setupHandlers() {
+        socket.on(.connect) { _ in
+            print("🔌 RaceSocketManager: connected")
+        }
+
+        socket.on(.raceUpdate) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("🏁 RaceSocketManager: race:update -> keys=\(Array(json.keys))")
+                    self.onRaceUpdate?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:update payload: \(error)")
+            }
+        }
+
+        socket.on(.raceState) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("📦 RaceSocketManager: race:state received")
+                    self.onRaceState?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:state payload: \(error)")
+            }
+        }
+
+        socket.on(.raceDiceOpen) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("🎲 RaceSocketManager: race:dice:open received")
+                    self.onRaceDiceOpen?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:dice:open payload: \(error)")
+            }
+        }
+
+        socket.on(.raceDiceResults) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("🎲 RaceSocketManager: race:dice:results received")
+                    self.onRaceDiceResults?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:dice:results payload: \(error)")
+            }
+        }
+
+        socket.on(.raceDiceNext) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("➡️ RaceSocketManager: race:dice:next received")
+                    self.onRaceDiceNext?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:dice:next payload: \(error)")
+            }
+        }
+
+        socket.on(.raceFinish) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("🏁 RaceSocketManager: race:finish received")
+                    self.onRaceFinish?(json)
+                }
+            } catch {
+                print("❌ RaceSocketManager: failed to parse race:finish payload: \(error)")
+            }
+        }
+    }
+
+    func connectIfNeeded() {
+        if !socket.isConnected && !socket.isConnecting {
+            socket.connect()
+        }
+    }
+
+    func joinRoom(raceId: String, userId: String) {
+        let payload: [String: Any] = [
+            "roomId": raceId,
+            "userId": userId,
+        ]
+        socket.emit(.joinRoom, data: payload)
+    }
+
+    func leaveRoom(raceId: String) {
+        socket.emit(.leaveRoom, data: ["roomId": raceId])
+    }
+
+    func requestState(raceId: String) {
+        socket.emit(.raceRequestState, roomId: raceId, data: [:])
+    }
+
+    func emitRaceUpdate(raceId: String, payload: [String: Any]) {
+        socket.emit(.raceUpdate, roomId: raceId, data: payload)
+    }
+
+    func emitDiceOpen(raceId: String, roundId: String) {
+        socket.emit(.raceDiceOpen, roomId: raceId, data: ["roundId": roundId])
+    }
+
+    func emitDiceResults(raceId: String, roundId: String, diceResults: [String: Int]) {
+        socket.emit(
+            .raceDiceResults,
+            roomId: raceId,
+            data: [
+                "roundId": roundId,
+                "diceResults": diceResults,
+            ]
+        )
+    }
+
+    func emitDiceNext(raceId: String) {
+        socket.emit(.raceDiceNext, roomId: raceId, data: [:])
+    }
+
+    func emitFinish(raceId: String, finishingParticipants: [String], winnerId: String?) {
+        var payload: [String: Any] = ["finishingParticipants": finishingParticipants]
+        if let w = winnerId { payload["winnerId"] = w }
+        socket.emit(.raceFinish, roomId: raceId, data: payload)
+    }
+}
+
 // Модель данных для ячейки дороги
 struct RaceCellData: Identifiable {
     let id = UUID()
@@ -44,6 +190,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     // Состояние экрана кубиков
     @Published var showingDiceRoll: Bool = false
     @Published var diceResults: [String: Int] = [:]
+    @Published var isDiceInitiator: Bool = false
+    @Published var currentDiceRoundId: String?
 
     // Состояние анимации
     @Published var isAnimating: Bool = false
@@ -59,6 +207,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var animationStepProgress: [String: Double] = [:]  // participantId -> прогресс текущего шага (0.0-1.0)
 
     private var raceId: String?
+    private var raceSocketManager: RaceSocketManager?
 
     init() {
         // Инициализация с пустыми данными для preview
@@ -92,6 +241,10 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         // Предзагружаем аватарки участников для оптимизации отображения
         preloadParticipantAvatars()
+
+        // ========= Socket wiring =========
+        setupRaceSocketIfNeeded()
+        joinRaceRoomIfPossible()
     }
 
     private func initializeParticipantPositions() {
@@ -120,8 +273,23 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Находим победителя (участника с finalPosition = 1)
         if let winner = participants.first(where: { $0.finalPosition == 1 }) {
             self.winnerId = winner.id
-            // НЕ устанавливаем raceFinished = true сразу
-            // Экран победителя будет показан после завершения анимации
+            // Так как заходим в уже завершённую скачку из карточки,
+            // анимации не будет — сразу подготавливаем данные для экрана результатов
+            let finishers =
+                participants
+                .filter { ($0.finalPosition ?? 0) > 0 }
+                .sorted { ($0.finalPosition ?? Int.max) < ($1.finalPosition ?? Int.max) }
+                .map { $0.id }
+            self.finishingParticipants = finishers
+
+            // Если несколько участников финишировали, откроем выбор победителя,
+            // иначе сразу показываем экран победителя
+            if self.finishingParticipants.count > 1 {
+                self.showingWinnerSelection = true
+                self.raceFinished = true
+            } else {
+                self.raceFinished = true
+            }
             print(
                 "🏁 Гонка завершена! Победитель найден: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
             )
@@ -131,6 +299,86 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             self.clearAvatarCache()
         }
+    }
+
+    private func setupRaceSocketIfNeeded() {
+        if raceSocketManager == nil {
+            let socketAdapter = SocketIOServiceAdapter()
+            let manager = RaceSocketManager(socket: socketAdapter)
+            manager.onRaceUpdate = { [weak self] (payload: [String: Any]) in
+                guard let self = self else { return }
+                // При получении обновления — освежаем состояние и запускаем анимацию от предыдущих позиций
+                let prev = Dictionary(
+                    uniqueKeysWithValues: self.participants.map { ($0.id, $0.currentPosition) })
+                self.refreshRaceAndStartAnimation(withPreviousPositions: prev)
+            }
+            manager.onRaceState = { [weak self] (_: [String: Any]) in
+                self?.refreshRace()
+            }
+            // Открыть экран кубиков (только фиксация раунда; у клиентов окно открываем по results)
+            manager.onRaceDiceOpen = { [weak self] (payload: [String: Any]) in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    // Устанавливаем текущий раунд из payload, если есть
+                    if let roundId = payload["roundId"] as? String {
+                        // Новый раунд — сбрасываем старые результаты
+                        if self.currentDiceRoundId != roundId {
+                            self.currentDiceRoundId = roundId
+                            self.diceResults = [:]
+                        }
+                    }
+                    self.isDiceInitiator = false
+                    // Не открываем окно здесь, чтобы исключить пустые значения; откроем по results
+                }
+            }
+            // Показать результаты кубиков синхронно (визуально), не дергая HTTP
+            manager.onRaceDiceResults = { [weak self] (payload: [String: Any]) in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    let incomingRoundId = payload["roundId"] as? String
+                    // Если roundId не установлен — устанавливаем его по первым пришедшим результатам
+                    if self.currentDiceRoundId == nil, let r = incomingRoundId {
+                        self.currentDiceRoundId = r
+                        self.diceResults = [:]
+                    }
+                    // Применяем только результаты текущего раунда (игнорируем старые)
+                    if incomingRoundId == nil || incomingRoundId == self.currentDiceRoundId {
+                        if let dice = payload["diceResults"] as? [String: Int] {
+                            self.diceResults = dice
+                        }
+                    }
+                    // Не переоткрываем окно у инициатора при собственном broadcast
+                    if !self.isDiceInitiator {
+                        self.showingDiceRoll = true
+                    }
+                }
+            }
+            // Закрыть экран кубиков у всех по нажатию "Дальше"
+            manager.onRaceDiceNext = { [weak self] (_: [String: Any]) in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.showingDiceRoll = false
+                }
+            }
+            // Показать победителя/рандом победителя синхронно
+            manager.onRaceFinish = { [weak self] (payload: [String: Any]) in
+                guard let self = self else { return }
+                if let fins = payload["finishingParticipants"] as? [String] {
+                    self.finishingParticipants = fins
+                }
+                if let win = payload["winnerId"] as? String { self.winnerId = win }
+                // После того как локальная анимация завершится, UI покажет победителя автоматически
+            }
+            raceSocketManager = manager
+            manager.connectIfNeeded()
+        }
+    }
+
+    private func joinRaceRoomIfPossible() {
+        guard let raceId = raceId, let userId = trpcService.currentUser?.id else { return }
+        raceSocketManager?.joinRoom(raceId: raceId, userId: userId)
+        // Запросим актуальное состояние (если кто-то в комнате ответит)
+        raceSocketManager?.requestState(raceId: raceId)
     }
 
     private func generateRaceCells() {
@@ -200,12 +448,36 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         print("✅ makeMove() выполняется")
 
-        // Показываем экран кубиков перед выполнением хода
+        // Старт нового раунда броска
+        let roundId = UUID().uuidString
+        self.currentDiceRoundId = roundId
+        self.diceResults = [:]
         showingDiceRoll = true
+        isDiceInitiator = true
+
+        // Инициатор генерирует ОДИНСТВЕННЫЕ авторитетные результаты для всех участников
+        var generatedResults: [String: Int] = [:]
+        for participant in participants {
+            generatedResults[participant.id] = Int.random(in: 1...6)
+        }
+        // Фиксируем локально и сразу рассылаем всем
+        self.diceResults = generatedResults
+        if let raceId = raceId {
+            raceSocketManager?.emitDiceOpen(raceId: raceId, roundId: roundId)
+            raceSocketManager?.emitDiceResults(
+                raceId: raceId,
+                roundId: roundId,
+                diceResults: generatedResults
+            )
+        }
     }
 
     func executeMoveWithDiceResults(_ diceResults: [String: Int]) {
         guard let raceId = raceId else { return }
+
+        // Локально фиксируем результаты для инициатора, так как сервер шлёт "остальным"
+        self.diceResults = diceResults
+        self.showingDiceRoll = true
 
         print("🎲 executeMoveWithDiceResults() вызвана с результатами: \(diceResults)")
         print("🎲 Отправляем на сервер diceResults: \(diceResults)")
@@ -232,6 +504,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             "diceResults": diceResults,  // Отправляем все результаты кубиков
         ]
 
+        // Результаты уже были разосланы при открытии окна инициатором
+
         Task {
             do {
                 print("🌐 Отправляем запрос на сервер...")
@@ -251,10 +525,25 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                         self.winnerId = response.winnerId
                         print("🏁 Гонка завершена! Победитель: \(self.winnerId ?? "неизвестно")")
                         print("🏁 Финишировавшие участники: \(self.finishingParticipants)")
+
+                        // Сообщаем остальным о завершении гонки и победителе
+                        self.raceSocketManager?.emitFinish(
+                            raceId: raceId,
+                            finishingParticipants: self.finishingParticipants,
+                            winnerId: self.winnerId
+                        )
                     }
 
                     // Сначала обновляем данные после хода
                     self.refreshRaceAndStartAnimation(withPreviousPositions: currentPositions)
+                    // После успешного хода — уведомляем остальных через сокет, чтобы они обновились
+                    self.raceSocketManager?.emitRaceUpdate(
+                        raceId: raceId,
+                        payload: [
+                            "raceId": raceId,
+                            "updatedAt": Int(Date().timeIntervalSince1970),
+                        ]
+                    )
                     self.isLoading = false
                 }
             } catch {
@@ -265,6 +554,13 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                 }
             }
         }
+    }
+
+    func diceNext() {
+        if let raceId = race?.id {
+            raceSocketManager?.emitDiceNext(raceId: raceId)
+        }
+        showingDiceRoll = false
     }
 
     private func startAnimation(withPreviousPositions previousPositions: [String: Int]) {

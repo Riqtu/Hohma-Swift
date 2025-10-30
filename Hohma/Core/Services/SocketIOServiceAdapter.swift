@@ -96,7 +96,12 @@ class SocketIOServiceAdapter: ObservableObject {
     }
 
     func emit(_ event: SocketIOEvent, roomId: String, data: [String: Any]) {
-        socketService.emit(event, roomId: roomId, data: data)
+        if let v2Service = socketService as? SocketIOServiceV2 {
+            // Для совместимости с сервером отправляем (roomId, data) двумя аргументами
+            v2Service.emitToRoom(event, roomId: roomId, data: data)
+        } else {
+            socketService.emit(event, roomId: roomId, data: data)
+        }
     }
 
     func forceReconnect() {

@@ -30,6 +30,14 @@ enum SocketIOEvent: String, CaseIterable {
     case sectorUpdated = "sector:updated"
     case sectorCreated = "sector:created"
     case sectorRemoved = "sector:removed"
+    // Race events
+    case raceUpdate = "race:update"
+    case raceRequestState = "race:request:state"
+    case raceState = "race:state"
+    case raceDiceOpen = "race:dice:open"
+    case raceDiceResults = "race:dice:results"
+    case raceDiceNext = "race:dice:next"
+    case raceFinish = "race:finish"
 }
 
 // MARK: - Socket.IO Data Models (Shared with WheelState)

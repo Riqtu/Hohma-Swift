@@ -5,6 +5,9 @@ struct RaceDiceRollView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = RaceDiceRollViewModel()
     let participants: [RaceParticipant]
+    let initialDiceResults: [String: Int]
+    let isInitiator: Bool
+    let onNext: () -> Void
     let onDiceRollComplete: ([String: Int]) -> Void
     let onDismiss: () -> Void
 
@@ -44,8 +47,10 @@ struct RaceDiceRollView: View {
                 // Кнопка "Дальше"
                 if showContinueButton {
                     Button(action: {
-                        onDiceRollComplete(viewModel.diceResults)
-                        onDismiss()
+                        if isInitiator {
+                            onDiceRollComplete(viewModel.diceResults)
+                        }
+                        onNext() // синхронно закрываем всем
                     }) {
                         HStack {
                             Image(systemName: "arrow.right.circle.fill")
@@ -65,14 +70,29 @@ struct RaceDiceRollView: View {
             .padding(.vertical)
         }
         .onAppear {
-            startDiceAnimation()
+            // Все клиенты используют только авторитетные результаты из VM
+            if !initialDiceResults.isEmpty {
+                viewModel.diceResults = initialDiceResults
+                startDiceAnimation()
+            } else {
+                // ждём onChange(initialDiceResults)
+                isAnimating = false
+            }
+        }
+        .onChange(of: initialDiceResults.count) { _ in
+            // Если пришли результаты по сокету после открытия — применяем и запускаем анимацию
+            if !initialDiceResults.isEmpty && !isInitiator {
+                viewModel.diceResults = initialDiceResults
+                if !isAnimating { startDiceAnimation() }
+            }
         }
         .enableInjection()
     }
 
     private func startDiceAnimation() {
-        // Генерируем случайные значения кубиков для всех участников
-        viewModel.generateDiceResults(for: participants)
+        // Используем только переданные результаты для синхронности
+        guard !initialDiceResults.isEmpty || !viewModel.diceResults.isEmpty else { return }
+        if viewModel.diceResults.isEmpty { viewModel.diceResults = initialDiceResults }
 
         // Запускаем анимацию
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -165,6 +185,13 @@ struct ParticipantDiceRow: View {
         }
         .onChange(of: isAnimating) {
             if isAnimating && !hasStartedAnimation {
+                startDiceAnimation()
+            }
+        }
+        .onChange(of: diceValue) { newValue in
+            if hasStartedAnimation {
+                currentDiceValue = newValue
+            } else if isAnimating {
                 startDiceAnimation()
             }
         }
@@ -546,6 +573,9 @@ class RaceDiceRollViewModel: ObservableObject {
 
     return RaceDiceRollView(
         participants: [participant1, participant2],
+        initialDiceResults: [:],
+        isInitiator: true,
+        onNext: {},
         onDiceRollComplete: { _ in },
         onDismiss: {}
     )
