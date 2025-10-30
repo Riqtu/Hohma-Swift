@@ -154,13 +154,7 @@ struct RaceSceneView: View {
                 finishingParticipants: viewModel.finishingParticipants,
                 participants: viewModel.participants,
                 onWinnerSelected: { winnerId in
-                    // Показываем экран победителя
-                    if let winner = viewModel.participants.first(where: { $0.id == winnerId }) {
-                        // Здесь можно добавить логику для показа экрана победителя
-                        print(
-                            "🏆 Победитель выбран: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
-                        )
-                    }
+                    viewModel.setWinner(participantId: winnerId)
                 }
             )
         }

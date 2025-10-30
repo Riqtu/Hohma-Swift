@@ -208,6 +208,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
     private var raceId: String?
     private var raceSocketManager: RaceSocketManager?
+    // Флаг подавления показа экрана победителя до завершения анимации
+    @Published private var suppressWinnerPresentation: Bool = false
 
     init() {
         // Инициализация с пустыми данными для preview
@@ -270,29 +272,43 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     private func handleFinishedRace() {
-        // Находим победителя (участника с finalPosition = 1)
-        if let winner = participants.first(where: { $0.finalPosition == 1 }) {
+        // Предпочитаем победителя, зафиксированного на сервере
+        if let serverWinnerId = race?.winnerParticipantId,
+            let winner = participants.first(where: { $0.id == serverWinnerId })
+        {
             self.winnerId = winner.id
-            // Так как заходим в уже завершённую скачку из карточки,
-            // анимации не будет — сразу подготавливаем данные для экрана результатов
-            let finishers =
-                participants
-                .filter { ($0.finalPosition ?? 0) > 0 }
-                .sorted { ($0.finalPosition ?? Int.max) < ($1.finalPosition ?? Int.max) }
-                .map { $0.id }
-            self.finishingParticipants = finishers
-
-            // Если несколько участников финишировали, откроем выбор победителя,
-            // иначе сразу показываем экран победителя
-            if self.finishingParticipants.count > 1 {
-                self.showingWinnerSelection = true
-                self.raceFinished = true
-            } else {
-                self.raceFinished = true
-            }
             print(
-                "🏁 Гонка завершена! Победитель найден: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
+                "🏁 Гонка завершена! Победитель (с сервера): \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
             )
+        } else if let winner = participants.first(where: { $0.finalPosition == 1 }) {
+            self.winnerId = winner.id
+            print(
+                "🏁 Гонка завершена! Победитель по finalPosition: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
+            )
+        }
+
+        // Собираем список финишировавших
+        let finishers =
+            participants
+            .filter { ($0.finalPosition ?? 0) > 0 }
+            .sorted { ($0.finalPosition ?? Int.max) < ($1.finalPosition ?? Int.max) }
+            .map { $0.id }
+        self.finishingParticipants = finishers
+
+        // Презентацию результатов откладываем, если идет обновление перед анимацией
+        guard !suppressWinnerPresentation else { return }
+
+        // Если победитель уже определён — показываем результат сразу
+        if self.winnerId != nil {
+            self.raceFinished = true
+        } else if self.finishingParticipants.count > 1 {
+            // Несколько финишировали, победитель НЕ зафиксирован — открываем выбор и НЕ показываем экран победителя
+            self.showingWinnerSelection = true
+            self.raceFinished = false
+        } else if self.finishingParticipants.count == 1 {
+            // Единственный финишер — он победитель
+            self.winnerId = self.finishingParticipants.first
+            self.raceFinished = true
         }
 
         // Очищаем кэш аватарок при завершении скачки для освобождения памяти
@@ -563,6 +579,35 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         showingDiceRoll = false
     }
 
+    func setWinner(participantId: String) {
+        guard let raceId = race?.id else { return }
+        isLoading = true
+        Task {
+            do {
+                let _: SuccessResponse = try await trpcService.executePOST(
+                    endpoint: "race.setWinner",
+                    body: [
+                        "raceId": raceId,
+                        "winnerParticipantId": participantId,
+                    ]
+                )
+
+                await MainActor.run {
+                    self.winnerId = participantId
+                    self.showingWinnerSelection = false
+                    self.raceFinished = true
+                    self.isLoading = false
+                    self.refreshRace()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Ошибка выбора победителя: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
     private func startAnimation(withPreviousPositions previousPositions: [String: Int]) {
         print("🚀 startAnimation() вызвана")
         isAnimating = true
@@ -690,7 +735,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     self.animationStepProgress[participant.id] = 1.0
                 }
 
-                // Проверяем, завершилась ли гонка, и показываем экран победителя ПОСЛЕ анимации
+                // Разрешаем презентацию результатов и показываем победителя ПОСЛЕ анимации
+                self.suppressWinnerPresentation = false
                 self.checkAndShowWinnerAfterAnimation()
             }
         }
@@ -750,6 +796,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                 )
 
                 await MainActor.run {
+                    // Подавляем показ результатов до окончания анимации
+                    self.suppressWinnerPresentation = true
                     self.loadRace(response)
 
                     print("🎬 Запускаем анимацию движения...")

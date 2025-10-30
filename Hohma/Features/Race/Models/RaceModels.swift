@@ -151,6 +151,7 @@ struct Race: Codable, Identifiable {
     let maxPlayers: Int
     let entryFee: Int
     let prizePool: Int
+    let winnerParticipantId: String?
     let startTime: String?
     let endTime: String?
     let createdAt: String
@@ -164,6 +165,7 @@ struct Race: Codable, Identifiable {
         case id, name, status, isPrivate, theme, maxPlayers, entryFee, prizePool
         case startTime, endTime, createdAt, updatedAt, road, creator, participants
         case participantCount = "_count"
+        case winnerParticipantId
     }
 
     init(from decoder: Decoder) throws {
@@ -182,6 +184,7 @@ struct Race: Codable, Identifiable {
         maxPlayers = try container.decode(Int.self, forKey: .maxPlayers)
         entryFee = try container.decode(Int.self, forKey: .entryFee)
         prizePool = try container.decode(Int.self, forKey: .prizePool)
+        winnerParticipantId = try container.decodeIfPresent(String.self, forKey: .winnerParticipantId)
         // Handle startTime which might come as "<null>" string
         if let start = try? container.decodeIfPresent(String.self, forKey: .startTime) {
             startTime = start == "<null>" ? nil : start
@@ -217,7 +220,7 @@ struct Race: Codable, Identifiable {
         id: String, name: String, status: RaceStatus, isPrivate: Bool, theme: String,
         maxPlayers: Int, entryFee: Int, prizePool: Int, startTime: String?, endTime: String?,
         createdAt: String, updatedAt: String, road: Road, creator: RaceCreator,
-        participants: [RaceParticipant]?, participantCount: Int?
+        participants: [RaceParticipant]?, participantCount: Int?, winnerParticipantId: String?
     ) {
         self.id = id
         self.name = name
@@ -227,6 +230,7 @@ struct Race: Codable, Identifiable {
         self.maxPlayers = maxPlayers
         self.entryFee = entryFee
         self.prizePool = prizePool
+        self.winnerParticipantId = winnerParticipantId
         self.startTime = startTime
         self.endTime = endTime
         self.createdAt = createdAt
