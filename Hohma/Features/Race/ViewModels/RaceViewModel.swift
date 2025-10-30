@@ -41,6 +41,10 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var winnerId: String?
     @Published var showingWinnerSelection: Bool = false
 
+    // Состояние экрана кубиков
+    @Published var showingDiceRoll: Bool = false
+    @Published var diceResults: [String: Int] = [:]
+
     // Состояние анимации
     @Published var isAnimating: Bool = false
     @Published var animationProgress: Double = 0.0
@@ -116,12 +120,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Находим победителя (участника с finalPosition = 1)
         if let winner = participants.first(where: { $0.finalPosition == 1 }) {
             self.winnerId = winner.id
-            self.raceFinished = true
-
-            // Показываем экран победителя через небольшую задержку
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.raceFinished = true
-            }
+            // НЕ устанавливаем raceFinished = true сразу
+            // Экран победителя будет показан после завершения анимации
+            print(
+                "🏁 Гонка завершена! Победитель найден: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
+            )
         }
 
         // Очищаем кэш аватарок при завершении скачки для освобождения памяти
@@ -173,7 +176,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     private func updateGameState() {
         guard let race = race else { return }
 
-        // Все участники могут делать ход одновременно, если скачка активна
+        // Все участники могут делать ход, если скачка активна
+        // Сервер сам определит, кто должен пропустить ход
         canMakeMove =
             race.status == .running && currentUserParticipant != nil
             && !(currentUserParticipant?.isFinished ?? true)
@@ -181,11 +185,13 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         // Определяем, очередь ли текущего пользователя (упрощенная логика)
         isMyTurn = canMakeMove
+
+        print("🎮 Любой участник может инициировать ход всех участников")
     }
 
     func makeMove() {
         print("🎲 makeMove() вызвана")
-        guard canMakeMove, let raceId = raceId, !isAnimating else {
+        guard canMakeMove, raceId != nil, !isAnimating else {
             print(
                 "❌ makeMove() заблокирована: canMakeMove=\(canMakeMove), raceId=\(raceId != nil), isAnimating=\(isAnimating)"
             )
@@ -193,6 +199,16 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         }
 
         print("✅ makeMove() выполняется")
+
+        // Показываем экран кубиков перед выполнением хода
+        showingDiceRoll = true
+    }
+
+    func executeMoveWithDiceResults(_ diceResults: [String: Int]) {
+        guard let raceId = raceId else { return }
+
+        print("🎲 executeMoveWithDiceResults() вызвана с результатами: \(diceResults)")
+        print("🎲 Отправляем на сервер diceResults: \(diceResults)")
         isLoading = true
         errorMessage = nil
 
@@ -202,14 +218,18 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         print("📍 Сохранены текущие позиции: \(currentPositions)")
 
-        // Генерируем случайный бросок кубика (1-6) для всех участников
-        let diceRoll = Int.random(in: 1...6)
+        // Используем результат кубика для текущего пользователя
+        let currentUserParticipantId = currentUserParticipant?.id
+        let diceRoll = diceResults[currentUserParticipantId ?? ""] ?? Int.random(in: 1...6)
         self.diceRoll = diceRoll
-        print("🎲 Бросок кубика: \(diceRoll)")
+        print(
+            "🎲 Бросок кубика для текущего пользователя (participantId: \(currentUserParticipantId ?? "nil")): \(diceRoll)"
+        )
 
         let request: [String: Any] = [
             "raceId": raceId,
             "diceRoll": diceRoll,
+            "diceResults": diceResults,  // Отправляем все результаты кубиков
         ]
 
         Task {
@@ -226,19 +246,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
                     // Проверяем, завершилась ли гонка
                     if response.raceFinished {
-                        self.raceFinished = true
+                        // Сохраняем информацию о завершении, но НЕ показываем экран победителя сразу
                         self.finishingParticipants = response.finishingParticipants ?? []
                         self.winnerId = response.winnerId
-
-                        // Если несколько участников финишировали одновременно, показываем экран выбора победителя
-                        if self.finishingParticipants.count > 1 {
-                            self.showingWinnerSelection = true
-                        } else {
-                            // Если один участник финишировал, сразу показываем экран победителя
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                                self?.raceFinished = true
-                            }
-                        }
+                        print("🏁 Гонка завершена! Победитель: \(self.winnerId ?? "неизвестно")")
+                        print("🏁 Финишировавшие участники: \(self.finishingParticipants)")
                     }
 
                     // Сначала обновляем данные после хода
@@ -381,7 +393,32 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     self.isJumping[participant.id] = false
                     self.animationStepProgress[participant.id] = 1.0
                 }
+
+                // Проверяем, завершилась ли гонка, и показываем экран победителя ПОСЛЕ анимации
+                self.checkAndShowWinnerAfterAnimation()
             }
+        }
+    }
+
+    private func checkAndShowWinnerAfterAnimation() {
+        // Проверяем, есть ли информация о завершении гонки
+        guard !finishingParticipants.isEmpty, winnerId != nil else {
+            print("🏁 Анимация завершена, но гонка не завершена")
+            return
+        }
+
+        print("🏁 Анимация завершена! Показываем экран победителя")
+
+        // Устанавливаем флаг завершения гонки
+        self.raceFinished = true
+
+        // Если несколько участников финишировали одновременно, показываем экран выбора победителя
+        if self.finishingParticipants.count > 1 {
+            print("🏁 Несколько участников финишировали, показываем экран выбора победителя")
+            self.showingWinnerSelection = true
+        } else {
+            print("🏁 Один участник финишировал, показываем экран победителя")
+            // Экран победителя уже будет показан через raceFinished = true
         }
     }
 

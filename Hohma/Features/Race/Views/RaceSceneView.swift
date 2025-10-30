@@ -164,6 +164,17 @@ struct RaceSceneView: View {
                 }
             )
         }
+        .fullScreenCover(isPresented: $viewModel.showingDiceRoll) {
+            RaceDiceRollView(
+                participants: viewModel.participants,
+                onDiceRollComplete: { diceResults in
+                    viewModel.executeMoveWithDiceResults(diceResults)
+                },
+                onDismiss: {
+                    viewModel.showingDiceRoll = false
+                }
+            )
+        }
         .fullScreenCover(isPresented: $viewModel.raceFinished) {
             if let winnerId = viewModel.winnerId,
                 let winner = viewModel.participants.first(where: { $0.id == winnerId }),
@@ -256,6 +267,22 @@ struct RaceSceneView: View {
                 }
                 .disabled(!viewModel.canMakeMove || viewModel.isLoading || viewModel.isAnimating)
                 .padding(.horizontal)
+
+                // Показываем дополнительную информацию о состоянии
+                if !viewModel.canMakeMove && viewModel.race?.status == .running {
+                    VStack(spacing: 4) {
+                        if viewModel.currentUserParticipant?.isFinished == true {
+                            HStack {
+                                Image(systemName: "flag.checkered")
+                                    .foregroundColor(.green)
+                                Text("Вы финишировали")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
             }
         }
         .padding(.vertical)

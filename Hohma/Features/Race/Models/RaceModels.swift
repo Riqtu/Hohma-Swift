@@ -284,6 +284,8 @@ struct RaceParticipant: Codable, Identifiable {
     let totalMoves: Int
     let boostUsed: Int
     let obstaclesHit: Int
+    let skipNextTurn: Bool
+    let bonusSteps: Int
     let finalPosition: Int?
     let prize: Int?
     let isFinished: Bool
@@ -293,6 +295,7 @@ struct RaceParticipant: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, currentPosition, totalMoves, boostUsed, obstaclesHit
+        case skipNextTurn, bonusSteps
         case finalPosition, prize, isFinished, joinedAt, finishedAt, user
         case raceId = "raceId"
         case userId = "userId"
@@ -343,6 +346,22 @@ struct RaceParticipant: Codable, Identifiable {
             obstaclesHit = Int(obstaclesHitString) ?? 0
         } else {
             obstaclesHit = 0
+        }
+
+        // Handle skipNextTurn which might come as integer (0/1) or boolean
+        if let skipInt = try? container.decode(Int.self, forKey: .skipNextTurn) {
+            skipNextTurn = skipInt != 0
+        } else {
+            skipNextTurn = try container.decodeIfPresent(Bool.self, forKey: .skipNextTurn) ?? false
+        }
+
+        // Handle bonusSteps which might come as Int or String
+        if let bonusStepsInt = try? container.decode(Int.self, forKey: .bonusSteps) {
+            bonusSteps = bonusStepsInt
+        } else if let bonusStepsString = try? container.decode(String.self, forKey: .bonusSteps) {
+            bonusSteps = Int(bonusStepsString) ?? 0
+        } else {
+            bonusSteps = 0
         }
 
         // Handle isFinished which might come as integer (0/1)
@@ -572,6 +591,8 @@ struct MakeMoveParticipant: Codable {
     let totalMoves: Int
     let boostUsed: Int
     let obstaclesHit: Int
+    let skipNextTurn: Bool
+    let bonusSteps: Int
     let finalPosition: Int?
     let prize: Int?
     let isFinished: Bool
@@ -580,6 +601,7 @@ struct MakeMoveParticipant: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id, currentPosition, totalMoves, boostUsed, obstaclesHit
+        case skipNextTurn, bonusSteps
         case finalPosition, prize, isFinished, joinedAt, finishedAt
         case raceId = "raceId"
         case userId = "userId"
@@ -626,6 +648,22 @@ struct MakeMoveParticipant: Codable {
             obstaclesHit = Int(obstaclesHitString) ?? 0
         } else {
             obstaclesHit = 0
+        }
+
+        // Handle skipNextTurn which might come as integer (0/1) or boolean
+        if let skipInt = try? container.decode(Int.self, forKey: .skipNextTurn) {
+            skipNextTurn = skipInt != 0
+        } else {
+            skipNextTurn = try container.decodeIfPresent(Bool.self, forKey: .skipNextTurn) ?? false
+        }
+
+        // Handle bonusSteps which might come as Int or String
+        if let bonusStepsInt = try? container.decode(Int.self, forKey: .bonusSteps) {
+            bonusSteps = bonusStepsInt
+        } else if let bonusStepsString = try? container.decode(String.self, forKey: .bonusSteps) {
+            bonusSteps = Int(bonusStepsString) ?? 0
+        } else {
+            bonusSteps = 0
         }
 
         if let finishedInt = try? container.decode(Int.self, forKey: .isFinished) {

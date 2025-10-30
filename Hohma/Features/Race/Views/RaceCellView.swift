@@ -40,6 +40,7 @@ struct RaceCellView: View {
                 x: 0,
                 y: shouldShowParticipant && isAnimating ? 3 : 2
             )
+            .overlay(cellEffectOverlay)
             .animation(.easeInOut(duration: 0.15), value: shouldShowParticipant)
             .animation(.easeInOut(duration: 0.15), value: isAnimating)
     }
@@ -301,13 +302,16 @@ struct RaceCellView: View {
             }
         }
 
+        // Специальные эффекты для полей с новыми механиками
         switch cellData.type {
         case .normal:
             return .gray.opacity(0.9)
         case .boost:
-            return .green.opacity(0.3)
+            // Зеленое поле с эффектом "ускорения"
+            return .green.opacity(0.4)
         case .obstacle:
-            return .red.opacity(0.3)
+            // Красное поле с эффектом "препятствия"
+            return .red.opacity(0.4)
         case .bonus:
             return .yellow.opacity(0.3)
         case .finish:
@@ -342,6 +346,40 @@ struct RaceCellView: View {
             return .yellow
         case .finish:
             return .purple
+        }
+    }
+
+    // MARK: - Special Effects
+    private var cellEffectOverlay: some View {
+        Group {
+            switch cellData.type {
+            case .boost:
+                // Анимированное свечение для зеленого поля
+                Rectangle()
+                    .fill(.green.opacity(0.3))
+                    .frame(width: 25, height: 25)
+                    .cornerRadius(5)
+                    .scaleEffect(1.0)
+                    .opacity(0.6)
+                    .animation(
+                        .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                        value: UUID() // Запускаем анимацию при создании
+                    )
+            case .obstacle:
+                // Пульсирующий эффект для красного поля
+                Rectangle()
+                    .fill(.red.opacity(0.2))
+                    .frame(width: 25, height: 25)
+                    .cornerRadius(5)
+                    .scaleEffect(1.1)
+                    .opacity(0.4)
+                    .animation(
+                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                        value: UUID() // Запускаем анимацию при создании
+                    )
+            default:
+                EmptyView()
+            }
         }
     }
 }
