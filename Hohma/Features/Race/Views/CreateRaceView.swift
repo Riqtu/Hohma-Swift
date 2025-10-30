@@ -38,7 +38,7 @@ struct CreateRaceView: View {
                 }
 
                 Section("Настройки") {
-                    Stepper("Максимум игроков: \(maxPlayers)", value: $maxPlayers, in: 2...8)
+                    Stepper("Максимум игроков: \(maxPlayers)", value: $maxPlayers, in: 2...12)
 
                     Stepper(
                         "Взнос: \(entryFee) монет", value: $entryFee, in: 0...1000, step: 10)
@@ -118,7 +118,7 @@ struct CreateRaceView: View {
 
     private var isFormValid: Bool {
         !raceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoad != nil
-            && maxPlayers >= 2 && maxPlayers <= 8
+            && maxPlayers >= 2 && maxPlayers <= 12
     }
 
     private func createRace() {

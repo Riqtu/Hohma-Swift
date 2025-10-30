@@ -43,7 +43,8 @@
 		<string>LuckiestGuy-Regular.ttf</string>
 	</array>
 	<key>WS_URL</key>
-	<string>https://ws.hohma.su</string>
+	<!-- <string>https://ws.hohma.su</string> -->
+	<string>https://api.riqtu.ru</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
