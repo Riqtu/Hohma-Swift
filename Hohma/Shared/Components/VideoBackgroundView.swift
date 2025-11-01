@@ -18,10 +18,12 @@ import SwiftUI
         let playerLayer: AVPlayerLayer
         private var timeObserver: Any?
         private var playerItemObserver: NSKeyValueObservation?
+        private var didPlayToEndObserver: NSObjectProtocol?
         private var isVisible: Bool = true
         private var isLoading: Bool = false
         private var isExternalURL: Bool = false
         private var isMuted: Bool = true
+        private var hasPlayedBefore: Bool = false
 
         init(player: AVPlayer, isMuted: Bool = true) {
             self.playerLayer = AVPlayerLayer(player: player)
@@ -50,13 +52,7 @@ import SwiftUI
             }
 
             setupPlayerObservers()
-
-            // Принудительно запускаем воспроизведение
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if player.currentItem?.status == .readyToPlay {
-                    player.play()
-                }
-            }
+            startPlaybackIfReady()
         }
 
         required init?(coder: NSCoder) { fatalError() }
@@ -72,57 +68,122 @@ import SwiftUI
             }
             playerItemObserver?.invalidate()
             playerItemObserver = nil
+            
+            if let didPlayToEndObserver = didPlayToEndObserver {
+                NotificationCenter.default.removeObserver(didPlayToEndObserver)
+                self.didPlayToEndObserver = nil
+            }
         }
 
-        private func setupPlayerObservers() {
+        func setupPlayerObservers() {
+            // Очищаем только observer'ы, которые будем пересоздавать
+            if let timeObserver = timeObserver {
+                playerLayer.player?.removeTimeObserver(timeObserver)
+                self.timeObserver = nil
+            }
+            playerItemObserver?.invalidate()
+            playerItemObserver = nil
+            
+            if let didPlayToEndObserver = didPlayToEndObserver {
+                NotificationCenter.default.removeObserver(didPlayToEndObserver)
+                self.didPlayToEndObserver = nil
+            }
+            
             // Observer для отслеживания состояния playerItem
             playerItemObserver = playerLayer.player?.currentItem?.observe(\.status, options: [.new])
             {
                 [weak self] item, _ in
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    
                     switch item.status {
                     case .readyToPlay:
-                        self?.isLoading = false
-                        self?.playerLayer.player?.play()
-
+                        self.isLoading = false
+                        // Запускаем воспроизведение только если view видим
+                        if self.isVisible {
+                            self.startPlaybackIfReady()
+                        }
                         // Принудительно обновляем layout
-                        self?.setNeedsLayout()
-                        self?.layoutSubviews()
+                        self.setNeedsLayout()
+                        self.layoutSubviews()
                     case .failed:
-                        self?.isLoading = false
+                        self.isLoading = false
                         // Обработка ошибок для внешних URL
                         if let error = item.error {
                             print("❌ Ошибка воспроизведения видео: \(error)")
                             // Для внешних URL можно попробовать перезагрузить
-                            if let self = self, self.isExternalURL {
+                            if self.isExternalURL {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                                     self.retryLoading()
                                 }
                             }
                         }
                     case .unknown:
-                        self?.isLoading = true
+                        self.isLoading = true
                         break
                     @unknown default:
-                        self?.isLoading = false
+                        self.isLoading = false
                         break
                     }
                 }
             }
 
             // Observer для зацикливания
-            NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: playerLayer.player?.currentItem,
-                queue: .main
-            ) { [weak self] _ in
-                self?.playerLayer.player?.seek(to: .zero)
-                self?.playerLayer.player?.play()
+            if let playerItem = playerLayer.player?.currentItem {
+                didPlayToEndObserver = NotificationCenter.default.addObserver(
+                    forName: .AVPlayerItemDidPlayToEndTime,
+                    object: playerItem,
+                    queue: .main
+                ) { [weak self] _ in
+                    guard let self = self, self.isVisible else { return }
+                    // Перематываем на начало и перезапускаем
+                    self.playerLayer.player?.seek(to: .zero) { [weak self] finished in
+                        if finished {
+                            self?.playerLayer.player?.play()
+                        }
+                    }
+                }
             }
 
             // Проверяем текущий статус
-            if let player = playerLayer.player, player.currentItem?.status == .readyToPlay {
-                player.play()
+            startPlaybackIfReady()
+        }
+        
+        private func startPlaybackIfReady() {
+            guard isVisible else { return }
+            
+            guard let player = playerLayer.player else { return }
+            
+            // Проверяем статус playerItem
+            guard let playerItem = player.currentItem else { return }
+            
+            if playerItem.status == .readyToPlay {
+                // Если видео уже играло и было остановлено, перематываем на начало
+                let currentTime = player.currentTime()
+                let duration = playerItem.duration
+                
+                // Проверяем, дошло ли видео до конца или почти до конца
+                if hasPlayedBefore && !currentTime.isIndefinite && !duration.isIndefinite {
+                    let currentSeconds = CMTimeGetSeconds(currentTime)
+                    let durationSeconds = CMTimeGetSeconds(duration)
+                    
+                    // Если видео доиграло до конца или почти до конца (в пределах 0.5 секунды)
+                    if currentSeconds >= durationSeconds - 0.5 || currentSeconds >= durationSeconds {
+                        player.seek(to: .zero) { [weak self] finished in
+                            guard let self = self else { return }
+                            if finished {
+                                self.playerLayer.player?.play()
+                            }
+                        }
+                        return
+                    }
+                }
+                
+                // Если видео не играло или находится не в конце, просто запускаем
+                if player.timeControlStatus != .playing {
+                    player.play()
+                    hasPlayedBefore = true
+                }
             }
         }
 
@@ -162,11 +223,25 @@ import SwiftUI
         }
 
         func setVisible(_ visible: Bool) {
+            let wasVisible = isVisible
             isVisible = visible
+            
+            guard let player = playerLayer.player else { return }
+            
             if visible {
-                playerLayer.player?.play()
+                // Когда view становится видимым, запускаем воспроизведение
+                if !wasVisible {
+                    // Если view стал видимым после того, как был скрыт, перезапускаем
+                    startPlaybackIfReady()
+                } else {
+                    // Если view уже был видимым, просто продолжаем воспроизведение
+                    if player.timeControlStatus != .playing {
+                        player.play()
+                    }
+                }
             } else {
-                playerLayer.player?.pause()
+                // Когда view скрывается, останавливаем воспроизведение
+                player.pause()
             }
         }
     }
@@ -174,28 +249,36 @@ import SwiftUI
     struct VideoBackgroundView: UIViewRepresentable {
         let player: AVPlayer
         let isMuted: Bool
+        var isVisible: Bool = true
 
-        init(player: AVPlayer, isMuted: Bool = true) {
+        init(player: AVPlayer, isMuted: Bool = true, isVisible: Bool = true) {
             self.player = player
             self.isMuted = isMuted
+            self.isVisible = isVisible
         }
 
         func makeUIView(context: Context) -> VideoPlayerView {
             let view = VideoPlayerView(player: player, isMuted: isMuted)
+            context.coordinator.view = view
+            context.coordinator.isVisible = isVisible
+            view.setVisible(isVisible)
             return view
         }
 
         func updateUIView(_ uiView: VideoPlayerView, context: Context) {
+            context.coordinator.view = uiView
+            
+            // Обновляем видимость
+            if context.coordinator.isVisible != isVisible {
+                context.coordinator.isVisible = isVisible
+                uiView.setVisible(isVisible)
+            }
+            
             // Обновляем плеер если нужно
             if uiView.playerLayer.player !== player {
                 uiView.playerLayer.player = player
-
-                // Принудительно запускаем воспроизведение
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    if player.currentItem?.status == .readyToPlay {
-                        player.play()
-                    }
-                }
+                // Переустанавливаем наблюдатели при смене плеера
+                uiView.setupPlayerObservers()
             }
 
             // Принудительно обновляем layout
@@ -203,6 +286,20 @@ import SwiftUI
                 uiView.setNeedsLayout()
                 uiView.layoutSubviews()
             }
+        }
+        
+        func makeCoordinator() -> Coordinator {
+            Coordinator()
+        }
+        
+        class Coordinator {
+            weak var view: VideoPlayerView?
+            var isVisible: Bool = true
+        }
+        
+        static func dismantleUIView(_ uiView: VideoPlayerView, coordinator: Coordinator) {
+            coordinator.isVisible = false
+            uiView.setVisible(false)
         }
     }
 

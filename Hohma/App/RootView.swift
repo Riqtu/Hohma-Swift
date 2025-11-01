@@ -46,7 +46,7 @@ struct RootView: View {
                                         print("🔄 RootView: Navigating to settings")
                                     }
                             default:
-                                HomeView()
+                                HomeView(user: authViewModel.user)
                                     .onAppear {
                                         print("🔄 RootView: Navigating to home")
                                     }
@@ -57,28 +57,11 @@ struct RootView: View {
                 } else {
                     TabView(selection: $selection) {
 
-                        HomeView().withAppBackground()
+                        HomeView(user: authViewModel.user).withAppBackground()
                             .tabItem {
                                 Label("Главная", systemImage: "house")
                             }
                             .tag("home")
-                        NavigationStack {
-                            WheelListView(user: authViewModel.user)
-                                .withAppBackground()
-                        }
-                        .tabItem {
-                            Label("Колесо", systemImage: "theatermasks.circle")
-                        }
-                        .tag("wheelList")
-
-                        NavigationStack {
-                            RaceListView()
-                                .withAppBackground()
-                        }
-                        .tabItem {
-                            Label("Скачки", systemImage: "trophy")
-                        }
-                        .tag("race")
 
                         NavigationStack {
                             ChatListView()
@@ -159,17 +142,56 @@ struct RootView: View {
                     print("🔄 RootView: Current selection: \(self.selection)")
                     print(
                         "🔄 RootView: Mapped destination '\(destination)' to '\(mappedDestination)'")
-                    self.selection = mappedDestination
-                    print("🔄 RootView: New selection set to: \(self.selection)")
 
-                    // Если это принудительная навигация, добавляем дополнительную задержку
-                    if isForce {
-                        print("🔄 RootView: Force navigation - adding additional delay")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            self.selection = mappedDestination
+                    // Для iPhone (TabView): wheelList и race больше не существуют в табах,
+                    // поэтому переключаемся на home, а навигация произойдёт через NavigationStack в HomeView
+                    // Для iPad (NavigationSplitView): переключаем selection как обычно
+                    if self.isSidebarPreferred {
+                        // iPad: переключаем selection для NavigationSplitView
+                        self.selection = mappedDestination
+                        print("🔄 RootView: New selection set to: \(self.selection)")
+
+                        // Если это принудительная навигация, добавляем дополнительную задержку
+                        if isForce {
+                            print("🔄 RootView: Force navigation - adding additional delay")
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                self.selection = mappedDestination
+                                print(
+                                    "🔄 RootView: Force navigation - selection set again to: \(self.selection)"
+                                )
+                            }
+                        }
+                    } else {
+                        // iPhone: переключаем selection только для существующих вкладок
+                        // wheelList и race обрабатываются через NavigationStack в HomeView
+                        if mappedDestination == "wheelList" || mappedDestination == "race" {
+                            // Оставляем на home, HomeView сам обработает навигацию через NavigationPath
                             print(
-                                "🔄 RootView: Force navigation - selection set again to: \(self.selection)"
+                                "🔄 RootView: iPhone - навигация будет обработана в HomeView через NavigationStack"
                             )
+                            // Убедимся, что мы на вкладке home
+                            if self.selection != "home" {
+                                self.selection = "home"
+                                // Добавляем небольшую задержку перед отправкой уведомления в HomeView
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    // HomeView уже обработает уведомление через onReceive
+                                }
+                            }
+                        } else {
+                            // Для остальных вкладок переключаем как обычно
+                            self.selection = mappedDestination
+                            print("🔄 RootView: New selection set to: \(self.selection)")
+
+                            // Если это принудительная навигация, добавляем дополнительную задержку
+                            if isForce {
+                                print("🔄 RootView: Force navigation - adding additional delay")
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    self.selection = mappedDestination
+                                    print(
+                                        "🔄 RootView: Force navigation - selection set again to: \(self.selection)"
+                                    )
+                                }
+                            }
                         }
                     }
                 }

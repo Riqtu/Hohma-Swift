@@ -15,6 +15,7 @@ enum PushNotificationType: String, CaseIterable {
     case newComment = "new_comment"
     case wheelInvitation = "wheel_invitation"
     case wheelResult = "wheel_result"
+    case chatMessage = "chat_message"
     case general = "general"
 
     var title: String {
@@ -29,6 +30,8 @@ enum PushNotificationType: String, CaseIterable {
             return "Приглашение в колесо"
         case .wheelResult:
             return "Результат колеса"
+        case .chatMessage:
+            return "Новое сообщение"
         case .general:
             return "Уведомление"
         }
@@ -41,6 +44,8 @@ enum PushNotificationType: String, CaseIterable {
         case .newLike, .newComment:
             return UNNotificationSound.default
         case .wheelInvitation, .wheelResult:
+            return UNNotificationSound.default
+        case .chatMessage:
             return UNNotificationSound.default
         case .general:
             return UNNotificationSound.default
@@ -239,6 +244,7 @@ class PushNotificationService: NSObject, ObservableObject {
         let categories: Set<UNNotificationCategory> = [
             createFollowerCategory(),
             createWheelCategory(),
+            createChatCategory(),
             createGeneralCategory(),
         ]
 
@@ -282,6 +288,21 @@ class PushNotificationService: NSObject, ObservableObject {
         return UNNotificationCategory(
             identifier: PushNotificationType.wheelInvitation.rawValue,
             actions: [joinAction, viewResultAction],
+            intentIdentifiers: [],
+            options: []
+        )
+    }
+
+    private func createChatCategory() -> UNNotificationCategory {
+        let openChatAction = UNNotificationAction(
+            identifier: "OPEN_CHAT_ACTION",
+            title: "Открыть чат",
+            options: [.foreground]
+        )
+
+        return UNNotificationCategory(
+            identifier: PushNotificationType.chatMessage.rawValue,
+            actions: [openChatAction],
             intentIdentifiers: [],
             options: []
         )
@@ -482,6 +503,16 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
         handleNotificationTap(userInfo: userInfo)
     }
 
+    private func navigateToChat(chatId: String) {
+        // Навигация к чату
+        print("📱 PushNotificationService: Navigating to chat \(chatId)")
+        NotificationCenter.default.post(
+            name: .navigationRequested,
+            object: nil,
+            userInfo: ["destination": "chat", "chatId": chatId]
+        )
+    }
+
     private func handleNotificationTap(userInfo: [AnyHashable: Any]) {
         // Обработка нажатия на уведомление
         print("📱 PushNotificationService: Notification tapped")
@@ -497,6 +528,10 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
                 PushNotificationType.wheelResult.rawValue:
                 if let wheelId = userInfo["wheelId"] as? String {
                     navigateToWheel(wheelId: wheelId)
+                }
+            case PushNotificationType.chatMessage.rawValue:
+                if let chatId = userInfo["chatId"] as? String {
+                    navigateToChat(chatId: chatId)
                 }
             default:
                 // Общая навигация

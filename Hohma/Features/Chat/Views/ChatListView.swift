@@ -7,11 +7,13 @@
 
 import Inject
 import SwiftUI
+import Foundation
 
 struct ChatListView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = ChatListViewModel()
     @State private var selectedChat: Chat?
+    @State private var chatToDelete: Chat? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,6 +63,57 @@ struct ChatListView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        .alert("Удалить чат?", isPresented: .constant(chatToDelete != nil)) {
+            Button("Отмена", role: .cancel) {
+                chatToDelete = nil
+            }
+            Button("Удалить", role: .destructive) {
+                if let chat = chatToDelete {
+                    viewModel.deleteChat(chatId: chat.id)
+                    chatToDelete = nil
+                }
+            }
+        } message: {
+            Text("Вы уверены, что хотите удалить этот чат? Все сообщения будут удалены.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) { notification in
+            // Обрабатываем навигацию к конкретному чату
+            if let destination = notification.userInfo?["destination"] as? String,
+               destination == "chat",
+               let chatId = notification.userInfo?["chatId"] as? String
+            {
+                print("💬 ChatListView: Navigation requested to chat \(chatId)")
+                
+                // Ищем чат в загруженных чатах
+                if let chat = viewModel.chats.first(where: { $0.id == chatId }) {
+                    selectedChat = chat
+                } else {
+                    // Если чат не найден, загружаем его по ID
+                    Task {
+                        await loadChatById(chatId: chatId)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            viewModel.loadChats()
+        }
+    }
+    
+    // MARK: - Helper Methods
+    private func loadChatById(chatId: String) async {
+        do {
+            let chat = try await ChatService.shared.getChatById(chatId: chatId)
+            await MainActor.run {
+                // Добавляем чат в список, если его там нет
+                if !viewModel.chats.contains(where: { $0.id == chatId }) {
+                    viewModel.chats.insert(chat, at: 0)
+                }
+                selectedChat = chat
+            }
+        } catch {
+            print("❌ ChatListView: Failed to load chat by ID: \(error)")
+        }
     }
 
     // MARK: - Search Bar
@@ -101,6 +154,13 @@ struct ChatListView: View {
                 ChatCellView(chat: chat)
                     .contentShape(Rectangle())
                     .listRowBackground(Color.clear)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            chatToDelete = chat
+                        } label: {
+                            Label("Удалить", systemImage: "trash")
+                        }
+                    }
                     .onTapGesture {
                         selectedChat = chat
                     }

@@ -13,6 +13,8 @@ final class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isLoading: Bool = false
     @Published var isLoadingMessages: Bool = false
+    @Published var isLoadingMoreMessages: Bool = false  // Для загрузки предыдущих сообщений
+    @Published var hasMoreMessages: Bool = true  // Есть ли еще сообщения для загрузки
     @Published var isSending: Bool = false
     @Published var errorMessage: String?
     @Published var isTyping: Bool = false
@@ -25,6 +27,7 @@ final class ChatViewModel: ObservableObject {
     private var chatId: String?
     private var typingTimer: Timer?
     private var lastTypingTime: Date?
+    private let messagesPageSize = 30  // Размер страницы при загрузке
 
     init() {
         setupSocketAdapter()
@@ -94,6 +97,14 @@ final class ChatViewModel: ObservableObject {
         manager.onMemberOffline = { userId in
             print("💬 ChatViewModel: Member \(userId) went offline")
         }
+
+        manager.onMessageDeleted = { [weak self] messageId in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // Удаляем сообщение из списка при получении события через Socket.IO
+                self.messages.removeAll { $0.id == messageId }
+            }
+        }
     }
 
     // MARK: - Chat Loading
@@ -126,14 +137,20 @@ final class ChatViewModel: ObservableObject {
 
         Task {
             isLoadingMessages = true
+            hasMoreMessages = true  // Сбрасываем флаг при новой загрузке
 
             do {
                 let loadedMessages = try await chatService.getMessages(
                     chatId: chatId,
-                    limit: 50,
+                    limit: messagesPageSize,
                     before: nil
                 )
                 self.messages = loadedMessages.sorted { $0.createdAt < $1.createdAt }
+                
+                // Если загрузили меньше чем запросили, значит больше нет сообщений
+                if loadedMessages.count < messagesPageSize {
+                    hasMoreMessages = false
+                }
 
                 // Отмечаем как прочитанное
                 markAsRead()
@@ -143,6 +160,54 @@ final class ChatViewModel: ObservableObject {
             }
 
             isLoadingMessages = false
+        }
+    }
+
+    // MARK: - Load More Messages (Pagination)
+    
+    func loadMoreMessages() {
+        guard let chatId = chatId,
+              !isLoadingMoreMessages,
+              !isLoadingMessages,
+              hasMoreMessages,
+              let firstMessage = messages.first
+        else { return }
+
+        Task {
+            isLoadingMoreMessages = true
+
+            do {
+                let loadedMessages = try await chatService.getMessages(
+                    chatId: chatId,
+                    limit: messagesPageSize,
+                    before: firstMessage.id
+                )
+                
+                // Если загрузили меньше чем запросили, значит больше нет сообщений
+                if loadedMessages.count < messagesPageSize {
+                    hasMoreMessages = false
+                }
+                
+                // Добавляем новые сообщения в начало списка и сортируем
+                let combinedMessages = (loadedMessages + messages).sorted { $0.createdAt < $1.createdAt }
+                
+                // Убираем дубликаты по ID
+                var uniqueMessages: [ChatMessage] = []
+                var seenIds: Set<String> = []
+                for message in combinedMessages {
+                    if !seenIds.contains(message.id) {
+                        uniqueMessages.append(message)
+                        seenIds.insert(message.id)
+                    }
+                }
+                
+                self.messages = uniqueMessages.sorted { $0.createdAt < $1.createdAt }
+            } catch {
+                errorMessage = error.localizedDescription
+                print("❌ ChatViewModel: Failed to load more messages: \(error)")
+            }
+
+            isLoadingMoreMessages = false
         }
     }
 

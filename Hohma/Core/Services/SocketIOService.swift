@@ -44,6 +44,7 @@ enum SocketIOEvent: String, CaseIterable {
     case chatTyping = "chat:typing"
     case chatMessage = "chat:message"
     case chatMessageUpdated = "chat:message:updated"
+    case chatMessageDeleted = "chat:message:deleted"
     case chatMemberOnline = "chat:member:online"
     case chatMemberOffline = "chat:member:offline"
 }

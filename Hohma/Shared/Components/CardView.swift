@@ -16,6 +16,7 @@ struct CardView: View {
     @State private var playerObserver: NSKeyValueObservation?
     @State private var isPressed: Bool = false
     @State private var isHovered: Bool = false
+    @State private var isVideoVisible: Bool = true
 
     let title: String
     let description: String
@@ -33,23 +34,23 @@ struct CardView: View {
                 // Показываем либо видео, либо картинку, либо ничего
                 Group {
                     if let player = player ?? videoPlayer, isVideoReady {
-                        VideoBackgroundView(player: player)
+                        VideoBackgroundView(player: player, isVisible: isVideoVisible)
                     } else if let imageName, !imageName.isEmpty {
                         Image(imageName)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     }
                 }
-                .frame(height: 180)
+                .frame(height: 100)
                 .frame(maxWidth: .infinity)
                 .clipped()
 
                 Text(title)
-                    .font(.title2.bold())
+                    .font(.title3.bold())
                     .foregroundColor(.primary)
                     .padding(.horizontal)
                 Text(description)
-                    .font(.body)
+                    .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
                 Spacer(minLength: 0)
@@ -77,9 +78,11 @@ struct CardView: View {
         .accessibilityLabel("Карточка: \(title)")
         .accessibilityHint("Нажмите для перехода к \(title)")
         .onAppear {
+            isVideoVisible = true
             setupVideoIfNeeded()
         }
         .onDisappear {
+            isVideoVisible = false
             cleanupVideo()
         }
         .enableInjection()

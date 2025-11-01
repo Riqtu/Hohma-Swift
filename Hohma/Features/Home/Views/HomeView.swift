@@ -1,13 +1,24 @@
 import Inject
 import SwiftUI
 
+enum NavigationDestination: Hashable {
+    case wheelList
+    case race
+}
+
 struct HomeView: View {
+    let user: AuthResult?
     @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @Environment(\.scenePhase) private var scenePhase
+    @State private var navigationPath = NavigationPath()
+    
+    private var isIPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .center, spacing: 20) {
                     HomeHeader()
@@ -24,13 +35,19 @@ struct HomeView: View {
                             imageName: "testImage",
                             videoName: "races",
                             action: {
-                                // Навигация через RootView
-                                print("🏠 HomeView: Отправляем уведомление о переходе к скачкам")
-                                NotificationCenter.default.post(
-                                    name: .navigationRequested,
-                                    object: nil,
-                                    userInfo: ["destination": "race"]
-                                )
+                                if isIPhone {
+                                    // Навигация через NavigationStack для iPhone
+                                    print("🏠 HomeView: Переход к скачкам через NavigationStack")
+                                    navigationPath.append(NavigationDestination.race)
+                                } else {
+                                    // Навигация через RootView для iPad
+                                    print("🏠 HomeView: Отправляем уведомление о переходе к скачкам")
+                                    NotificationCenter.default.post(
+                                        name: .navigationRequested,
+                                        object: nil,
+                                        userInfo: ["destination": "race"]
+                                    )
+                                }
                             }
                         ),
                         CardData(
@@ -40,13 +57,19 @@ struct HomeView: View {
                             imageName: "testImage",
                             videoName: "movie",
                             action: {
-                                // Навигация через RootView
-                                print("🏠 HomeView: Отправляем уведомление о переходе к колесу")
-                                NotificationCenter.default.post(
-                                    name: .navigationRequested,
-                                    object: nil,
-                                    userInfo: ["destination": "wheelList"]
-                                )
+                                if isIPhone {
+                                    // Навигация через NavigationStack для iPhone
+                                    print("🏠 HomeView: Переход к колесу через NavigationStack")
+                                    navigationPath.append(NavigationDestination.wheelList)
+                                } else {
+                                    // Навигация через RootView для iPad
+                                    print("🏠 HomeView: Отправляем уведомление о переходе к колесу")
+                                    NotificationCenter.default.post(
+                                        name: .navigationRequested,
+                                        object: nil,
+                                        userInfo: ["destination": "wheelList"]
+                                    )
+                                }
                             }
                         ),
 
@@ -117,6 +140,24 @@ struct HomeView: View {
                 notification in
                 if let destination = notification.userInfo?["destination"] as? String {
                     print("🏠 HomeView: Получено уведомление о навигации к \(destination)")
+                    // Для iPhone обрабатываем навигацию через NavigationPath
+                    if isIPhone {
+                        if destination == "race" {
+                            navigationPath.append(NavigationDestination.race)
+                        } else if destination == "wheelList" || destination == "wheel" {
+                            navigationPath.append(NavigationDestination.wheelList)
+                        }
+                    }
+                }
+            }
+            .navigationDestination(for: NavigationDestination.self) { destination in
+                switch destination {
+                case .wheelList:
+                    WheelListView(user: user)
+                        .withAppBackground()
+                case .race:
+                    RaceListView()
+                        .withAppBackground()
                 }
             }
             .appBackground()
@@ -126,5 +167,5 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView()
+    HomeView(user: nil)
 }

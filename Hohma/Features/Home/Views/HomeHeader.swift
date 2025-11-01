@@ -14,18 +14,18 @@ struct HomeHeader: View {
         ZStack {
             if let player = player, isVideoReady {
                 VideoBackgroundView(player: player)
-                    .frame(height: 250)
+                    .frame(height: 180)
                     .clipped()
             } else {
                 // Показываем градиент пока видео загружается
                 AnimatedGradientBackground()
-                    .frame(height: 250)
+                    .frame(height: 180)
                     .clipped()
             }
 
             // Полупрозрачный оверлей
             Color.black.opacity(0.7)
-                .frame(height: 250)
+                .frame(height: 180)
 
             VStack(spacing: 10) {
                 Text("XOXMA")
@@ -39,7 +39,7 @@ struct HomeHeader: View {
             }
             .padding()
         }
-        .frame(height: 250)
+        .frame(height: 180)
         .onAppear {
             setupPlayer()
         }

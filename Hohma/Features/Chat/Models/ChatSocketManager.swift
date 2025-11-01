@@ -13,6 +13,7 @@ final class ChatSocketManager {
     // Callbacks to VM/UI
     var onNewMessage: ((ChatMessage) -> Void)?
     var onMessageUpdated: ((String, MessageStatus) -> Void)?
+    var onMessageDeleted: ((String) -> Void)?  // messageId
     var onTyping: ((String, Bool) -> Void)?  // userId, isTyping
     var onMemberOnline: ((String) -> Void)?  // userId
     var onMemberOffline: ((String) -> Void)?  // userId
@@ -86,6 +87,20 @@ final class ChatSocketManager {
                 }
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:member:offline payload: \(error)")
+            }
+        }
+
+        socket.on(.chatMessageDeleted) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let messageId = json["messageId"] as? String
+                {
+                    print("💬 ChatSocketManager: chat:message:deleted received - messageId: \(messageId)")
+                    self.onMessageDeleted?(messageId)
+                }
+            } catch {
+                print("❌ ChatSocketManager: failed to parse chat:message:deleted payload: \(error)")
             }
         }
     }
