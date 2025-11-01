@@ -9,6 +9,7 @@ struct ParticipantRowView: View {
         HStack(spacing: 12) {
             AvatarView(
                 avatarUrl: user.avatarUrl,
+                userId: user.id,
                 size: 50,
                 fallbackColor: .gray,
                 showBorder: true,

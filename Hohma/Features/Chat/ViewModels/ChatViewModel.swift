@@ -20,6 +20,8 @@ final class ChatViewModel: ObservableObject {
     @Published var isTyping: Bool = false
     @Published var typingUsers: Set<String> = []  // Set of userIds who are typing
     @Published var messageInput: String = ""
+    @Published var selectedAttachments: [ChatAttachment] = []  // Выбранные файлы для отправки
+    @Published var isUploadingAttachments: Bool = false
 
     private let chatService = ChatService.shared
     private var chatSocketManager: ChatSocketManager?
@@ -239,23 +241,44 @@ final class ChatViewModel: ObservableObject {
 
     func sendMessage() {
         guard let chatId = chatId,
-              !messageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              (!messageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedAttachments.isEmpty),
               !isSending
         else { return }
 
         let content = messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let attachmentsToUpload = selectedAttachments
+        
+        // Очищаем input перед отправкой
         messageInput = ""
+        selectedAttachments = []
 
         Task {
             isSending = true
+            isUploadingAttachments = !attachmentsToUpload.isEmpty
             errorMessage = nil
 
             do {
+                // Загружаем вложения, если есть
+                var attachmentURLs: [String] = []
+                if !attachmentsToUpload.isEmpty {
+                    attachmentURLs = try await uploadAttachments(attachmentsToUpload)
+                }
+
+                // Определяем тип сообщения
+                let messageType: MessageType
+                if !attachmentURLs.isEmpty {
+                    // Проверяем, все ли вложения - изображения
+                    let allImages = attachmentsToUpload.allSatisfy { $0.isImage }
+                    messageType = allImages ? .image : .file
+                } else {
+                    messageType = .text
+                }
+
                 let request = SendMessageRequest(
                     chatId: chatId,
-                    content: content,
-                    messageType: .text,
-                    attachments: nil,
+                    content: content.isEmpty ? (messageType == .image ? "Фото" : "Файл") : content,
+                    messageType: messageType,
+                    attachments: attachmentURLs.isEmpty ? nil : attachmentURLs,
                     replyToId: nil
                 )
 
@@ -274,10 +297,60 @@ final class ChatViewModel: ObservableObject {
                 print("❌ ChatViewModel: Failed to send message: \(error)")
                 // Восстанавливаем текст сообщения при ошибке
                 messageInput = content
+                selectedAttachments = attachmentsToUpload
             }
 
             isSending = false
+            isUploadingAttachments = false
         }
+    }
+    
+    // MARK: - Attachment Operations
+    
+    func addAttachment(_ attachment: ChatAttachment) {
+        // Максимум 10 вложений
+        if selectedAttachments.count < 10 {
+            selectedAttachments.append(attachment)
+        }
+    }
+    
+    func removeAttachment(at index: Int) {
+        guard index < selectedAttachments.count else { return }
+        selectedAttachments.remove(at: index)
+    }
+    
+    func removeAllAttachments() {
+        selectedAttachments.removeAll()
+    }
+    
+    private func uploadAttachments(_ attachments: [ChatAttachment]) async throws -> [String] {
+        var uploadedURLs: [String] = []
+        
+        for attachment in attachments {
+            let url: String
+            
+            if let image = attachment.image {
+                // Загружаем изображение
+                url = try await FileUploadService.shared.uploadImage(image)
+            } else if let fileData = attachment.fileData {
+                // Загружаем файл
+                let fileName = attachment.fileName ?? "file_\(UUID().uuidString)"
+                let fileExtension = attachment.fileExtension ?? "bin"
+                let mimeType = FileUploadService.getMimeType(for: fileExtension)
+                let fullFileName = "chat/\(UUID().uuidString).\(fileExtension)"
+                url = try await FileUploadService.shared.uploadFile(
+                    fileData: fileData,
+                    fileName: fullFileName,
+                    mimeType: mimeType
+                )
+            } else {
+                continue
+            }
+            
+            uploadedURLs.append(url)
+        }
+        
+        return uploadedURLs
     }
 
     func deleteMessage(messageId: String) {

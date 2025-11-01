@@ -4,6 +4,7 @@ import SwiftUI
 struct AvatarView: View {
     @ObserveInjection var inject
     let avatarUrl: URL?
+    let userId: String?
     let size: CGFloat
     let fallbackColor: Color
     let showBorder: Bool
@@ -11,12 +12,14 @@ struct AvatarView: View {
 
     init(
         avatarUrl: URL?,
+        userId: String? = nil,
         size: CGFloat = 40,
         fallbackColor: Color = .gray,
         showBorder: Bool = true,
         borderColor: Color = .white
     ) {
         self.avatarUrl = avatarUrl
+        self.userId = userId
         self.size = size
         self.fallbackColor = fallbackColor
         self.showBorder = showBorder
@@ -26,7 +29,7 @@ struct AvatarView: View {
     var body: some View {
         // Используем кэшированный компонент для лучшей производительности
         CachedAvatarView(
-            userId: "unknown",  // Для общего AvatarView используем неизвестный ID
+            userId: userId ?? "unknown",  // Используем реальный userId если доступен, иначе "unknown"
             avatarUrl: avatarUrl?.absoluteString,
             size: size,
             fallbackColor: fallbackColor,

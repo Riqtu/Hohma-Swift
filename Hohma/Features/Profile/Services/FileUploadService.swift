@@ -23,7 +23,7 @@ final class FileUploadService: TRPCServiceProtocol {
     }
 
     // MARK: - Upload File to S3
-    func uploadFileToS3(uploadURL: String, imageData: Data) async throws {
+    func uploadFileToS3(uploadURL: String, fileData: Data, mimeType: String? = nil) async throws {
         guard let url = URL(string: uploadURL) else {
             throw NSError(
                 domain: "URLError", code: -1,
@@ -32,11 +32,11 @@ final class FileUploadService: TRPCServiceProtocol {
 
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
-        request.httpBody = imageData
+        request.httpBody = fileData
 
-        // Определяем MIME тип на основе данных
-        let mimeType = getMimeType(from: imageData)
-        request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
+        // Используем переданный MIME тип или определяем на основе данных
+        let contentType = mimeType ?? getMimeType(from: fileData)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -66,13 +66,26 @@ final class FileUploadService: TRPCServiceProtocol {
         let presignedResponse = try await getPresignedUrl(fileName: fileName, fileType: fileType)
 
         // Загружаем файл в S3
-        try await uploadFileToS3(uploadURL: presignedResponse.uploadURL, imageData: imageData)
+        try await uploadFileToS3(uploadURL: presignedResponse.uploadURL, fileData: imageData, mimeType: fileType)
 
         // Формируем URL загруженного файла из presigned URL
         let fileURL = presignedResponse.uploadURL.components(separatedBy: "?")[0]
         return fileURL
     }
 
+    // MARK: - Upload Any File
+    func uploadFile(fileData: Data, fileName: String, mimeType: String) async throws -> String {
+        // Получаем presigned URL
+        let presignedResponse = try await getPresignedUrl(fileName: fileName, fileType: mimeType)
+        
+        // Загружаем файл в S3
+        try await uploadFileToS3(uploadURL: presignedResponse.uploadURL, fileData: fileData, mimeType: mimeType)
+        
+        // Формируем URL загруженного файла из presigned URL
+        let fileURL = presignedResponse.uploadURL.components(separatedBy: "?")[0]
+        return fileURL
+    }
+    
     // MARK: - Helper Methods
     private func getMimeType(from data: Data) -> String {
         // Простая проверка на основе первых байт
@@ -85,6 +98,23 @@ final class FileUploadService: TRPCServiceProtocol {
             }
         }
         return "image/jpeg"  // По умолчанию
+    }
+    
+    static func getMimeType(for fileExtension: String) -> String {
+        let lowercased = fileExtension.lowercased()
+        switch lowercased {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "png": return "image/png"
+        case "gif": return "image/gif"
+        case "pdf": return "application/pdf"
+        case "doc": return "application/msword"
+        case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        case "xls": return "application/vnd.ms-excel"
+        case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        case "txt": return "text/plain"
+        case "zip": return "application/zip"
+        default: return "application/octet-stream"
+        }
     }
 }
 

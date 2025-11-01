@@ -36,13 +36,27 @@ struct MessageBubbleView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Text(message.content)
-                    .font(.body)
-                    .foregroundColor(isCurrentUser ? .white : .primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(isCurrentUser ? Color("AccentColor") : Color(.systemGray5))
-                    .cornerRadius(16)
+                // Вложения (изображения или файлы)
+                if !message.attachments.isEmpty {
+                    VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 8) {
+                        ForEach(Array(message.attachments.enumerated()), id: \.offset) { index, urlString in
+                            if let url = URL(string: urlString) {
+                                AttachmentView(url: url, messageType: message.messageType)
+                            }
+                        }
+                    }
+                }
+
+                // Текст сообщения (если есть)
+                if !message.content.isEmpty && message.messageType != .system {
+                    Text(message.content)
+                        .font(.body)
+                        .foregroundColor(isCurrentUser ? .white : .primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(isCurrentUser ? Color("AccentColor") : Color(.systemGray5))
+                        .cornerRadius(16)
+                }
 
                 HStack(spacing: 4) {
                     Text(formatDate(message.createdAt))
@@ -97,6 +111,137 @@ struct MessageBubbleView: View {
             }
         }
         return dateString
+    }
+}
+
+// MARK: - Attachment View
+struct AttachmentView: View {
+    let url: URL
+    let messageType: MessageType
+    @State private var showFullScreen = false
+    
+    var body: some View {
+        Group {
+            switch messageType {
+            case .image:
+                // Изображение с возможностью просмотра
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(width: 200, height: 200)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 250, maxHeight: 300)
+                            .cornerRadius(12)
+                            .onTapGesture {
+                                showFullScreen = true
+                            }
+                    case .failure:
+                        Image(systemName: "photo")
+                            .frame(width: 200, height: 200)
+                            .foregroundColor(.secondary)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .sheet(isPresented: $showFullScreen) {
+                    FullScreenImageView(url: url)
+                }
+            case .file:
+                // Файл с иконкой и возможностью скачать
+                Button(action: {
+                    if UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: getFileIcon(for: url))
+                            .font(.title2)
+                        Text(url.lastPathComponent)
+                            .font(.body)
+                            .lineLimit(1)
+                        Spacer()
+                        Image(systemName: "arrow.down.circle")
+                            .font(.title3)
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                }
+            default:
+                EmptyView()
+            }
+        }
+    }
+    
+    private func getFileIcon(for url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+        switch ext {
+        case "pdf": return "doc.fill"
+        case "doc", "docx": return "doc.text.fill"
+        case "xls", "xlsx": return "tablecells.fill"
+        case "txt": return "text.alignleft"
+        case "zip": return "archivebox.fill"
+        default: return "doc.fill"
+        }
+    }
+}
+
+// MARK: - Full Screen Image View
+struct FullScreenImageView: View {
+    let url: URL
+    @Environment(\.dismiss) var dismiss
+    @State private var scale: CGFloat = 1.0
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .tint(.white)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .scaleEffect(scale)
+                            .gesture(
+                                MagnificationGesture()
+                                    .onChanged { value in
+                                        scale = value
+                                    }
+                                    .onEnded { _ in
+                                        withAnimation {
+                                            scale = max(1.0, min(scale, 3.0))
+                                        }
+                                    }
+                            )
+                    case .failure:
+                        Image(systemName: "photo")
+                            .foregroundColor(.white)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Закрыть") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+            }
+        }
     }
 }
 

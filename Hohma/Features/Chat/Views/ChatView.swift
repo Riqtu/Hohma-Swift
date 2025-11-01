@@ -6,6 +6,7 @@
 //
 
 import Inject
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -14,6 +15,7 @@ struct ChatView: View {
     let chatId: String
     @StateObject private var viewModel = ChatViewModel()
     @State private var messageToDelete: String? = nil
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,6 +102,7 @@ struct ScrollViewWithAutoScrollTracker: View {
                             isCurrentUser: message.senderId == currentUserId
                         )
                         .id(message.id)
+                        .contentShape(Rectangle())  // Важно для правильной обработки тапов
                         .contextMenu {
                             // Показываем контекстное меню только для своих сообщений
                             if message.senderId == currentUserId, let onDelete = onDeleteMessage {
@@ -130,14 +133,10 @@ struct ScrollViewWithAutoScrollTracker: View {
                             }
                         }
                     }
-
-                    // Невидимый маркер внизу для прокрутки
-                    Color.clear
-                        .frame(height: 1)
-                        .id("bottom")
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.top, 8)
+                .id("bottom")
                 .background(
                     GeometryReader { geometry in
                         Color.clear
@@ -151,6 +150,14 @@ struct ScrollViewWithAutoScrollTracker: View {
             .coordinateSpace(name: "scroll")
             .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
+            .simultaneousGesture(
+                // Одновременный жест для закрытия клавиатуры
+                // Работает на пустых областях, не блокируя тапы на сообщения
+                TapGesture()
+                    .onEnded { _ in
+                        hideKeyboard()
+                    }
+            )
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
                 // Отслеживаем позицию прокрутки
                 scrollPosition = offset
@@ -260,6 +267,11 @@ struct ScrollViewWithAutoScrollTracker: View {
         }
     }
 
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         // Обновляем lastMessageId
         lastMessageId = messages.last?.id
@@ -335,6 +347,10 @@ extension ChatView {
                 .foregroundColor(Color(.separator)),
             alignment: .bottom
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            hideKeyboard()
+        }
     }
 
     // MARK: - Messages View
@@ -354,36 +370,96 @@ extension ChatView {
         )
     }
 
+    // MARK: - Helper Methods
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
     // MARK: - Message Input View
     private var messageInputView: some View {
-        HStack(spacing: 12) {
-            TextField("Введите сообщение...", text: $viewModel.messageInput, axis: .vertical)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.systemGray6))
-                .cornerRadius(22)
-                .lineLimit(1...5)
-                .onChange(of: viewModel.messageInput) { _, newValue in
-                    if !newValue.isEmpty {
-                        viewModel.startTyping()
+        VStack(spacing: 8) {
+            // Превью выбранных вложений
+            if !viewModel.selectedAttachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(viewModel.selectedAttachments.enumerated()), id: \.element.id)
+                        { index, attachment in
+                            AttachmentPreviewView(attachment: attachment) {
+                                viewModel.removeAttachment(at: index)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .frame(height: 100)
+            }
+
+            HStack(spacing: 12) {
+                // Кнопка выбора файла
+                PhotosPicker(
+                    selection: $selectedPhotoItem,
+                    matching: .images
+                ) {
+                    Image(systemName: "paperclip")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                }
+                .disabled(viewModel.isSending || viewModel.selectedAttachments.count >= 10)
+                .onChange(of: selectedPhotoItem) { _, newItem in
+                    guard let newItem = newItem else { return }
+                    Task {
+                        if let data = try? await newItem.loadTransferable(type: Data.self),
+                            let image = UIImage(data: data)
+                        {
+                            await MainActor.run {
+                                viewModel.addAttachment(ChatAttachment(image: image))
+                                selectedPhotoItem = nil  // Сбрасываем после обработки
+                            }
+                        }
                     }
                 }
 
-            Button(action: {
-                viewModel.sendMessage()
-            }) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(
-                        viewModel.messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                            .isEmpty || viewModel.isSending
-                            ? .gray
-                            : .accentColor)
+                TextField("Введите сообщение...", text: $viewModel.messageInput, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(22)
+                    .lineLimit(1...5)
+                    .onChange(of: viewModel.messageInput) { _, newValue in
+                        if !newValue.isEmpty {
+                            viewModel.startTyping()
+                        }
+                    }
+
+                Button(action: {
+                    viewModel.sendMessage()
+                }) {
+                    ZStack {
+                        if viewModel.isUploadingAttachments {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .frame(width: 24, height: 24)
+                        } else {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(
+                                    (viewModel.messageInput.trimmingCharacters(
+                                        in: .whitespacesAndNewlines
+                                    ).isEmpty && viewModel.selectedAttachments.isEmpty)
+                                        || viewModel.isSending
+                                        ? .gray
+                                        : .accentColor)
+                        }
+                    }
+                    .frame(width: 32, height: 32)
+                }
+                .disabled(
+                    (viewModel.messageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        && viewModel.selectedAttachments.isEmpty)
+                        || viewModel.isSending)
             }
-            .disabled(
-                viewModel.messageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || viewModel.isSending)
         }
         .padding()
         .background(Color(.systemBackground))
@@ -393,5 +469,44 @@ extension ChatView {
                 .foregroundColor(Color(.separator)),
             alignment: .top
         )
+    }
+
+    // MARK: - Attachment Preview View
+    private struct AttachmentPreviewView: View {
+        let attachment: ChatAttachment
+        let onRemove: () -> Void
+
+        var body: some View {
+            ZStack(alignment: .topTrailing) {
+                if let image = attachment.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 80, height: 80)
+                        .overlay(
+                            VStack {
+                                Image(systemName: "doc.fill")
+                                    .font(.title2)
+                                Text(attachment.fileName ?? "Файл")
+                                    .font(.caption2)
+                                    .lineLimit(1)
+                            }
+                        )
+                }
+
+                Button(action: onRemove) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.white)
+                        .background(Color.black.opacity(0.6))
+                        .clipShape(Circle())
+                }
+                .offset(x: 4, y: -4)
+            }
+        }
     }
 }

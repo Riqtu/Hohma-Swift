@@ -295,22 +295,28 @@ struct SearchUserProfileRow: View {
         NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
             HStack(spacing: 12) {
                 // Аватар
-                if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                    AsyncImage(url: url) { image in
+                AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                    case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                    } placeholder: {
+                    case .failure:
                         Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                    @unknown default:
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
                             .foregroundColor(.gray)
                     }
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
-                } else {
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.gray)
                 }
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
 
                 // Информация о пользователе
                 VStack(alignment: .leading, spacing: 4) {
@@ -405,22 +411,28 @@ struct UserProfileRow: View {
         NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
             HStack(spacing: 12) {
                 // Аватар
-                if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                    AsyncImage(url: url) { image in
+                AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                    case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                    } placeholder: {
+                    case .failure:
                         Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                    @unknown default:
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 50))
                             .foregroundColor(.gray)
                     }
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
-                } else {
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.gray)
                 }
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
 
                 // Информация о пользователе
                 VStack(alignment: .leading, spacing: 4) {

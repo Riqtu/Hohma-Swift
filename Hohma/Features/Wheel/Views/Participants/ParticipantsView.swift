@@ -29,6 +29,7 @@ struct ParticipantsView: View {
             ForEach(visibleUsers, id: \.id) { user in
                 AvatarView(
                     avatarUrl: user.avatarUrl,
+                    userId: user.id,
                     size: 40,
                     fallbackColor: .gray,
                     showBorder: false,

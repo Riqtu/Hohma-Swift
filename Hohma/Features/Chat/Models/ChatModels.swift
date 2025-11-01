@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 // MARK: - Chat Model
 struct Chat: Codable, Identifiable {
@@ -229,6 +230,33 @@ enum MessageType: String, Codable, CaseIterable {
     case image = "IMAGE"
     case file = "FILE"
     case system = "SYSTEM"
+}
+
+// MARK: - Chat Attachment (для выбранных файлов перед отправкой)
+struct ChatAttachment: Identifiable {
+    let id = UUID()
+    let image: UIImage?
+    let fileData: Data?
+    let fileName: String?
+    let fileExtension: String?
+    
+    var isImage: Bool {
+        return image != nil
+    }
+    
+    init(image: UIImage) {
+        self.image = image
+        self.fileData = nil
+        self.fileName = nil
+        self.fileExtension = nil
+    }
+    
+    init(fileData: Data, fileName: String, fileExtension: String) {
+        self.image = nil
+        self.fileData = fileData
+        self.fileName = fileName
+        self.fileExtension = fileExtension
+    }
 }
 
 // MARK: - Message Status

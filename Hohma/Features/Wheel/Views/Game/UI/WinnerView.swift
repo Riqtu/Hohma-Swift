@@ -9,6 +9,7 @@ struct WinnerView: View {
         if let winnerUser {
             AvatarView(
                 avatarUrl: winnerUser.avatarUrl,
+                userId: winnerUser.id,
                 size: 80,
                 fallbackColor: .gray,
                 showBorder: true,

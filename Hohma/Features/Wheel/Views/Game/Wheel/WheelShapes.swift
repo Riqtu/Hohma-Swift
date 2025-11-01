@@ -35,6 +35,7 @@ struct WinnerOverlayView: View {
             if let user: AuthUser = sector.user {
                 AvatarView(
                     avatarUrl: user.avatarUrl,
+                    userId: user.id,
                     size: 80,
                     fallbackColor: .gray,
                     showBorder: true,
