@@ -5,9 +5,9 @@
 //  Created by Assistant on 30.10.2025.
 //
 
+import Foundation
 import Inject
 import SwiftUI
-import Foundation
 
 struct ChatListView: View {
     @ObserveInjection var inject
@@ -76,14 +76,15 @@ struct ChatListView: View {
         } message: {
             Text("Вы уверены, что хотите удалить этот чат? Все сообщения будут удалены.")
         }
-        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+            notification in
             // Обрабатываем навигацию к конкретному чату
             if let destination = notification.userInfo?["destination"] as? String,
-               destination == "chat",
-               let chatId = notification.userInfo?["chatId"] as? String
+                destination == "chat",
+                let chatId = notification.userInfo?["chatId"] as? String
             {
                 print("💬 ChatListView: Navigation requested to chat \(chatId)")
-                
+
                 // Ищем чат в загруженных чатах
                 if let chat = viewModel.chats.first(where: { $0.id == chatId }) {
                     selectedChat = chat
@@ -99,7 +100,7 @@ struct ChatListView: View {
             viewModel.loadChats()
         }
     }
-    
+
     // MARK: - Helper Methods
     private func loadChatById(chatId: String) async {
         do {
@@ -202,7 +203,12 @@ struct ChatListView: View {
             Button("Создать чат") {
                 viewModel.showingCreateChat = true
             }
-            .buttonStyle(.borderedProminent)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color("AccentColor"))
+            .clipShape(Capsule())
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
