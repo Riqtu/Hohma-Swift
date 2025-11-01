@@ -92,6 +92,22 @@ struct CustomSidebar: View {
                 }
 
                 SidebarButton(
+                    title: "Чаты",
+                    icon: "message",
+                    isSelected: selection == "chat"
+                ) {
+                    print("🔄 CustomSidebar: Switching to chat")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "chat"])
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "chat"
+                    }
+                }
+
+                SidebarButton(
                     title: "Профиль",
                     icon: "person",
                     isSelected: selection == "profile"

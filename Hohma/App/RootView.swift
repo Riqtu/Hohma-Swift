@@ -35,6 +35,11 @@ struct RootView: View {
                                     .onAppear {
                                         print("🔄 RootView: Navigating to race")
                                     }
+                            case "chat":
+                                ChatListView()
+                                    .onAppear {
+                                        print("🔄 RootView: Navigating to chat")
+                                    }
                             case "settings":
                                 SettingsView(viewModel: settingsViewModel)
                                     .onAppear {
@@ -74,6 +79,15 @@ struct RootView: View {
                             Label("Скачки", systemImage: "trophy")
                         }
                         .tag("race")
+
+                        NavigationStack {
+                            ChatListView()
+                                .withAppBackground()
+                        }
+                        .tabItem {
+                            Label("Чаты", systemImage: "message")
+                        }
+                        .tag("chat")
 
                         ProfileView(authViewModel: authViewModel)
                             .tabItem {
@@ -132,6 +146,8 @@ struct RootView: View {
                         mappedDestination = "home"
                     case "race":
                         mappedDestination = "race"
+                    case "chat":
+                        mappedDestination = "chat"
                     case "profile":
                         mappedDestination = "profile"
                     case "settings":

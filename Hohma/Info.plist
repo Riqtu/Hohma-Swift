@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>API_URL</key>
-	<string>https://hohma.su/api/trpc</string>
-	<!-- <string>https://riqtu.ru/api/trpc</string> -->
+	<!-- <string>https://hohma.su/api/trpc</string> -->
+	<string>https://riqtu.ru/api/trpc</string>
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
 	<key>CFBundleURLTypes</key>
@@ -43,8 +43,8 @@
 		<string>LuckiestGuy-Regular.ttf</string>
 	</array>
 	<key>WS_URL</key>
-	<string>https://ws.hohma.su</string>
-	<!-- <string>https://api.riqtu.ru</string> -->
+	<!-- <string>https://ws.hohma.su</string> -->
+	<string>https://api.riqtu.ru</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

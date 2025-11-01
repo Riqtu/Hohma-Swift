@@ -38,6 +38,14 @@ enum SocketIOEvent: String, CaseIterable {
     case raceDiceResults = "race:dice:results"
     case raceDiceNext = "race:dice:next"
     case raceFinish = "race:finish"
+    // Chat events
+    case chatJoin = "chat:join"
+    case chatLeave = "chat:leave"
+    case chatTyping = "chat:typing"
+    case chatMessage = "chat:message"
+    case chatMessageUpdated = "chat:message:updated"
+    case chatMemberOnline = "chat:member:online"
+    case chatMemberOffline = "chat:member:offline"
 }
 
 // MARK: - Socket.IO Data Models (Shared with WheelState)
