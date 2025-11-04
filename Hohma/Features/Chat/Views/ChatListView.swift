@@ -102,7 +102,9 @@ struct ChatListView: View {
         .onAppear {
             viewModel.loadChats()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+        ) { _ in
             // Обновляем список чатов при возврате приложения в foreground
             viewModel.refreshChats()
         }
@@ -166,10 +168,11 @@ struct ChatListView: View {
             ForEach(viewModel.chats) { chat in
                 NavigationLink(value: chat) {
                     ChatCellView(chat: chat)
-                        .id("\(chat.id)-\(chat.unreadCountValue)") // Принудительное обновление при изменении счетчика
+                        .id("\(chat.id)-\(chat.unreadCountValue)")  // Принудительное обновление при изменении счетчика
                 }
                 .contentShape(Rectangle())
                 .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 10, leading: 0, bottom: 10, trailing: 20))
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button {
                         chatToDelete = chat
@@ -186,6 +189,7 @@ struct ChatListView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.clear)
+        .listStyle(.plain)
         .refreshable {
             print("🔄 ChatListView: Pull-to-refresh triggered")
             await viewModel.refreshChatsAsync()
@@ -237,7 +241,7 @@ struct ChatListView: View {
 struct ChatCellView: View {
     @ObserveInjection var inject
     let chat: Chat
-    
+
     // Debug: выводим счетчик для отладки
     private var unreadCount: Int {
         let count = chat.unreadCountValue
@@ -281,7 +285,7 @@ struct ChatCellView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         // Счетчик непрочитанных рядом с датой
                         if unreadCount > 0 {
                             Text("\(unreadCount > 99 ? "99+" : "\(unreadCount)")")
@@ -310,6 +314,7 @@ struct ChatCellView: View {
                 }
             }
         }
+        .padding(.horizontal, 25)
         .padding(.vertical, 8)
     }
 

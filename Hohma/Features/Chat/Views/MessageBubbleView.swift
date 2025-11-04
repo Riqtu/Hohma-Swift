@@ -12,6 +12,11 @@ struct MessageBubbleView: View {
     @ObserveInjection var inject
     let message: ChatMessage
     let isCurrentUser: Bool
+    let replyingToMessage: ChatMessage?  // Сообщение, на которое отвечают
+    let onReply: () -> Void  // Callback для свайпа вправо
+
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging: Bool = false
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -36,6 +41,14 @@ struct MessageBubbleView: View {
                         .foregroundColor(.secondary)
                 }
 
+                // Отображение сообщения, на которое отвечают
+                if let replyingTo = replyingToMessage {
+                    ReplyPreviewView(
+                        replyingToMessage: replyingTo,
+                        isCurrentUser: isCurrentUser
+                    )
+                }
+
                 // Вложения (изображения или файлы)
                 if !message.attachments.isEmpty {
                     VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 8) {
@@ -51,7 +64,9 @@ struct MessageBubbleView: View {
                 }
 
                 // Текст сообщения (если есть и нет видео/аудио вложений)
-                if !message.content.isEmpty && message.messageType != .system && !hasVideoOrAudioAttachments {
+                if !message.content.isEmpty && message.messageType != .system
+                    && !hasVideoOrAudioAttachments
+                {
                     Text(message.content)
                         .font(.body)
                         .foregroundColor(isCurrentUser ? .white : .primary)
@@ -79,7 +94,9 @@ struct MessageBubbleView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity * 0.75, alignment: isCurrentUser ? .trailing : .leading)
+            .frame(
+                maxWidth: UIScreen.main.bounds.width * 0.75,
+                alignment: isCurrentUser ? .trailing : .leading)
 
             if isCurrentUser {
                 // Avatar for current user (справа)
@@ -97,6 +114,65 @@ struct MessageBubbleView: View {
         }
         .frame(maxWidth: .infinity, alignment: isCurrentUser ? .trailing : .leading)
         .padding(.horizontal, 4)
+        .offset(x: isDragging ? dragOffset.width : 0)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    // Сначала проверяем направление движения
+                    let horizontalDistance = abs(value.translation.width)
+                    let verticalDistance = abs(value.translation.height)
+
+                    // Если вертикальное движение больше или равно горизонтальному - не обрабатываем
+                    // Это позволяет скроллу работать
+                    if verticalDistance >= horizontalDistance {
+                        isDragging = false
+                        dragOffset = .zero
+                        return
+                    }
+
+                    // Разрешаем свайп ВЛЕВО только если:
+                    // 1. Движение влево (width < 0)
+                    // 2. Горизонтальное движение значительно больше вертикального (ratio > 2.0)
+                    // 3. Ограничиваем максимальное смещение до 60px
+                    if value.translation.width < 0 && horizontalDistance > verticalDistance * 2.0 {
+                        isDragging = true
+                        let maxOffset: CGFloat = 60
+                        dragOffset = CGSize(
+                            width: max(value.translation.width, -maxOffset),
+                            height: 0
+                        )
+                    } else {
+                        isDragging = false
+                        dragOffset = .zero
+                    }
+                }
+                .onEnded { value in
+                    // Если жест не был активен (вертикальный скролл) - ничего не делаем
+                    guard isDragging else {
+                        dragOffset = .zero
+                        return
+                    }
+
+                    let horizontalDistance = abs(value.translation.width)
+                    let verticalDistance = abs(value.translation.height)
+
+                    // Если свайпнули влево больше чем на 40px и движение горизонтальное - вызываем callback
+                    if value.translation.width < -40 && horizontalDistance > verticalDistance * 2.0
+                    {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            dragOffset = .zero
+                            isDragging = false
+                        }
+                        onReply()
+                    } else {
+                        // Возвращаем обратно
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            dragOffset = .zero
+                            isDragging = false
+                        }
+                    }
+                }
+        )
         .enableInjection()
     }
 
@@ -109,7 +185,7 @@ struct MessageBubbleView: View {
             return isVideo || isAudio
         }
     }
-    
+
     private func formatDate(_ dateString: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
@@ -124,6 +200,93 @@ struct MessageBubbleView: View {
             }
         }
         return dateString
+    }
+}
+
+// MARK: - Reply Preview View
+struct ReplyPreviewView: View {
+    let replyingToMessage: ChatMessage
+    let isCurrentUser: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            // Вертикальная линия слева
+            Rectangle()
+                .fill(isCurrentUser ? Color.white.opacity(0.5) : Color.accentColor)
+                .frame(width: 2)
+                .cornerRadius(1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(replyingToMessage.sender?.displayName ?? "Пользователь")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(isCurrentUser ? Color.white.opacity(0.8) : Color.primary)
+                    .lineLimit(1)
+
+                if !replyingToMessage.content.isEmpty && replyingToMessage.messageType == .text {
+                    Text(replyingToMessage.content)
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+                } else if !replyingToMessage.attachments.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: getAttachmentIcon())
+                            .font(.caption2)
+                        Text(getAttachmentText())
+                            .font(.caption2)
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: 200, alignment: .leading)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isCurrentUser ? Color.white.opacity(0.2) : Color(.systemGray5))
+        )
+    }
+
+    private func getAttachmentIcon() -> String {
+        if replyingToMessage.messageType == .image {
+            return "photo"
+        } else if replyingToMessage.attachments.contains(where: { urlString in
+            guard let url = URL(string: urlString) else { return false }
+            let ext = url.pathExtension.lowercased()
+            return ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+        }) {
+            return "mic.fill"
+        } else if replyingToMessage.attachments.contains(where: { urlString in
+            guard let url = URL(string: urlString) else { return false }
+            let ext = url.pathExtension.lowercased()
+            return ["mp4", "mov", "m4v"].contains(ext)
+        }) {
+            return "video.fill"
+        } else {
+            return "doc"
+        }
+    }
+
+    private func getAttachmentText() -> String {
+        if replyingToMessage.messageType == .image {
+            return "Фото"
+        } else if replyingToMessage.attachments.contains(where: { urlString in
+            guard let url = URL(string: urlString) else { return false }
+            let ext = url.pathExtension.lowercased()
+            return ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+        }) {
+            return "Голосовое сообщение"
+        } else if replyingToMessage.attachments.contains(where: { urlString in
+            guard let url = URL(string: urlString) else { return false }
+            let ext = url.pathExtension.lowercased()
+            return ["mp4", "mov", "m4v"].contains(ext)
+        }) {
+            return "Видеосообщение"
+        } else {
+            return "Файл"
+        }
     }
 }
 
@@ -312,11 +475,21 @@ struct FullScreenImageView: View {
 
     return VStack {
         if let message1 = message1 {
-            MessageBubbleView(message: message1, isCurrentUser: false)
+            MessageBubbleView(
+                message: message1,
+                isCurrentUser: false,
+                replyingToMessage: nil,
+                onReply: {}
+            )
         }
 
         if let message2 = message2 {
-            MessageBubbleView(message: message2, isCurrentUser: true)
+            MessageBubbleView(
+                message: message2,
+                isCurrentUser: true,
+                replyingToMessage: nil,
+                onReply: {}
+            )
         }
     }
     .padding()

@@ -31,6 +31,7 @@ final class ChatViewModel: ObservableObject {
     @Published var videoRecordingDuration: TimeInterval = 0
     @Published var isCancelingVideo: Bool = false
     @Published var showVideoControls: Bool = false  // Показывать ли overlay с кнопками управления
+    @Published var replyingToMessage: ChatMessage? = nil  // Сообщение, на которое отвечаем
 
     private let chatService = ChatService.shared
     private let audioRecorder = AudioRecorderService()
@@ -301,6 +302,9 @@ final class ChatViewModel: ObservableObject {
         messageInput = ""
         selectedAttachments = []
 
+        // Сохраняем сообщение для ответа перед очисткой для возможного восстановления при ошибке
+        let savedReplyingToMessage = replyingToMessage
+        
         Task {
             isSending = true
             isUploadingAttachments = !attachmentsToUpload.isEmpty
@@ -328,8 +332,11 @@ final class ChatViewModel: ObservableObject {
                     content: content.isEmpty ? (messageType == .image ? "Фото" : "Файл") : content,
                     messageType: messageType,
                     attachments: attachmentURLs.isEmpty ? nil : attachmentURLs,
-                    replyToId: nil
+                    replyToId: savedReplyingToMessage?.id
                 )
+                
+                // Очищаем сообщение для ответа после отправки
+                replyingToMessage = nil
 
                 let sentMessage = try await chatService.sendMessage(request)
                 
@@ -344,9 +351,10 @@ final class ChatViewModel: ObservableObject {
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ ChatViewModel: Failed to send message: \(error)")
-                // Восстанавливаем текст сообщения при ошибке
+                // Восстанавливаем текст сообщения и сообщение для ответа при ошибке
                 messageInput = content
                 selectedAttachments = attachmentsToUpload
+                replyingToMessage = savedReplyingToMessage
             }
 
             isSending = false
@@ -667,6 +675,20 @@ final class ChatViewModel: ObservableObject {
 
     var currentUserId: String? {
         return TRPCService.shared.currentUser?.id
+    }
+    
+    // MARK: - Reply Operations
+    
+    func setReplyingToMessage(_ message: ChatMessage?) {
+        replyingToMessage = message
+    }
+    
+    func clearReplyingToMessage() {
+        replyingToMessage = nil
+    }
+    
+    func findMessage(by id: String) -> ChatMessage? {
+        return messages.first { $0.id == id }
     }
 }
 

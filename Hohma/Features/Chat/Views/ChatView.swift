@@ -120,6 +120,8 @@ struct ScrollViewWithAutoScrollTracker: View {
     let currentUserId: String?
     let onLoadMore: () -> Void
     let onDeleteMessage: ((String) -> Void)?
+    let findMessage: (String) -> ChatMessage?
+    let onReply: (ChatMessage) -> Void
 
     @State private var firstMessageId: String? = nil
     @State private var scrollPosition: CGFloat = 0
@@ -149,7 +151,12 @@ struct ScrollViewWithAutoScrollTracker: View {
                     ForEach(messages) { message in
                         MessageBubbleView(
                             message: message,
-                            isCurrentUser: message.senderId == currentUserId
+                            isCurrentUser: message.senderId == currentUserId,
+                            replyingToMessage: message.replyToId != nil
+                                ? findMessage(message.replyToId!) : nil,
+                            onReply: {
+                                onReply(message)
+                            }
                         )
                         .id(message.id)
                         .contentShape(Rectangle())  // Важно для правильной обработки тапов
@@ -407,6 +414,12 @@ extension ChatView {
             },
             onDeleteMessage: { messageId in
                 messageToDelete = messageId
+            },
+            findMessage: { id in
+                viewModel.findMessage(by: id)
+            },
+            onReply: { message in
+                viewModel.setReplyingToMessage(message)
             }
         )
     }
@@ -420,6 +433,16 @@ extension ChatView {
     // MARK: - Message Input View
     private var messageInputView: some View {
         VStack(spacing: 8) {
+            // Бар ответа на сообщение
+            if let replyingTo = viewModel.replyingToMessage {
+                ReplyBarView(
+                    replyingToMessage: replyingTo,
+                    onClose: {
+                        viewModel.clearReplyingToMessage()
+                    }
+                )
+            }
+
             // Превью выбранных вложений
             if !viewModel.selectedAttachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -755,6 +778,103 @@ extension ChatView {
                         .clipShape(Circle())
                 }
                 .offset(x: 4, y: -4)
+            }
+        }
+    }
+
+    // MARK: - Reply Bar View
+    private struct ReplyBarView: View {
+        let replyingToMessage: ChatMessage
+        let onClose: () -> Void
+
+        var body: some View {
+            HStack(spacing: 8) {
+                // Вертикальная линия слева
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(width: 3)
+                    .frame(height: 20)
+                    .cornerRadius(1.5)
+
+                HStack(spacing: 6) {
+                    Text("Ответ на")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(replyingToMessage.sender?.displayName ?? "Пользователь")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
+
+                if !replyingToMessage.content.isEmpty && replyingToMessage.messageType == .text {
+                    Text(replyingToMessage.content)
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundColor(.secondary)
+                } else if !replyingToMessage.attachments.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: getAttachmentIcon())
+                            .font(.caption2)
+                        Text(getAttachmentText())
+                            .font(.caption2)
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+
+        }
+
+        private func getAttachmentIcon() -> String {
+            if replyingToMessage.messageType == .image {
+                return "photo"
+            } else if replyingToMessage.attachments.contains(where: { urlString in
+                guard let url = URL(string: urlString) else { return false }
+                let ext = url.pathExtension.lowercased()
+                return ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+            }) {
+                return "mic.fill"
+            } else if replyingToMessage.attachments.contains(where: { urlString in
+                guard let url = URL(string: urlString) else { return false }
+                let ext = url.pathExtension.lowercased()
+                return ["mp4", "mov", "m4v"].contains(ext)
+            }) {
+                return "video.fill"
+            } else {
+                return "doc"
+            }
+        }
+
+        private func getAttachmentText() -> String {
+            if replyingToMessage.messageType == .image {
+                return "Фото"
+            } else if replyingToMessage.attachments.contains(where: { urlString in
+                guard let url = URL(string: urlString) else { return false }
+                let ext = url.pathExtension.lowercased()
+                return ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+            }) {
+                return "Голосовое сообщение"
+            } else if replyingToMessage.attachments.contains(where: { urlString in
+                guard let url = URL(string: urlString) else { return false }
+                let ext = url.pathExtension.lowercased()
+                return ["mp4", "mov", "m4v"].contains(ext)
+            }) {
+                return "Видеосообщение"
+            } else {
+                return "Файл"
             }
         }
     }
