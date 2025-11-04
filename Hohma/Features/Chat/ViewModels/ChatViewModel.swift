@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 @MainActor
 final class ChatViewModel: ObservableObject {
@@ -22,20 +23,60 @@ final class ChatViewModel: ObservableObject {
     @Published var messageInput: String = ""
     @Published var selectedAttachments: [ChatAttachment] = []  // Выбранные файлы для отправки
     @Published var isUploadingAttachments: Bool = false
+    @Published var isRecordingVoice: Bool = false
+    @Published var voiceRecordingDuration: TimeInterval = 0
+    @Published var voiceAudioLevel: Float = 0.0
+    @Published var isCancelingVoice: Bool = false
+    @Published var isRecordingVideo: Bool = false
+    @Published var videoRecordingDuration: TimeInterval = 0
+    @Published var isCancelingVideo: Bool = false
+    @Published var showVideoControls: Bool = false  // Показывать ли overlay с кнопками управления
 
     private let chatService = ChatService.shared
+    private let audioRecorder = AudioRecorderService()
+    let videoRecorder = VideoRecorderService()  // Public для доступа из View
     private var chatSocketManager: ChatSocketManager?
     private var socketAdapter: SocketIOServiceAdapter?
     private var chatId: String?
     private var typingTimer: Timer?
     private var lastTypingTime: Date?
+    private var recordingSyncTask: Task<Void, Never>?
     private let messagesPageSize = 30  // Размер страницы при загрузке
 
     init() {
         setupSocketAdapter()
+        setupAudioRecorderBinding()
+        setupVideoRecorderBinding()
     }
-
+    
+    private func setupAudioRecorderBinding() {
+        // Синхронизируем состояние из AudioRecorderService
+        recordingSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self = self else { break }
+                
+                if self.audioRecorder.isRecording {
+                    await MainActor.run {
+                        self.isRecordingVoice = true
+                        self.voiceRecordingDuration = self.audioRecorder.recordingDuration
+                        self.voiceAudioLevel = self.audioRecorder.audioLevel
+                    }
+                } else if self.isRecordingVoice {
+                    await MainActor.run {
+                        self.isRecordingVoice = false
+                        self.voiceRecordingDuration = 0
+                        self.voiceAudioLevel = 0.0
+                    }
+                }
+                
+                try? await Task.sleep(nanoseconds: 50_000_000) // 0.05 секунды
+            }
+        }
+    }
+    
     deinit {
+        recordingSyncTask?.cancel()
+        videoRecordingSyncTask?.cancel()
         typingTimer?.invalidate()
         // leaveChat() не вызываем в deinit, так как это main actor метод
         // Вместо этого используем Task для безопасного вызова
@@ -334,7 +375,6 @@ final class ChatViewModel: ObservableObject {
                 url = try await FileUploadService.shared.uploadImage(image)
             } else if let fileData = attachment.fileData {
                 // Загружаем файл
-                let fileName = attachment.fileName ?? "file_\(UUID().uuidString)"
                 let fileExtension = attachment.fileExtension ?? "bin"
                 let mimeType = FileUploadService.getMimeType(for: fileExtension)
                 let fullFileName = "chat/\(UUID().uuidString).\(fileExtension)"
@@ -403,6 +443,191 @@ final class ChatViewModel: ObservableObject {
         guard let chatId = chatId else { return }
         chatSocketManager?.sendTyping(chatId: chatId, isTyping: false)
         typingTimer?.invalidate()
+    }
+    
+    // MARK: - Voice Recording
+    
+    func startVoiceRecording() {
+        guard !isRecordingVoice else { return }
+        
+        guard audioRecorder.startRecording() != nil else {
+            errorMessage = "Не удалось начать запись"
+            return
+        }
+        
+        // Состояние синхронизируется через setupAudioRecorderBinding
+    }
+    
+    func stopVoiceRecording() {
+        guard isRecordingVoice else { return }
+        
+        guard let audioData = audioRecorder.stopRecording() else {
+            isRecordingVoice = false
+            errorMessage = "Не удалось сохранить запись"
+            return
+        }
+        
+        isRecordingVoice = false
+        voiceRecordingDuration = 0
+        voiceAudioLevel = 0.0
+        
+        // Проверяем минимальную длительность (0.5 секунды)
+        guard audioData.count > 1000 else {
+            errorMessage = "Запись слишком короткая"
+            return
+        }
+        
+        // Создаем attachment для голосового сообщения
+        let voiceAttachment = ChatAttachment(
+            fileData: audioData,
+            fileName: "voice_message.m4a",
+            fileExtension: "m4a"
+        )
+        
+        // Добавляем к вложениям и отправляем
+        addAttachment(voiceAttachment)
+        
+        Task {
+            // Небольшая задержка для визуализации
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            sendMessage()
+        }
+    }
+    
+    func cancelVoiceRecording() {
+        guard isRecordingVoice else { return }
+        
+        audioRecorder.cancelRecording()
+        isRecordingVoice = false
+        voiceRecordingDuration = 0
+        voiceAudioLevel = 0.0
+        isCancelingVoice = false
+    }
+    
+    // MARK: - Video Recording
+    
+    func startVideoRecording() {
+        guard !isRecordingVideo else { return }
+        
+        videoRecorder.requestPermissions { [weak self] granted in
+            guard granted else {
+                Task { @MainActor [weak self] in
+                    self?.errorMessage = "Нужно разрешение на камеру и микрофон"
+                }
+                return
+            }
+            
+            guard let self = self else { return }
+            
+            // Запускаем сессию сначала
+            self.videoRecorder.startSession()
+            
+            // Небольшая задержка для запуска сессии
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                Task { @MainActor in
+                    guard let _ = self.videoRecorder.startRecording() else {
+                        self.errorMessage = "Не удалось начать запись видео"
+                        self.videoRecorder.stopSession()
+                        return
+                    }
+                    
+                    // Синхронизируем состояние
+                    self.isRecordingVideo = true
+                    self.videoRecordingDuration = 0
+                    self.isCancelingVideo = false
+                    self.showVideoControls = false
+                }
+            }
+        }
+    }
+    
+    func stopVideoRecording() {
+        guard isRecordingVideo else { return }
+        
+        let durationToCheck = videoRecordingDuration  // Сохраняем длительность перед остановкой
+        
+        videoRecorder.stopRecording { [weak self] videoData in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                
+                self.isRecordingVideo = false
+                self.videoRecordingDuration = 0
+                self.isCancelingVideo = false
+                self.showVideoControls = false  // Скрываем кнопки управления
+                
+                self.videoRecorder.stopSession()
+                
+                guard let data = videoData else {
+                    self.errorMessage = "Не удалось сохранить видео"
+                    return
+                }
+                
+                // Проверяем минимальную длительность (0.5 секунды)
+                guard durationToCheck > 0.5 else {
+                    self.errorMessage = "Видео слишком короткое"
+                    return
+                }
+                
+                // Создаем attachment для видеосообщения
+                let videoAttachment = ChatAttachment(
+                    fileData: data,
+                    fileName: "video_message.mp4",
+                    fileExtension: "mp4"
+                )
+                
+                // Добавляем к вложениям и отправляем
+                self.addAttachment(videoAttachment)
+                
+                // Небольшая задержка для визуализации
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                self.sendMessage()
+            }
+        }
+    }
+    
+    func cancelVideoRecording() {
+        guard isRecordingVideo else { return }
+        
+        videoRecorder.cancelRecording()
+        videoRecorder.stopSession()
+        isRecordingVideo = false
+        videoRecordingDuration = 0
+        isCancelingVideo = false
+        showVideoControls = false
+    }
+    
+    func switchVideoCamera() {
+        guard isRecordingVideo else {
+            // Если не идет запись, переключаем камеру обычным способом
+            videoRecorder.switchCamera()
+            return
+        }
+        // Если идет запись, используем специальный метод
+        videoRecorder.switchCameraDuringRecording()
+    }
+    
+    private var videoRecordingSyncTask: Task<Void, Never>?
+    
+    private func setupVideoRecorderBinding() {
+        videoRecordingSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self = self else { break }
+                
+                if self.videoRecorder.isRecording {
+                    await MainActor.run {
+                        self.isRecordingVideo = true
+                        self.videoRecordingDuration = self.videoRecorder.recordingDuration
+                    }
+                } else if self.isRecordingVideo {
+                    await MainActor.run {
+                        self.isRecordingVideo = false
+                        self.videoRecordingDuration = 0
+                    }
+                }
+                
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            }
+        }
     }
 
     // MARK: - Computed Properties

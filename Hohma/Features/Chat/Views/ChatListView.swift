@@ -156,11 +156,16 @@ struct ChatListView: View {
                     .contentShape(Rectangle())
                     .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
+                        Button {
                             chatToDelete = chat
                         } label: {
-                            Label("Удалить", systemImage: "trash")
+                            Image(systemName: "trash")
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color("AccentColor"))
+                                .clipShape(Circle())
                         }
+                        .tint(Color("AccentColor"))
                     }
                     .onTapGesture {
                         selectedChat = chat

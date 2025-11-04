@@ -39,9 +39,12 @@ struct MessageBubbleView: View {
                 // Вложения (изображения или файлы)
                 if !message.attachments.isEmpty {
                     VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 8) {
-                        ForEach(Array(message.attachments.enumerated()), id: \.offset) { index, urlString in
+                        ForEach(Array(message.attachments.enumerated()), id: \.offset) {
+                            index, urlString in
                             if let url = URL(string: urlString) {
-                                AttachmentView(url: url, messageType: message.messageType)
+                                AttachmentView(
+                                    url: url, messageType: message.messageType,
+                                    isCurrentUser: isCurrentUser)
                             }
                         }
                     }
@@ -118,67 +121,86 @@ struct MessageBubbleView: View {
 struct AttachmentView: View {
     let url: URL
     let messageType: MessageType
+    let isCurrentUser: Bool
     @State private var showFullScreen = false
-    
+
+    private var isVoiceMessage: Bool {
+        let ext = url.pathExtension.lowercased()
+        return ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+    }
+
+    private var isVideoMessage: Bool {
+        let ext = url.pathExtension.lowercased()
+        return ["mp4", "mov", "m4v"].contains(ext)
+    }
+
     var body: some View {
         Group {
-            switch messageType {
-            case .image:
-                // Изображение с возможностью просмотра
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 200, height: 200)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 250, maxHeight: 300)
-                            .cornerRadius(12)
-                            .onTapGesture {
-                                showFullScreen = true
-                            }
-                    case .failure:
-                        Image(systemName: "photo")
-                            .frame(width: 200, height: 200)
-                            .foregroundColor(.secondary)
-                    @unknown default:
-                        EmptyView()
+            if isVoiceMessage {
+                // Голосовое сообщение с плеером
+                VoiceMessagePlayerView(url: url, isCurrentUser: isCurrentUser)
+            } else if isVideoMessage {
+                // Видеосообщение (кружок) с плеером
+                VideoMessagePlayerView(url: url, isCurrentUser: isCurrentUser)
+            } else {
+                switch messageType {
+                case .image:
+                    // Изображение с возможностью просмотра
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 200, height: 200)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: 250, maxHeight: 300)
+                                .cornerRadius(12)
+                                .onTapGesture {
+                                    showFullScreen = true
+                                }
+                        case .failure:
+                            Image(systemName: "photo")
+                                .frame(width: 200, height: 200)
+                                .foregroundColor(.secondary)
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
-                }
-                .sheet(isPresented: $showFullScreen) {
-                    FullScreenImageView(url: url)
-                }
-            case .file:
-                // Файл с иконкой и возможностью скачать
-                Button(action: {
-                    if UIApplication.shared.canOpenURL(url) {
-                        UIApplication.shared.open(url)
+                    .sheet(isPresented: $showFullScreen) {
+                        FullScreenImageView(url: url)
                     }
-                }) {
-                    HStack {
-                        Image(systemName: getFileIcon(for: url))
-                            .font(.title2)
-                        Text(url.lastPathComponent)
-                            .font(.body)
-                            .lineLimit(1)
-                        Spacer()
-                        Image(systemName: "arrow.down.circle")
-                            .font(.title3)
+                case .file:
+                    // Файл с иконкой и возможностью скачать
+                    Button(action: {
+                        if UIApplication.shared.canOpenURL(url) {
+                            UIApplication.shared.open(url)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: getFileIcon(for: url))
+                                .font(.title2)
+                            Text(url.lastPathComponent)
+                                .font(.body)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "arrow.down.circle")
+                                .font(.title3)
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
                     }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
+                default:
+                    EmptyView()
                 }
-            default:
-                EmptyView()
             }
         }
     }
-    
+
     private func getFileIcon(for url: URL) -> String {
         let ext = url.pathExtension.lowercased()
         switch ext {
@@ -197,12 +219,12 @@ struct FullScreenImageView: View {
     let url: URL
     @Environment(\.dismiss) var dismiss
     @State private var scale: CGFloat = 1.0
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 Color.black.ignoresSafeArea()
-                
+
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .empty:

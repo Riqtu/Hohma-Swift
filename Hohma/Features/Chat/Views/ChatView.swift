@@ -18,15 +18,52 @@ struct ChatView: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            headerView
+        ZStack {
+            VStack(spacing: 0) {
+                // Header
+                headerView
 
-            // Messages
-            messagesView
+                // Messages
+                messagesView
 
-            // Input
-            messageInputView
+                // Input
+                messageInputView
+            }
+
+            // Overlay для записи видеосообщения на полный экран
+            if viewModel.isRecordingVideo {
+                VideoRecordOverlayView(
+                    duration: viewModel.videoRecordingDuration,
+                    previewLayer: viewModel.videoRecorder.previewLayer,
+                    isFrontCamera: viewModel.videoRecorder.isFrontCamera,
+                    showControls: viewModel.showVideoControls,
+                    onCancel: {
+                        viewModel.cancelVideoRecording()
+                    },
+                    onSwitchCamera: {
+                        viewModel.switchVideoCamera()
+                    },
+                    onSend: {
+                        viewModel.stopVideoRecording()
+                    }
+                )
+                .zIndex(1000)
+                .ignoresSafeArea()
+            }
+
+            // Overlay для записи голосового сообщения на полный экран
+            if viewModel.isRecordingVoice {
+                VoiceRecordOverlayView(
+                    duration: viewModel.voiceRecordingDuration,
+                    audioLevel: viewModel.voiceAudioLevel,
+                    isCanceling: viewModel.isCancelingVoice,
+                    onCancel: {
+                        viewModel.cancelVoiceRecording()
+                    }
+                )
+                .zIndex(1000)
+                .ignoresSafeArea()
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -433,32 +470,32 @@ extension ChatView {
                         }
                     }
 
-                Button(action: {
-                    viewModel.sendMessage()
-                }) {
+                // Кнопки записи видео/голоса
+                if !viewModel.messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty || !viewModel.selectedAttachments.isEmpty
+                {
+                    // Если есть текст или вложения - кнопка отправки
                     ZStack {
                         if viewModel.isUploadingAttachments {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(width: 24, height: 24)
+                                .frame(width: 32, height: 32)
                         } else {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(
-                                    (viewModel.messageInput.trimmingCharacters(
-                                        in: .whitespacesAndNewlines
-                                    ).isEmpty && viewModel.selectedAttachments.isEmpty)
-                                        || viewModel.isSending
-                                        ? .gray
-                                        : .accentColor)
+                            Button(action: {
+                                viewModel.sendMessage()
+                            }) {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(viewModel.isSending ? .gray : .accentColor)
+                            }
+                            .disabled(viewModel.isSending)
                         }
                     }
                     .frame(width: 32, height: 32)
+                } else {
+                    // Если нет текста - кнопка переключения между режимами записи видео и голоса
+                    RecordModeToggleButton(viewModel: viewModel)
                 }
-                .disabled(
-                    (viewModel.messageInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        && viewModel.selectedAttachments.isEmpty)
-                        || viewModel.isSending)
             }
         }
         .padding()
@@ -469,6 +506,215 @@ extension ChatView {
                 .foregroundColor(Color(.separator)),
             alignment: .top
         )
+    }
+
+    // MARK: - Record Mode Toggle Button
+    private struct RecordModeToggleButton: View {
+        @ObservedObject var viewModel: ChatViewModel
+        @State private var isVideoMode: Bool = true  // По умолчанию режим видео
+        @State private var isPressed = false
+        @State private var dragOffset: CGSize = .zero
+        @State private var hasStartedRecording = false  // Локальное отслеживание начала записи
+        @State private var longPressCompleted = false  // Для отслеживания LongPress в аудио режиме
+        @State private var videoRecordingTimerTask: Task<Void, Never>? = nil  // Задача таймера для начала записи видео
+
+        var body: some View {
+            Button(action: {
+                // Переключаем режим только если не идет запись
+                if !viewModel.isRecordingVideo && !viewModel.isRecordingVoice {
+                    isVideoMode.toggle()
+                }
+            }) {
+                Image(systemName: isVideoMode ? "video.fill" : "mic.fill")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+            }
+            .onChange(of: viewModel.isRecordingVideo) { _, isRecording in
+                if isRecording {
+                    // При начале записи сразу показываем панель управления
+                    viewModel.showVideoControls = true
+                    viewModel.isCancelingVideo = false
+                } else {
+                    // Сбрасываем флаг когда запись останавливается
+                    hasStartedRecording = false
+                    isPressed = false
+                    dragOffset = .zero
+                    // Отменяем таймер, если он был запущен
+                    videoRecordingTimerTask?.cancel()
+                    videoRecordingTimerTask = nil
+                }
+            }
+            .onChange(of: viewModel.isRecordingVoice) { _, isRecording in
+                // Сбрасываем флаг когда запись голоса останавливается
+                if !isRecording {
+                    hasStartedRecording = false
+                    isPressed = false
+                    dragOffset = .zero
+                    longPressCompleted = false
+                }
+            }
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.1)
+                    .onEnded { _ in
+                        // Для аудио режима - начинаем запись
+                        if !isVideoMode && !viewModel.isRecordingVoice {
+                            longPressCompleted = true
+                            viewModel.startVoiceRecording()
+                        }
+                    }
+            )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        dragOffset = value.translation
+
+                        if isVideoMode {
+                            // Режим видео
+                            // Начинаем запись только если есть движение или прошло небольшое время
+                            let horizontalDistance = abs(value.translation.width)
+                            let verticalDistance = abs(value.translation.height)
+                            let totalDistance = sqrt(
+                                pow(value.translation.width, 2) + pow(value.translation.height, 2))
+
+                            // Если еще не начали запись
+                            if !isPressed && !hasStartedRecording {
+                                // Если есть движение (> 5px) - начинаем сразу
+                                if totalDistance > 5 {
+                                    // Отменяем таймер, если он был запущен
+                                    videoRecordingTimerTask?.cancel()
+                                    videoRecordingTimerTask = nil
+
+                                    isPressed = true
+                                    hasStartedRecording = true
+                                    // Сразу показываем панель управления
+                                    viewModel.showVideoControls = true
+                                    viewModel.isCancelingVideo = false
+                                    viewModel.startVideoRecording()
+                                } else {
+                                    // Если нет движения - запускаем таймер для начала записи через 0.3 секунды
+                                    if videoRecordingTimerTask == nil {
+                                        videoRecordingTimerTask = Task {
+                                            try? await Task.sleep(nanoseconds: 300_000_000)  // 0.3 секунды
+
+                                            // Проверяем на главном потоке, что задача не была отменена и запись еще не началась
+                                            await MainActor.run {
+                                                if !Task.isCancelled && !hasStartedRecording
+                                                    && !viewModel.isRecordingVideo
+                                                {
+                                                    isPressed = true
+                                                    hasStartedRecording = true
+                                                    // Сразу показываем панель управления
+                                                    viewModel.showVideoControls = true
+                                                    viewModel.isCancelingVideo = false
+                                                    viewModel.startVideoRecording()
+                                                }
+
+                                                // Очищаем задачу после выполнения
+                                                videoRecordingTimerTask = nil
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Определяем направление свайпа независимо от состояния isRecordingVideo
+                            // (так как запись может начаться асинхронно)
+
+                            // Свайп влево (отрицательный width) - отмена записи
+                            if value.translation.width < -50
+                                && horizontalDistance > verticalDistance
+                            {
+                                viewModel.isCancelingVideo = true
+                                viewModel.showVideoControls = false
+                            } else {
+                                // Если не свайп влево - показываем панель управления (она всегда видна при записи)
+                                if viewModel.isRecordingVideo {
+                                    viewModel.isCancelingVideo = false
+                                    viewModel.showVideoControls = true
+                                }
+                            }
+                        } else {
+                            // Режим аудио
+                            // Если свайп влево (отрицательный width) больше 50px - показываем индикатор отмены
+                            if viewModel.isRecordingVoice {
+                                let horizontalDistance = abs(value.translation.width)
+                                let verticalDistance = abs(value.translation.height)
+                                viewModel.isCancelingVoice =
+                                    value.translation.width < -50
+                                    && horizontalDistance > verticalDistance
+                            }
+                        }
+                    }
+                    .onEnded { value in
+                        if isVideoMode {
+                            // Режим видео
+                            let horizontalDistance = abs(value.translation.width)
+                            let verticalDistance = abs(value.translation.height)
+
+                            // Если был свайп влево - отменяем запись
+                            if value.translation.width < -50
+                                && horizontalDistance > verticalDistance
+                            {
+                                // Отменяем таймер, если он был запущен
+                                videoRecordingTimerTask?.cancel()
+                                videoRecordingTimerTask = nil
+
+                                if hasStartedRecording {
+                                    viewModel.cancelVideoRecording()
+                                }
+                                isPressed = false
+                                hasStartedRecording = false
+                                dragOffset = .zero
+                                viewModel.showVideoControls = false
+                                viewModel.isCancelingVideo = false
+                                return
+                            }
+
+                            // Отменяем таймер, если он был запущен
+                            videoRecordingTimerTask?.cancel()
+                            videoRecordingTimerTask = nil
+
+                            // Если запись идет - панель управления остается видимой, запись продолжается
+                            if viewModel.isRecordingVideo {
+                                viewModel.showVideoControls = true
+                                viewModel.isCancelingVideo = false
+                                // Запись продолжается, не отправляем
+                                isPressed = false
+                                dragOffset = .zero
+                                return
+                            }
+
+                            // Если запись не началась - отправляем, если была начата
+                            if hasStartedRecording {
+                                viewModel.stopVideoRecording()
+                            }
+                            hasStartedRecording = false
+                            isPressed = false
+                            dragOffset = .zero
+                            viewModel.isCancelingVideo = false
+                        } else {
+                            // Режим аудио
+                            if viewModel.isRecordingVoice {
+                                let horizontalDistance = abs(value.translation.width)
+                                let verticalDistance = abs(value.translation.height)
+
+                                // Если свайп влево больше 50px - отмена
+                                if value.translation.width < -50
+                                    && horizontalDistance > verticalDistance
+                                {
+                                    viewModel.cancelVoiceRecording()
+                                } else {
+                                    // Иначе отправка
+                                    viewModel.stopVoiceRecording()
+                                }
+                            }
+                            dragOffset = .zero
+                            viewModel.isCancelingVoice = false
+                            longPressCompleted = false
+                        }
+                    }
+            )
+        }
     }
 
     // MARK: - Attachment Preview View
