@@ -32,6 +32,10 @@ final class ChatListViewModel: ObservableObject {
                     offset: 0,
                     search: searchQuery.isEmpty ? nil : searchQuery
                 )
+                print("💬 ChatListViewModel: Loaded \(loadedChats.count) chats")
+                for chat in loadedChats {
+                    print("💬 ChatListViewModel: Chat \(chat.id) - unreadCount: \(chat.unreadCountValue)")
+                }
                 self.chats = loadedChats
             } catch {
                 errorMessage = error.localizedDescription
@@ -43,7 +47,40 @@ final class ChatListViewModel: ObservableObject {
     }
 
     func refreshChats() {
-        loadChats()
+        // При обновлении не показываем loading индикатор, чтобы не блокировать UI
+        print("🔄 ChatListViewModel: refreshChats() called")
+        Task {
+            await refreshChatsAsync()
+        }
+    }
+    
+    func refreshChatsAsync() async {
+        errorMessage = nil
+
+        do {
+            let loadedChats = try await chatService.getChats(
+                limit: 50,
+                offset: 0,
+                search: searchQuery.isEmpty ? nil : searchQuery
+            )
+            print("💬 ChatListViewModel: Refreshed \(loadedChats.count) chats")
+            print("💬 ChatListViewModel: Previous chats count: \(self.chats.count)")
+            
+            for chat in loadedChats {
+                print("💬 ChatListViewModel: Chat \(chat.id) - unreadCount: \(chat.unreadCountValue), name: \(chat.displayName)")
+            }
+            
+            // Принудительно обновляем список
+            await MainActor.run {
+                // Всегда обновляем, чтобы гарантировать обновление UI
+                // SwiftUI может не увидеть изменения в свойствах объектов, поэтому создаем новый массив
+                self.chats = loadedChats
+                print("💬 ChatListViewModel: Updated chats array, new count: \(self.chats.count)")
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            print("❌ ChatListViewModel: Failed to refresh chats: \(error)")
+        }
     }
 
     func searchChats(query: String) {

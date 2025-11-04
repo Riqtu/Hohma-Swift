@@ -17,20 +17,22 @@ struct VoiceMessagePlayerView: View {
     @State private var isDragging = false
     @State private var dragValue: Double = 0
     @State private var duration: TimeInterval = 0
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Кнопка воспроизведения
             Button(action: {
                 playerService.play(url: url)
             }) {
-                Image(systemName: playerService.isPlaying && playerService.currentURL == url
-                      ? "pause.circle.fill"
-                      : "play.circle.fill")
-                    .font(.title)
-                    .foregroundColor(isCurrentUser ? .white : Color("AccentColor"))
+                Image(
+                    systemName: playerService.isPlaying && playerService.currentURL == url
+                        ? "pause.circle.fill"
+                        : "play.circle.fill"
+                )
+                .font(.title)
+                .foregroundColor(isCurrentUser ? .white : Color("AccentColor"))
             }
-            
+
             // Прогресс-бар и время
             VStack(alignment: .leading, spacing: 4) {
                 // Прогресс-бар
@@ -40,12 +42,17 @@ struct VoiceMessagePlayerView: View {
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.white.opacity(0.3))
                             .frame(height: 4)
-                        
+
                         // Прогресс воспроизведения
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.white)
                             .frame(
-                                width: geometry.size.width * CGFloat((isDragging ? dragValue : playerService.currentTime) / max(playerService.duration > 0 ? playerService.duration : duration, 0.1)),
+                                width: geometry.size.width
+                                    * CGFloat(
+                                        (isDragging ? dragValue : playerService.currentTime)
+                                            / max(
+                                                playerService.duration > 0
+                                                    ? playerService.duration : duration, 0.1)),
                                 height: 4
                             )
                     }
@@ -53,8 +60,10 @@ struct VoiceMessagePlayerView: View {
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
                                 isDragging = true
-                                let totalDuration = playerService.duration > 0 ? playerService.duration : duration
-                                let progress = min(max(value.location.x / geometry.size.width, 0), 1)
+                                let totalDuration =
+                                    playerService.duration > 0 ? playerService.duration : duration
+                                let progress = min(
+                                    max(value.location.x / geometry.size.width, 0), 1)
                                 dragValue = progress * totalDuration
                             }
                             .onEnded { _ in
@@ -64,17 +73,17 @@ struct VoiceMessagePlayerView: View {
                     )
                 }
                 .frame(height: 4)
-                
+
                 // Время
                 HStack {
                     Text(formatTime(isDragging ? dragValue : playerService.currentTime))
                         .font(.caption2)
                         .foregroundColor(isCurrentUser ? .white.opacity(0.8) : .secondary)
-                    
+
                     Text("/")
                         .font(.caption2)
                         .foregroundColor(isCurrentUser ? .white.opacity(0.8) : .secondary)
-                    
+
                     Text(formatTime(playerService.duration > 0 ? playerService.duration : duration))
                         .font(.caption2)
                         .foregroundColor(isCurrentUser ? .white.opacity(0.8) : .secondary)
@@ -83,6 +92,7 @@ struct VoiceMessagePlayerView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .frame(maxWidth: 250)
         .background(
             isCurrentUser
                 ? Color("AccentColor").opacity(0.9)
@@ -95,7 +105,7 @@ struct VoiceMessagePlayerView: View {
         }
         .enableInjection()
     }
-    
+
     private func loadDuration() {
         // Асинхронно загружаем длительность аудио
         Task {
@@ -115,11 +125,10 @@ struct VoiceMessagePlayerView: View {
             }
         }
     }
-    
+
     private func formatTime(_ time: TimeInterval) -> String {
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
 }
-

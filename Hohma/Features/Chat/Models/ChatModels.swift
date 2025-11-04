@@ -9,7 +9,7 @@ import Foundation
 import UIKit
 
 // MARK: - Chat Model
-struct Chat: Codable, Identifiable {
+struct Chat: Codable, Identifiable, Hashable {
     let id: String
     let type: ChatType
     let name: String?
@@ -73,6 +73,15 @@ struct Chat: Codable, Identifiable {
     var unreadCountValue: Int {
         // unreadCount приходит в ответе API напрямую с чатом
         return unreadCount ?? 0
+    }
+    
+    // Hashable conformance
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: Chat, rhs: Chat) -> Bool {
+        lhs.id == rhs.id
     }
 }
 

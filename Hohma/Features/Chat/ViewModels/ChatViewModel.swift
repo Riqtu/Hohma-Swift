@@ -118,6 +118,14 @@ final class ChatViewModel: ObservableObject {
                 if !self.messages.contains(where: { $0.id == message.id }) {
                     self.messages.append(message)
                     self.messages.sort { $0.createdAt < $1.createdAt }
+                    
+                    // Отправляем уведомление об обновлении списка чатов
+                    // Это обновит счетчик непрочитанных в других чатах
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": message.chatId]
+                    )
                 }
             }
         }
@@ -410,6 +418,12 @@ final class ChatViewModel: ObservableObject {
         Task {
             do {
                 try await chatService.markAsRead(chatId: chatId, messageId: nil)
+                // Отправляем уведомление об обновлении списка чатов
+                NotificationCenter.default.post(
+                    name: .chatListUpdated,
+                    object: nil,
+                    userInfo: ["chatId": chatId]
+                )
             } catch {
                 print("❌ ChatViewModel: Failed to mark as read: \(error)")
             }

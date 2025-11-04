@@ -12,33 +12,43 @@ import SwiftUI
 struct ChatListView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = ChatListViewModel()
-    @State private var selectedChat: Chat?
     @State private var chatToDelete: Chat? = nil
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Search bar
-            searchBarView
+        NavigationStack(path: $navigationPath) {
+            VStack(spacing: 0) {
+                // Search bar
+                searchBarView
 
-            // Chat list
-            if viewModel.isLoading && viewModel.chats.isEmpty {
-                loadingView
-            } else if viewModel.chats.isEmpty {
-                emptyStateView
-            } else {
-                chatListView
-            }
-        }
-        .background(Color.clear)
-        .navigationTitle("Чаты")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    viewModel.showingCreateChat = true
-                }) {
-                    Image(systemName: "plus")
+                // Chat list
+                if viewModel.isLoading && viewModel.chats.isEmpty {
+                    loadingView
+                } else if viewModel.chats.isEmpty {
+                    emptyStateView
+                } else {
+                    chatListView
                 }
+            }
+            .background(Color.clear)
+            .navigationTitle("Чаты")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        viewModel.showingCreateChat = true
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .navigationDestination(for: Chat.self) { chat in
+                ChatView(chatId: chat.id)
+                    .onDisappear {
+                        // Обновляем список чатов при возврате из чата
+                        // чтобы обновить счетчик непрочитанных сообщений
+                        viewModel.refreshChats()
+                    }
             }
         }
         .sheet(isPresented: $viewModel.showingCreateChat) {
@@ -48,13 +58,6 @@ struct ChatListView: View {
             .onDisappear {
                 viewModel.refreshChats()
             }
-        }
-        .sheet(item: $selectedChat) { chat in
-            NavigationStack {
-                ChatView(chatId: chat.id)
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
         .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -87,7 +90,7 @@ struct ChatListView: View {
 
                 // Ищем чат в загруженных чатах
                 if let chat = viewModel.chats.first(where: { $0.id == chatId }) {
-                    selectedChat = chat
+                    navigationPath.append(chat)
                 } else {
                     // Если чат не найден, загружаем его по ID
                     Task {
@@ -98,6 +101,15 @@ struct ChatListView: View {
         }
         .onAppear {
             viewModel.loadChats()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Обновляем список чатов при возврате приложения в foreground
+            viewModel.refreshChats()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .chatListUpdated)) { _ in
+            // Обновляем список чатов при получении уведомления об обновлении
+            // Это происходит при отметке сообщений как прочитанных или при получении новых сообщений
+            viewModel.refreshChats()
         }
     }
 
@@ -110,7 +122,7 @@ struct ChatListView: View {
                 if !viewModel.chats.contains(where: { $0.id == chatId }) {
                     viewModel.chats.insert(chat, at: 0)
                 }
-                selectedChat = chat
+                navigationPath.append(chat)
             }
         } catch {
             print("❌ ChatListView: Failed to load chat by ID: \(error)")
@@ -152,30 +164,31 @@ struct ChatListView: View {
     private var chatListView: some View {
         List {
             ForEach(viewModel.chats) { chat in
-                ChatCellView(chat: chat)
-                    .contentShape(Rectangle())
-                    .listRowBackground(Color.clear)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button {
-                            chatToDelete = chat
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(.white)
-                                .padding(8)
-                                .background(Color("AccentColor"))
-                                .clipShape(Circle())
-                        }
-                        .tint(Color("AccentColor"))
+                NavigationLink(value: chat) {
+                    ChatCellView(chat: chat)
+                        .id("\(chat.id)-\(chat.unreadCountValue)") // Принудительное обновление при изменении счетчика
+                }
+                .contentShape(Rectangle())
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button {
+                        chatToDelete = chat
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(Color("AccentColor"))
+                            .clipShape(Circle())
                     }
-                    .onTapGesture {
-                        selectedChat = chat
-                    }
+                    .tint(Color("AccentColor"))
+                }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Color.clear)
         .refreshable {
-            viewModel.refreshChats()
+            print("🔄 ChatListView: Pull-to-refresh triggered")
+            await viewModel.refreshChatsAsync()
         }
     }
 
@@ -224,6 +237,15 @@ struct ChatListView: View {
 struct ChatCellView: View {
     @ObserveInjection var inject
     let chat: Chat
+    
+    // Debug: выводим счетчик для отладки
+    private var unreadCount: Int {
+        let count = chat.unreadCountValue
+        if count > 0 {
+            print("💬 ChatCellView: Chat \(chat.id) has \(count) unread messages")
+        }
+        return count
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -245,40 +267,46 @@ struct ChatCellView: View {
 
             // Content
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(alignment: .top) {
                     Text(chat.displayName)
                         .font(.headline)
                         .foregroundColor(.primary)
+                        .fontWeight(unreadCount > 0 ? .semibold : .regular)
 
                     Spacer()
 
-                    if let lastMessageAt = chat.lastMessageAt {
-                        Text(formatDate(lastMessageAt))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                if let lastMessage = chat.messages?.last {
-                    HStack {
-                        Text(lastMessage.content)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        if chat.unreadCountValue > 0 {
-                            Text("\(chat.unreadCountValue)")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
+                    HStack(alignment: .center, spacing: 6) {
+                        if let lastMessageAt = chat.lastMessageAt {
+                            Text(formatDate(lastMessageAt))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        // Счетчик непрочитанных рядом с датой
+                        if unreadCount > 0 {
+                            Text("\(unreadCount > 99 ? "99+" : "\(unreadCount)")")
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
+                                .frame(minWidth: 20)
+                                .padding(.horizontal, unreadCount > 99 ? 5 : 6)
+                                .padding(.vertical, 3)
                                 .background(Color("AccentColor"))
                                 .clipShape(Capsule())
                         }
                     }
+                }
+
+                if let lastMessage = chat.messages?.last {
+                    Text(lastMessage.content)
+                        .font(.subheadline)
+                        .foregroundColor(unreadCount > 0 ? .primary : .secondary)
+                        .lineLimit(1)
+                } else if unreadCount > 0 {
+                    // Показываем индикатор непрочитанных, даже если нет последнего сообщения
+                    Text("Непрочитанные сообщения")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .italic()
                 }
             }
         }

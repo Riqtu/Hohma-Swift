@@ -17,6 +17,7 @@ final class ChatSocketManager {
     var onTyping: ((String, Bool) -> Void)?  // userId, isTyping
     var onMemberOnline: ((String) -> Void)?  // userId
     var onMemberOffline: ((String) -> Void)?  // userId
+    var onUnreadCountUpdated: ((String, String, Int) -> Void)?  // chatId, userId, unreadCount
 
     init(socket: SocketIOServiceAdapter) {
         self.socket = socket
@@ -101,6 +102,22 @@ final class ChatSocketManager {
                 }
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:message:deleted payload: \(error)")
+            }
+        }
+
+        socket.on(.chatUnreadCountUpdated) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let chatId = json["chatId"] as? String,
+                   let userId = json["userId"] as? String,
+                   let unreadCount = json["unreadCount"] as? Int
+                {
+                    print("💬 ChatSocketManager: chat:unreadCount:updated received - chatId: \(chatId), userId: \(userId), unreadCount: \(unreadCount)")
+                    self.onUnreadCountUpdated?(chatId, userId, unreadCount)
+                }
+            } catch {
+                print("❌ ChatSocketManager: failed to parse chat:unreadCount:updated payload: \(error)")
             }
         }
     }

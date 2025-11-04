@@ -13,6 +13,7 @@ extension Notification.Name {
     static let socketAuthorizationError = Notification.Name("socketAuthorizationError")
     static let roomUsersUpdated = Notification.Name("roomUsersUpdated")
     static let deepLinkToWheel = Notification.Name("deepLinkToWheel")
+    static let chatListUpdated = Notification.Name("chatListUpdated")
 }
 
 // MARK: - Socket.IO Events
@@ -47,6 +48,7 @@ enum SocketIOEvent: String, CaseIterable {
     case chatMessageDeleted = "chat:message:deleted"
     case chatMemberOnline = "chat:member:online"
     case chatMemberOffline = "chat:member:offline"
+    case chatUnreadCountUpdated = "chat:unreadCount:updated"
 }
 
 // MARK: - Socket.IO Data Models (Shared with WheelState)

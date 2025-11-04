@@ -20,9 +20,6 @@ struct ChatView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Header
-                headerView
-
                 // Messages
                 messagesView
 
@@ -65,8 +62,24 @@ struct ChatView: View {
                 .ignoresSafeArea()
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
-        .navigationBarBackButtonHidden(true)
+        .appBackground()
+        .navigationTitle(viewModel.displayName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    Text(viewModel.displayName)
+                        .font(.headline)
+                    if !viewModel.typingUsers.isEmpty {
+                        Text("Печатает...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                }
+            }
+        }
         .onAppear {
             viewModel.loadChat(chatId: chatId)
         }
@@ -173,20 +186,12 @@ struct ScrollViewWithAutoScrollTracker: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
+                .padding(.bottom, 20)
                 .id("bottom")
-                .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: geometry.frame(in: .named("scroll")).minY
-                            )
-                    }
-                )
+
             }
             .coordinateSpace(name: "scroll")
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
             .simultaneousGesture(
                 // Одновременный жест для закрытия клавиатуры
                 // Работает на пустых областях, не блокируя тапы на сообщения
@@ -377,7 +382,6 @@ extension ChatView {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
         .overlay(
             Rectangle()
                 .frame(height: 0.5)
@@ -499,7 +503,6 @@ extension ChatView {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
         .overlay(
             Rectangle()
                 .frame(height: 0.5)

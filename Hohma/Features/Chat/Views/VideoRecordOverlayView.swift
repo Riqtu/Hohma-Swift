@@ -24,13 +24,8 @@ struct VideoRecordOverlayView: View {
             let circleSize = min(geometry.size.width * 0.7, geometry.size.height * 0.5, 300)
 
             ZStack {
-                // Размытый полупрозрачный фон
-                Rectangle()
-                    .fill(Material.thinMaterial)
-                    .overlay(
-                        Color.black.opacity(0.2)
-                    )
-                    .ignoresSafeArea()
+                // Затемненный фон
+                Color.black.ignoresSafeArea()
 
                 // Круглый preview камеры в центре
                 if let previewLayer = previewLayer {
@@ -87,6 +82,8 @@ struct VideoRecordOverlayView: View {
 
                 // Затемнение сверху
                 VStack {
+                    Color.black.opacity(0.5)
+                        .frame(height: 100)
 
                     Spacer()
 

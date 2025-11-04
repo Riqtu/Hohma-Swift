@@ -50,8 +50,8 @@ struct MessageBubbleView: View {
                     }
                 }
 
-                // Текст сообщения (если есть)
-                if !message.content.isEmpty && message.messageType != .system {
+                // Текст сообщения (если есть и нет видео/аудио вложений)
+                if !message.content.isEmpty && message.messageType != .system && !hasVideoOrAudioAttachments {
                     Text(message.content)
                         .font(.body)
                         .foregroundColor(isCurrentUser ? .white : .primary)
@@ -100,6 +100,16 @@ struct MessageBubbleView: View {
         .enableInjection()
     }
 
+    private var hasVideoOrAudioAttachments: Bool {
+        return message.attachments.contains { urlString in
+            guard let url = URL(string: urlString) else { return false }
+            let ext = url.pathExtension.lowercased()
+            let isVideo = ["mp4", "mov", "m4v"].contains(ext)
+            let isAudio = ["m4a", "aac", "mp3", "wav", "caf"].contains(ext)
+            return isVideo || isAudio
+        }
+    }
+    
     private func formatDate(_ dateString: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"

@@ -15,57 +15,63 @@ struct VideoMessagePlayerView: View {
     let url: URL
     let isCurrentUser: Bool
     @State private var player: AVPlayer?
-    @State private var isPlaying = false
+    @State private var isExpanded = false // Развернуто ли видео на всю ширину
     @State private var timeObserver: Any?
+    
+    // Размеры для круга и полного экрана
+    private let circleSize: CGFloat = 200
+    private let cornerRadius: CGFloat = 16
     
     var body: some View {
         Button(action: {
-            guard let player = player else { return }
-            if isPlaying {
-                player.pause()
-            } else {
-                player.play()
-            }
+            // При нажатии переключаем между маленьким и большим размером
+            isExpanded.toggle()
+            updatePlayerState()
         }) {
             ZStack {
                 if let player = player {
-                    // Видео как круг (кружок) - вписывается в круг
-                    VideoPlayerLayer(player: player)
-                        .frame(width: 200, height: 200)
+                    // Видео - круг, который увеличивается при нажатии
+                    VideoPlayerLayer(player: player, isExpanded: isExpanded)
+                        .frame(
+                            width: isExpanded ? nil : circleSize,
+                            height: isExpanded ? nil : circleSize
+                        )
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(maxWidth: isExpanded ? .infinity : nil)
                         .clipShape(Circle())
                         .overlay(
                             Circle()
                                 .stroke(isCurrentUser ? Color.white.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 2)
                         )
-                        .overlay(
-                            // Кнопка воспроизведения
-                            Group {
-                                if !isPlaying {
-                                    Image(systemName: "play.circle.fill")
-                                        .font(.system(size: 50))
-                                        .foregroundColor(.white)
-                                        .shadow(radius: 10)
-                                }
-                            }
-                        )
                 } else {
-                    // Placeholder пока загружается
+                    // Placeholder пока загружается - всегда круг
                     Circle()
                         .fill(Color(.systemGray5))
-                        .frame(width: 200, height: 200)
+                        .frame(
+                            width: isExpanded ? nil : circleSize,
+                            height: isExpanded ? nil : circleSize
+                        )
+                        .aspectRatio(1, contentMode: .fit)
+                        .frame(maxWidth: isExpanded ? .infinity : nil)
                         .overlay(
                             ProgressView()
                                 .tint(.white)
                         )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: isCurrentUser ? .trailing : .leading)
         }
         .buttonStyle(.plain)
+        .frame(height: isExpanded ? nil : circleSize) // Фиксированная высота только для круга
+        .animation(.easeInOut(duration: 0.3), value: isExpanded)
         .onAppear {
             setupPlayer()
         }
         .onDisappear {
             cleanupPlayer()
+        }
+        .onChange(of: isExpanded) { _, _ in
+            updatePlayerState()
         }
         .enableInjection()
     }
@@ -74,25 +80,40 @@ struct VideoMessagePlayerView: View {
         let newPlayer = AVPlayer(url: url)
         self.player = newPlayer
         
-        // Наблюдаем за завершением воспроизведения
+        // Автоматически запускаем воспроизведение в маленьком виде без звука
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            newPlayer.play()
+            newPlayer.isMuted = true // Без звука в маленьком виде
+        }
+        
+        // Наблюдаем за завершением воспроизведения - перезапускаем
         NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: newPlayer.currentItem,
             queue: .main
         ) { [weak newPlayer] _ in
-            isPlaying = false
             newPlayer?.seek(to: .zero)
+            newPlayer?.play()
         }
+    }
+    
+    private func updatePlayerState() {
+        guard let player = player else { return }
         
-        // Наблюдаем за статусом воспроизведения
-        let observer = newPlayer.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main) { [weak newPlayer] _ in
-            if newPlayer?.rate ?? 0 > 0 {
-                isPlaying = true
-            } else {
-                isPlaying = false
+        if isExpanded {
+            // При разворачивании включаем звук
+            player.isMuted = false
+            if player.rate == 0 {
+                player.play()
+            }
+        } else {
+            // При сворачивании выключаем звук
+            player.isMuted = true
+            // Воспроизведение продолжается, но без звука
+            if player.rate == 0 {
+                player.play()
             }
         }
-        self.timeObserver = observer
     }
     
     private func cleanupPlayer() {
@@ -109,6 +130,7 @@ struct VideoMessagePlayerView: View {
 // MARK: - Video Player Layer без элементов управления
 struct VideoPlayerLayer: UIViewRepresentable {
     let player: AVPlayer
+    let isExpanded: Bool
     
     func makeUIView(context: Context) -> VideoPlayerUIView {
         let view = VideoPlayerUIView()
@@ -180,12 +202,9 @@ class VideoPlayerUIView: UIView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        // Убеждаемся, что frame правильный для квадратного круга
+        // Обновляем frame слоя на всю доступную область
         if let layer = playerLayer {
-            let size = min(bounds.width, bounds.height)
-            let x = (bounds.width - size) / 2
-            let y = (bounds.height - size) / 2
-            layer.frame = CGRect(x: x, y: y, width: size, height: size)
+            layer.frame = bounds
         }
     }
 }
