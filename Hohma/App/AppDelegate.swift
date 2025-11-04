@@ -258,23 +258,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
         print("📱 AppDelegate: Received remote notification: \(userInfo)")
 
-        // Создаем локальное уведомление для отображения
-        if let aps = userInfo["aps"] as? [String: Any],
-            let alert = aps["alert"] as? [String: Any],
-            let title = alert["title"] as? String,
-            let body = alert["body"] as? String
-        {
-
-            let type =
-                PushNotificationType(rawValue: userInfo["type"] as? String ?? "general") ?? .general
-
-            // Показываем локальное уведомление
-            PushNotificationService.shared.scheduleLocalNotification(
-                type: type,
-                title: title,
-                body: body,
-                userInfo: [:]
-            )
+        // Обновляем последнее уведомление в сервисе для внутреннего использования
+        // НЕ создаем локальное уведомление - система iOS сама покажет remote push
+        if let pushNotification = PushNotification(from: userInfo) {
+            DispatchQueue.main.async {
+                PushNotificationService.shared.lastNotification = pushNotification
+            }
         }
+        
+        // Обрабатываем данные уведомления (например, обновляем badge, синхронизируем данные и т.д.)
+        // Но НЕ создаем новое локальное уведомление - система уже покажет push
     }
 }
