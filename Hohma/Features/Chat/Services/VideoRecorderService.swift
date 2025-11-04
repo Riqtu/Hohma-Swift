@@ -103,6 +103,75 @@ class VideoRecorderService: NSObject, ObservableObject {
         }
     }
 
+    @available(iOS, deprecated: 17.0, message: "Use getVideoRotationAngle() instead")
+    private func getVideoOrientation() -> AVCaptureVideoOrientation {
+        // Получаем ориентацию интерфейса, если доступна
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            let interfaceOrientation = windowScene.interfaceOrientation
+            switch interfaceOrientation {
+            case .portrait:
+                return .portrait
+            case .portraitUpsideDown:
+                return .portraitUpsideDown
+            case .landscapeLeft:
+                return .landscapeLeft
+            case .landscapeRight:
+                return .landscapeRight
+            default:
+                return .portrait
+            }
+        }
+
+        // Fallback на ориентацию устройства
+        let deviceOrientation = UIDevice.current.orientation
+        switch deviceOrientation {
+        case .portrait, .faceUp, .faceDown, .unknown:
+            return .portrait
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .landscapeLeft:
+            return .landscapeLeft
+        case .landscapeRight:
+            return .landscapeRight
+        @unknown default:
+            return .portrait
+        }
+    }
+
+    private func getVideoRotationAngle() -> CGFloat {
+        // Получаем ориентацию интерфейса, если доступна
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            let interfaceOrientation = windowScene.interfaceOrientation
+            switch interfaceOrientation {
+            case .portrait:
+                return 90.0
+            case .portraitUpsideDown:
+                return 270.0
+            case .landscapeLeft:
+                return 0.0
+            case .landscapeRight:
+                return 180.0
+            default:
+                return 90.0
+            }
+        }
+
+        // Fallback на ориентацию устройства
+        let deviceOrientation = UIDevice.current.orientation
+        switch deviceOrientation {
+        case .portrait, .faceUp, .faceDown, .unknown:
+            return 90.0
+        case .portraitUpsideDown:
+            return 270.0
+        case .landscapeLeft:
+            return 0.0
+        case .landscapeRight:
+            return 180.0
+        @unknown default:
+            return 90.0
+        }
+    }
+
     func startRecording() -> URL? {
         guard !isRecording else {
             print("⚠️ VideoRecorderService: Recording already in progress")
@@ -120,6 +189,21 @@ class VideoRecorderService: NSObject, ObservableObject {
         if !session.isRunning {
             DispatchQueue.global(qos: .userInitiated).async {
                 session.startRunning()
+            }
+        }
+
+        // Устанавливаем ориентацию для записи
+        if let connection = output.connection(with: .video) {
+            if #available(iOS 17.0, *) {
+                let rotationAngle = getVideoRotationAngle()
+                if connection.isVideoRotationAngleSupported(rotationAngle) {
+                    connection.videoRotationAngle = rotationAngle
+                }
+            } else {
+                let videoOrientation = getVideoOrientation()
+                if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = videoOrientation
+                }
             }
         }
 
@@ -209,6 +293,7 @@ class VideoRecorderService: NSObject, ObservableObject {
             }
 
             var currentTime = CMTime.zero
+            var firstSegmentTransform: CGAffineTransform?
 
             for segmentURL in recordingSegments {
                 let asset = AVURLAsset(url: segmentURL)
@@ -226,6 +311,12 @@ class VideoRecorderService: NSObject, ObservableObject {
                     let videoTimeRange = try await segmentVideoTrack.load(.timeRange)
                     let audioTimeRange = try await segmentAudioTrack.load(.timeRange)
 
+                    // Сохраняем transform первого сегмента для применения к композиции
+                    if firstSegmentTransform == nil {
+                        firstSegmentTransform = try await segmentVideoTrack.load(
+                            .preferredTransform)
+                    }
+
                     try videoTrack.insertTimeRange(
                         videoTimeRange, of: segmentVideoTrack, at: currentTime)
                     try audioTrack.insertTimeRange(
@@ -235,6 +326,11 @@ class VideoRecorderService: NSObject, ObservableObject {
                 } catch {
                     print("❌ VideoRecorderService: Failed to merge segment: \(error)")
                 }
+            }
+
+            // Применяем transform из первого сегмента к композиции для сохранения ориентации
+            if let transform = firstSegmentTransform {
+                videoTrack.preferredTransform = transform
             }
 
             // Экспортируем объединенное видео
@@ -265,20 +361,26 @@ class VideoRecorderService: NSObject, ObservableObject {
                     completion(nil)
                 }
             } else {
+                // Сохраняем exportURL для использования в closure
+                let finalExportURL = exportURL
+                // Используем nonisolated(unsafe) для безопасного доступа к exportSession в closure
+                // Это безопасно, так как closure выполняется после завершения экспорта
+                nonisolated(unsafe) let unsafeExportSession = exportSession
                 exportSession.exportAsynchronously {
-                    if exportSession.status == .completed {
+                    let status = unsafeExportSession.status
+                    let errorMessage = unsafeExportSession.error?.localizedDescription ?? "unknown"
+
+                    if status == .completed {
                         do {
-                            let mergedData = try Data(contentsOf: exportURL)
-                            try? FileManager.default.removeItem(at: exportURL)
+                            let mergedData = try Data(contentsOf: finalExportURL)
+                            try? FileManager.default.removeItem(at: finalExportURL)
                             completion(mergedData)
                         } catch {
                             print("❌ VideoRecorderService: Failed to read merged video: \(error)")
                             completion(nil)
                         }
                     } else {
-                        print(
-                            "❌ VideoRecorderService: Export failed: \(exportSession.error?.localizedDescription ?? "unknown")"
-                        )
+                        print("❌ VideoRecorderService: Export failed: \(errorMessage)")
                         completion(nil)
                     }
                 }
@@ -462,6 +564,21 @@ class VideoRecorderService: NSObject, ObservableObject {
                     currentURL: currentURL, savedDuration: savedDuration)
             }
             return
+        }
+
+        // Устанавливаем ориентацию для нового сегмента
+        if let connection = output.connection(with: .video) {
+            if #available(iOS 17.0, *) {
+                let rotationAngle = getVideoRotationAngle()
+                if connection.isVideoRotationAngleSupported(rotationAngle) {
+                    connection.videoRotationAngle = rotationAngle
+                }
+            } else {
+                let videoOrientation = getVideoOrientation()
+                if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = videoOrientation
+                }
+            }
         }
 
         // Создаем новый файл для второго сегмента
