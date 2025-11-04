@@ -365,8 +365,9 @@ class VideoRecorderService: NSObject, ObservableObject {
                 let finalExportURL = exportURL
                 // Используем nonisolated(unsafe) для безопасного доступа к exportSession в closure
                 // Это безопасно, так как closure выполняется после завершения экспорта
+                // и exportSession больше не используется после этого
                 nonisolated(unsafe) let unsafeExportSession = exportSession
-                exportSession.exportAsynchronously {
+                unsafeExportSession.exportAsynchronously {
                     let status = unsafeExportSession.status
                     let errorMessage = unsafeExportSession.error?.localizedDescription ?? "unknown"
 
