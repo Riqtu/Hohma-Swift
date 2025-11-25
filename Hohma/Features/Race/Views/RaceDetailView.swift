@@ -9,8 +9,8 @@ struct RaceDetailView: View {
     let onNavigateToRaceList: (() -> Void)?
 
     @State private var showingDeleteAlert = false
-    @State private var showingJoinAlert = false
     @State private var showingRaceScene = false
+    @State private var showingJoinMovieSheet = false
 
     init(race: Race, viewModel: RaceListViewModel, onNavigateToRaceList: (() -> Void)? = nil) {
         self.race = race
@@ -62,7 +62,7 @@ struct RaceDetailView: View {
                             }
                         } else if canJoinRace {
                             Button("Присоединиться") {
-                                showingJoinAlert = true
+                                showingJoinMovieSheet = true
                             }
                         }
 
@@ -83,16 +83,13 @@ struct RaceDetailView: View {
                     }
                 }
             }
-            .alert("Присоединиться к скачке", isPresented: $showingJoinAlert) {
-                Button("Отмена", role: .cancel) {}
-                Button("Присоединиться") {
-                    viewModel.joinRace(raceId: currentRace.id) {
-                        // После успешного присоединения переходим в скачку
+            .sheet(isPresented: $showingJoinMovieSheet) {
+                RaceJoinMovieView(race: currentRace) { selection in
+                    viewModel.joinRace(raceId: currentRace.id, movie: selection) {
+                        showingJoinMovieSheet = false
                         showingRaceScene = true
                     }
                 }
-            } message: {
-                Text("Взнос за участие: \(currentRace.entryFee) монет")
             }
             .alert("Удалить скачку", isPresented: $showingDeleteAlert) {
                 Button("Отмена", role: .cancel) {}
@@ -295,10 +292,7 @@ struct RaceDetailView: View {
             } else if canJoinRace {
                 // Пользователь может присоединиться
                 Button("Присоединиться к скачке") {
-                    viewModel.joinRace(raceId: currentRace.id) {
-                        // После успешного присоединения переходим в скачку
-                        showingRaceScene = true
-                    }
+                    showingJoinMovieSheet = true
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 16)
@@ -365,21 +359,38 @@ struct ParticipantRow: View {
 
     var body: some View {
         HStack {
-            AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Image(systemName: "person.circle.fill")
-                    .foregroundColor(.secondary)
+            if let poster = participant.moviePosterUrl, let url = URL(string: poster) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle().fill(Color.gray.opacity(0.2))
+                }
+                .frame(width: 32, height: 48)
+                .cornerRadius(6)
+            } else {
+                AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
             }
-            .frame(width: 32, height: 32)
-            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(participant.user.name ?? participant.user.username ?? "Неизвестно")
                     .font(.subheadline)
                     .fontWeight(.medium)
+                if let movieTitle = participant.movieTitle {
+                    Text(movieTitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
 
                 HStack {
                     Text("Позиция: \(participant.currentPosition)")

@@ -5,6 +5,9 @@ struct RaceListView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = RaceListViewModel()
     @State private var showingFilters = false
+    @State private var raceToJoin: Race?
+    @State private var raceToOpen: Race?
+    @State private var raceToShowInfo: Race?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,11 +51,36 @@ struct RaceListView: View {
         .sheet(isPresented: $showingFilters) {
             RaceFiltersView(viewModel: viewModel)
         }
-        .sheet(isPresented: $viewModel.showingRaceDetail) {
-            if let race = viewModel.selectedRace {
-                RaceDetailView(race: race, viewModel: viewModel) {
-                    // Функция навигации к списку гонок (уже находимся в списке)
-                    // Просто закрываем sheet
+        .sheet(item: $raceToJoin) { race in
+            RaceJoinMovieView(race: race) { selection in
+                viewModel.joinRace(raceId: race.id, movie: selection) {
+                    raceToJoin = nil
+                }
+            }
+        }
+        .sheet(item: $raceToShowInfo) { race in
+            RaceDetailView(race: race, viewModel: viewModel) {
+                raceToShowInfo = nil
+            }
+        }
+        .fullScreenCover(item: $raceToOpen) { race in
+            NavigationView {
+                RaceSceneView(race: race)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Назад") {
+                                raceToOpen = nil
+                            }
+                        }
+                    }
+            }
+            .navigationViewStyle(StackNavigationViewStyle())
+            .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
+                notification in
+                if let destination = notification.userInfo?["destination"] as? String,
+                    destination == "race"
+                {
+                    raceToOpen = nil
                 }
             }
         }
@@ -127,13 +155,29 @@ struct RaceListView: View {
     private var raceListView: some View {
         LazyVStack(spacing: 12) {
             ForEach(viewModel.filteredRaces) { race in
-                RaceCard(race: race) {
-                    viewModel.showRaceDetail(race)
-                }
+                RaceCard(
+                    race: race,
+                    canJoin: canJoin(race),
+                    onOpen: {
+                        raceToOpen = race
+                    },
+                    onInfo: {
+                        raceToShowInfo = race
+                    },
+                    onJoin: {
+                        raceToJoin = race
+                    }
+                )
                 .padding(.horizontal, 16)
             }
         }
         .padding(.vertical, 8)
+    }
+
+    private func canJoin(_ race: Race) -> Bool {
+        let currentCount = race.participantCount ?? race.participants?.count ?? 0
+        return (race.status == .created || race.status == .waiting)
+            && currentCount < race.maxPlayers
     }
 
     // MARK: - Loading View
@@ -224,95 +268,114 @@ struct FilterChip: View {
 // MARK: - Race Card
 struct RaceCard: View {
     let race: Race
-    let onTap: () -> Void
+    let canJoin: Bool
+    let onOpen: () -> Void
+    let onInfo: () -> Void
+    let onJoin: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
-                // Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(race.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-
-                        Text(race.road.name)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    RaceStatusBadge(status: race.status)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(race.name)
+                        .font(.headline)
+                    Text(race.road.name)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
+                Spacer()
 
-                // Info
+                RaceStatusBadge(status: race.status)
+                Button(action: onInfo) {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.borderless)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Label(
-                        "\(race.participantCount ?? 0)/\(race.maxPlayers)", systemImage: "person.2"
+                        "\(race.participantCount ?? race.participants?.count ?? 0)/\(race.maxPlayers)",
+                        systemImage: "person.3.fill"
                     )
                     .font(.caption)
-                    .foregroundColor(.secondary)
-
                     Spacer()
-
-                    if race.status == .finished {
-                        // Для завершенных гонок показываем победителя
-                        if let winner = race.participants?.first(where: { $0.finalPosition == 1 }) {
-                            Label(
-                                "🏆 \(winner.user.name ?? winner.user.username ?? "Неизвестно")",
-                                systemImage: "crown.fill"
-                            )
+                    if race.entryFee > 0 {
+                        Label("\(race.entryFee) монет", systemImage: "dollarsign.circle")
                             .font(.caption)
-                            .foregroundColor(.purple)
-                        }
-                    } else {
-                        if race.entryFee > 0 {
-                            Label("\(race.entryFee) монет", systemImage: "dollarsign.circle")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        Spacer()
-
-                        if race.prizePool > 0 {
-                            Label("\(race.prizePool) монет", systemImage: "trophy")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
+                    }
+                    if race.prizePool > 0 {
+                        Label("\(race.prizePool) монет", systemImage: "trophy.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
                     }
                 }
+                .foregroundColor(.secondary)
 
-                // Creator
-                HStack {
-                    AsyncImage(url: URL(string: race.creator.avatarUrl ?? "")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(width: 20, height: 20)
-                    .clipShape(Circle())
-
-                    Text(race.creator.name ?? race.creator.username ?? "Неизвестно")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    Text(race.createdAt.formattedDate)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if race.status == .finished,
+                    let winner = race.participants?.first(where: { $0.finalPosition == 1 })
+                {
+                    Label(
+                        "🏆 \(winner.movieTitle ?? winner.user.name ?? winner.user.username ?? "Неизвестно")",
+                        systemImage: "crown.fill"
+                    )
+                    .font(.caption)
+                    .foregroundColor(.purple)
                 }
             }
-            .padding()
-            .background(.ultraThinMaterial)
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+
+            HStack {
+                AsyncImage(url: URL(string: race.creator.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 24, height: 24)
+                .clipShape(Circle())
+
+                VStack(alignment: .leading) {
+                    Text(race.creator.name ?? race.creator.username ?? "Неизвестно")
+                        .font(.caption)
+                    Text(race.createdAt.formattedDate)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right.circle.fill")
+                    .foregroundColor(Color("AccentColor"))
+            }
+
+            if canJoin {
+                Button(action: onJoin) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("Добавить фильм в скачку")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                }
+                .buttonStyle(.borderless)
+
+                .background(Color("AccentColor"))
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.08), radius: 3, x: 0, y: 2)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onOpen()
+        }
     }
 }
 

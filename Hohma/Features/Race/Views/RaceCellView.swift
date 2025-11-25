@@ -41,8 +41,7 @@ struct RaceCellView: View {
                 y: shouldShowParticipant && isAnimating ? 3 : 2
             )
             .overlay(cellEffectOverlay)
-            .animation(.easeInOut(duration: 0.15), value: shouldShowParticipant)
-            .animation(.easeInOut(duration: 0.15), value: isAnimating)
+
     }
 
     private var cellIcon: some View {
@@ -52,8 +51,7 @@ struct RaceCellView: View {
                     .font(.caption)
                     .foregroundColor(cellTypeColor)
                     .scaleEffect(shouldShowParticipant && isAnimating ? 1.2 : 1.0)
-                    .animation(.easeInOut(duration: 0.15), value: shouldShowParticipant)
-                    .animation(.easeInOut(duration: 0.15), value: isAnimating)
+
             }
         }
     }
@@ -67,18 +65,54 @@ struct RaceCellView: View {
     }
 
     private var participantAvatar: some View {
-        ZStack {
-            participantBackground
-            participantImage
+        Group {
+            if showPoster {
+                posterView
+                    .opacity(participantOpacity)
+                    .offset(x: participantOffsetX, y: participantOffsetY)
+            } else {
+                ZStack {
+                    participantBackground
+                    avatarImage
+                }
+                .padding(.bottom, 50)
+                .overlay(participantBorder)
+                .padding(.horizontal, -25)
+                .zIndex(10)
+                .scaleEffect(shouldShowParticipant && (isAnimating || isJumping) ? 1.2 : 1.0)
+                .opacity(participantOpacity)
+                .rotationEffect(.degrees(shouldShowParticipant && isJumping ? 15 : 0))
+                .offset(x: participantOffsetX, y: participantOffsetY)
+                .animation(.easeInOut(duration: 0.2), value: shouldShowParticipant)
+                .animation(.easeInOut(duration: 0.2), value: isAnimating)
+                .animation(.easeInOut(duration: 0.2), value: isJumping)
+                .animation(.easeInOut(duration: 0.2), value: animationProgress)
+            }
         }
-        .padding(.bottom, 50)
-        .overlay(participantBorder)
+    }
+
+    private var showPoster: Bool {
+        if let poster = participant.moviePosterUrl {
+            return !poster.isEmpty
+        }
+        return false
+    }
+
+    private var posterView: some View {
+        RacePosterView(
+            posterUrl: participant.moviePosterUrl ?? "",
+            title: participant.movieTitle,
+            width: 55,
+            height: 80,
+            showTitle: true
+        )
+        .padding(.bottom, 45)
         .padding(.horizontal, -25)
         .zIndex(10)
-        .scaleEffect(shouldShowParticipant && (isAnimating || isJumping) ? 1.2 : 1.0)
+        .scaleEffect(shouldShowParticipant && (isAnimating || isJumping) ? 1.05 : 1.0)
         .opacity(participantOpacity)
-        .rotationEffect(.degrees(shouldShowParticipant && isJumping ? 15 : 0))
-        .offset(x: participantOffsetX, y: participantOffsetY)
+        .rotationEffect(.degrees(shouldShowParticipant && isJumping ? 10 : 0))
+        .offset(x: participantOffsetX, y: participantOffsetY - 10)
         .animation(.easeInOut(duration: 0.2), value: shouldShowParticipant)
         .animation(.easeInOut(duration: 0.2), value: isAnimating)
         .animation(.easeInOut(duration: 0.2), value: isJumping)
@@ -96,27 +130,11 @@ struct RaceCellView: View {
                 x: 0,
                 y: shouldShowParticipant && isAnimating ? 4 : 2
             )
-            .overlay(pulsingEffect)
-            .animation(.easeInOut(duration: 0.15), value: shouldShowParticipant)
-            .animation(.easeInOut(duration: 0.15), value: isAnimating)
+            .overlay(!showPoster ? pulsingEffect : nil)
+
     }
 
-    private var pulsingEffect: some View {
-        Group {
-            if !participant.isFinished && shouldShowParticipant {
-                Circle()
-                    .stroke(participant.isFinished ? .green : .blue, lineWidth: 2)
-                    .frame(width: 70, height: 70)
-                    .opacity(0.6)
-                    .scaleEffect(shouldShowParticipant && isAnimating ? 1.3 : 1.0)
-                    .animation(
-                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                        value: shouldShowParticipant && isAnimating)
-            }
-        }
-    }
-
-    private var participantImage: some View {
+    private var avatarImage: some View {
         Group {
             if let avatarUrl = participant.user.avatarUrl, !avatarUrl.isEmpty {
                 RaceAvatarView(
@@ -140,6 +158,21 @@ struct RaceCellView: View {
             Text(participantInitials)
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
+        }
+    }
+
+    private var pulsingEffect: some View {
+        Group {
+            if !participant.isFinished && shouldShowParticipant {
+                Circle()
+                    .stroke(participant.isFinished ? .green : .blue, lineWidth: 2)
+                    .frame(width: 70, height: 70)
+                    .opacity(0.6)
+                    .scaleEffect(shouldShowParticipant && isAnimating ? 1.3 : 1.0)
+                    .animation(
+                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                        value: shouldShowParticipant && isAnimating)
+            }
         }
     }
 
@@ -269,7 +302,8 @@ struct RaceCellView: View {
     }
 
     private var participantInitials: String {
-        let name = participant.user.name ?? participant.user.username ?? "U"
+        let name =
+            participant.movieTitle ?? participant.user.name ?? participant.user.username ?? "U"
         let components = name.components(separatedBy: " ")
 
         if components.count >= 2 {
@@ -363,7 +397,7 @@ struct RaceCellView: View {
                     .opacity(0.6)
                     .animation(
                         .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
-                        value: UUID() // Запускаем анимацию при создании
+                        value: UUID()  // Запускаем анимацию при создании
                     )
             case .obstacle:
                 // Пульсирующий эффект для красного поля
@@ -375,7 +409,7 @@ struct RaceCellView: View {
                     .opacity(0.4)
                     .animation(
                         .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                        value: UUID() // Запускаем анимацию при создании
+                        value: UUID()  // Запускаем анимацию при создании
                     )
             default:
                 EmptyView()

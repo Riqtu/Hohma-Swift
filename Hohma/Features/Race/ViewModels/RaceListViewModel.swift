@@ -89,11 +89,16 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     // MARK: - Join Race
-    func joinRace(raceId: String, completion: (() -> Void)? = nil) {
+    func joinRace(
+        raceId: String,
+        movie: RaceMovieSelection,
+        completion: (() -> Void)? = nil
+    ) {
         isLoading = true
         errorMessage = nil
 
-        let request: [String: Any] = ["raceId": raceId]
+        var request: [String: Any] = ["raceId": raceId]
+        movie.requestPayload.forEach { request[$0.key] = $0.value }
 
         Task {
             do {

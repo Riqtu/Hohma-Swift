@@ -12,7 +12,7 @@ enum RaceTheme: String, CaseIterable, Identifiable {
     case `default` = "default"
     case halloween = "halloween"
     case land = "land"
-
+    case winter = "winter"
     var id: String { rawValue }
 
     var displayName: String {
@@ -23,7 +23,10 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return "Хэллоуин"
         case .land:
             return "Горы"
+        case .winter:
+            return "Зима"
         }
+
     }
 
     var iconName: String {
@@ -34,6 +37,8 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return "moon.stars"
         case .land:
             return "mountain"
+        case .winter:
+            return "snow"
         }
     }
 
@@ -45,6 +50,8 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return "halloweenRace"
         case .land:
             return "landRace"
+        case .winter:
+            return "winterRace"
         }
     }
 
@@ -56,6 +63,8 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return "halloweenBackground"
         case .land:
             return "landBackground"
+        case .winter:
+            return "winterBackground"
         }
     }
 
@@ -67,6 +76,8 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return Color.orange
         case .land:
             return Color.green
+        case .winter:
+            return Color.blue
         }
     }
 }

@@ -29,20 +29,23 @@ struct RaceDiceRollView: View {
 
                 // Список участников с кубиками
                 ScrollView {
-                    LazyVStack(spacing: 20) {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible()), GridItem(.flexible())],
+                        spacing: 16
+                    ) {
                         ForEach(Array(participants.enumerated()), id: \.element.id) {
                             index, participant in
                             ParticipantDiceRow(
                                 participant: participant,
                                 diceValue: viewModel.diceResults[participant.id] ?? 0,
                                 isAnimating: isAnimating,
-                                animationDelay: Double(index) * 0.2
+                                animationDelay: Double(index) * 0.1
                             )
                         }
                     }
                     .padding(.horizontal)
                 }
-                .frame(maxHeight: 400)
+                .frame(maxHeight: .infinity)
 
                 // Кнопка "Дальше"
                 if showContinueButton {
@@ -50,7 +53,7 @@ struct RaceDiceRollView: View {
                         if isInitiator {
                             onDiceRollComplete(viewModel.diceResults)
                         }
-                        onNext() // синхронно закрываем всем
+                        onNext()  // синхронно закрываем всем
                     }) {
                         HStack {
                             Image(systemName: "arrow.right.circle.fill")
@@ -79,7 +82,7 @@ struct RaceDiceRollView: View {
                 isAnimating = false
             }
         }
-        .onChange(of: initialDiceResults.count) { _ in
+        .onChangeCompat(of: initialDiceResults.count, initial: false) { _, _ in
             // Если пришли результаты по сокету после открытия — применяем и запускаем анимацию
             if !initialDiceResults.isEmpty && !isInitiator {
                 viewModel.diceResults = initialDiceResults
@@ -118,8 +121,104 @@ struct ParticipantDiceRow: View {
     @State private var hasStartedAnimation = false
 
     var body: some View {
-        HStack(spacing: 20) {
-            // Аватар участника
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                participantArtwork
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(primaryTitle)
+                        .font(.body)
+                        .foregroundColor(.white)
+
+                    Text(secondaryTitle)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Позиция: \(participant.currentPosition)")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+
+                    if participant.skipNextTurn {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            Text("Пропуск хода")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                DiceView(
+                    value: currentDiceValue,
+                    isAnimating: isAnimating,
+                    animationDelay: animationDelay,
+                    skipNextTurn: participant.skipNextTurn
+                )
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(participantBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(participantBorderColor, lineWidth: 1)
+                )
+        )
+        .onAppear {
+            if isAnimating && !hasStartedAnimation {
+                startDiceAnimation()
+            }
+        }
+        .onChangeCompat(of: isAnimating, initial: false) { _, newValue in
+            if newValue && !hasStartedAnimation {
+                startDiceAnimation()
+            }
+        }
+        .onChangeCompat(of: diceValue, initial: false) { _, newValue in
+            if hasStartedAnimation {
+                currentDiceValue = newValue
+            } else if isAnimating {
+                startDiceAnimation()
+            }
+        }
+    }
+
+    // MARK: - Computed Properties
+    private var primaryTitle: String {
+        participant.movieTitle ?? participant.user.name ?? participant.user.username ?? "Неизвестно"
+    }
+
+    private var secondaryTitle: String {
+        if participant.movieTitle != nil {
+            if let userName = participant.user.name ?? participant.user.username {
+                return userName
+            }
+        }
+        return "Игрок"
+    }
+
+    @ViewBuilder
+    private var participantArtwork: some View {
+        if let poster = participant.moviePosterUrl, !poster.isEmpty {
+            RacePosterView(
+                posterUrl: poster,
+                title: participant.movieTitle,
+                width: 40,
+                height: 60,
+                showTitle: false
+            )
+        } else {
             AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
                 image
                     .resizable()
@@ -134,70 +233,9 @@ struct ParticipantDiceRow: View {
                 Circle()
                     .stroke(Color.white.opacity(0.3), lineWidth: 2)
             )
-
-            // Имя участника и статус
-            VStack(alignment: .leading, spacing: 4) {
-                Text(participant.user.name ?? participant.user.username ?? "Неизвестно")
-                    .font(.headline)
-                    .foregroundColor(.white)
-
-                Text("Позиция: \(participant.currentPosition)")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.7))
-
-                // Показываем только эффекты пропуска хода (красные поля)
-                if participant.skipNextTurn {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                        Text("Пропуск хода")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                }
-            }
-
-            Spacer()
-
-            // Кубик
-            DiceView(
-                value: currentDiceValue,
-                isAnimating: isAnimating,  // Используем isAnimating из родительского компонента
-                animationDelay: animationDelay,
-                skipNextTurn: participant.skipNextTurn
-            )
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(participantBackgroundColor)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(participantBorderColor, lineWidth: 2)
-                )
-        )
-        .onAppear {
-            if isAnimating && !hasStartedAnimation {
-                startDiceAnimation()
-            }
-        }
-        .onChange(of: isAnimating) {
-            if isAnimating && !hasStartedAnimation {
-                startDiceAnimation()
-            }
-        }
-        .onChange(of: diceValue) { newValue in
-            if hasStartedAnimation {
-                currentDiceValue = newValue
-            } else if isAnimating {
-                startDiceAnimation()
-            }
         }
     }
 
-    // MARK: - Computed Properties
     private var participantBackgroundColor: Color {
         if participant.skipNextTurn {
             return Color.red.opacity(0.2)
@@ -263,7 +301,7 @@ struct DiceView: View {
             // Кубик
             RoundedRectangle(cornerRadius: 8)
                 .fill(diceBackgroundColor)
-                .frame(width: 60, height: 60)
+                .frame(width: 45, height: 45)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(diceBorderColor, lineWidth: 2)
@@ -293,8 +331,8 @@ struct DiceView: View {
                 startAnimation()
             }
         }
-        .onChange(of: isAnimating) {
-            if isAnimating && !hasAnimated {
+        .onChangeCompat(of: isAnimating, initial: false) { _, newValue in
+            if newValue && !hasAnimated {
                 startAnimation()
             }
         }
@@ -374,8 +412,8 @@ struct DiceDotsView: View {
     var body: some View {
         GeometryReader { geometry in
             let size = geometry.size
-            let dotSize: CGFloat = 8
-            let spacing: CGFloat = 12
+            let dotSize: CGFloat = 6
+            let spacing: CGFloat = 8
 
             ZStack {
                 // Точки в зависимости от значения
@@ -498,6 +536,8 @@ struct DiceDotsView: View {
         }
     }
 }
+
+// MARK: - Helpers
 
 // MARK: - ViewModel для экрана кубиков
 @MainActor

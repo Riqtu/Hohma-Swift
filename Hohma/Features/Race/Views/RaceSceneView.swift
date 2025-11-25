@@ -6,6 +6,7 @@ struct RaceSceneView: View {
     @StateObject private var viewModel = RaceViewModel()
     @StateObject private var themeManager = RaceThemeManager()
     let race: Race?
+    @State private var showingJoinMovieSheet = false
 
     init(race: Race? = nil) {
         self.race = race
@@ -153,8 +154,16 @@ struct RaceSceneView: View {
                 isPresented: $viewModel.showingWinnerSelection,
                 finishingParticipants: viewModel.finishingParticipants,
                 participants: viewModel.participants,
+                winnerId: viewModel.winnerId,
                 onWinnerSelected: { winnerId in
-                    viewModel.setWinner(participantId: winnerId)
+                    // Если победитель уже определен сервером, просто закрываем экран
+                    if viewModel.winnerId == winnerId {
+                        viewModel.showingWinnerSelection = false
+                        viewModel.raceFinished = true
+                    } else {
+                        // Если победитель не определен, отправляем выбор на сервер
+                        viewModel.setWinner(participantId: winnerId)
+                    }
                 }
             )
         }
@@ -200,12 +209,58 @@ struct RaceSceneView: View {
                 )
             }
         }
+        .sheet(isPresented: $showingJoinMovieSheet) {
+            if let race = viewModel.race ?? race {
+                RaceJoinMovieView(race: race) { selection in
+                    viewModel.joinRace(movie: selection) {
+                        showingJoinMovieSheet = false
+                    }
+                }
+            } else {
+                Text("Скачка не загружена")
+            }
+        }
         .enableInjection()
     }
 
     // MARK: - Bottom Bar
     private var bottomBar: some View {
         VStack(spacing: 12) {
+            if viewModel.canJoinCurrentRace {
+                Button(action: {
+                    showingJoinMovieSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "film")
+                        Text("Добавить фильм в скачку")
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color("AccentColor"))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+            }
+            if viewModel.canStartRace {
+                Button(action: {
+                    viewModel.startRace()
+                }) {
+                    HStack {
+                        Image(systemName: "flag.checkered")
+                        Text("Начать скачку")
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.green)
+                    .cornerRadius(12)
+                }
+                .disabled(viewModel.isLoading)
+                .padding(.horizontal)
+            }
             // Кнопка хода или статус гонки
             if let race = viewModel.race, race.status == .finished {
                 // Показываем статус завершенной гонки

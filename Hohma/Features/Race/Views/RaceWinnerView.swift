@@ -55,40 +55,25 @@ struct RaceWinnerView: View {
 
                 // Информация о победителе
                 VStack(spacing: 16) {
-                    // Аватар победителя
-                    AsyncImage(url: URL(string: winner.user.avatarUrl ?? "")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Circle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay(
-                                Text(
-                                    String(
-                                        winner.user.name?.first ?? winner.user.username?.first
-                                            ?? "?")
-                                )
-                                .font(.title)
-                                .foregroundColor(.white)
-                            )
-                    }
-                    .frame(width: 100, height: 100)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.yellow, lineWidth: 4)
+                    WinnerArtworkView(
+                        posterUrl: winner.moviePosterUrl,
+                        movieTitle: winner.movieTitle,
+                        fallbackName: winner.user.name ?? winner.user.username ?? "Неизвестно",
+                        isAnimating: isAnimating
                     )
-                    .scaleEffect(isAnimating ? 1.1 : 1.0)
-                    .animation(
-                        .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
-                        value: isAnimating)
 
-                    // Имя победителя
-                    Text(winner.user.name ?? winner.user.username ?? "Неизвестно")
+                    Text(
+                        winner.movieTitle
+                            ?? winner.user.name ?? winner.user.username ?? "Неизвестно")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.white)
+
+                    if let userName = winner.user.name ?? winner.user.username {
+                        Text("Игрок: \(userName)")
+                            .font(.headline)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
 
                     // Статистика победителя
                     VStack(spacing: 8) {
@@ -181,6 +166,56 @@ struct RaceWinnerView: View {
         // Останавливаем конфетти через 3 секунды
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             confettiAnimation = false
+        }
+    }
+}
+
+private struct WinnerArtworkView: View {
+    let posterUrl: String?
+    let movieTitle: String?
+    let fallbackName: String
+    let isAnimating: Bool
+
+    var body: some View {
+        Group {
+            if let posterUrl = posterUrl, !posterUrl.isEmpty {
+                RacePosterView(
+                    posterUrl: posterUrl,
+                    title: movieTitle,
+                    width: 140,
+                    height: 200,
+                    showTitle: false
+                )
+                .scaleEffect(isAnimating ? 1.03 : 1.0)
+                .animation(
+                    .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                    value: isAnimating)
+                .padding(.bottom, 8)
+            } else {
+                AsyncImage(url: URL(string: posterUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Circle()
+                        .fill(Color.gray.opacity(0.3))
+                        .overlay(
+                            Text(String(fallbackName.prefix(1)))
+                                .font(.title)
+                                .foregroundColor(.white)
+                        )
+                }
+                .frame(width: 100, height: 100)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.yellow, lineWidth: 4)
+                )
+                .scaleEffect(isAnimating ? 1.1 : 1.0)
+                .animation(
+                    .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                    value: isAnimating)
+            }
         }
     }
 }

@@ -8,6 +8,10 @@ struct SettingsView: View {
     @State private var webViewURL: URL?
     @State private var webViewTitle = ""
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String ?? "Версия 1.3.1"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -47,7 +51,7 @@ struct SettingsView: View {
                             SettingsRow(
                                 icon: "info.circle",
                                 title: "О приложении",
-                                subtitle: "Версия 1.3.1",
+                                subtitle: appVersion,
                                 action: {
                                     if let url = URL(string: "https://hohma.su/about") {
                                         webViewURL = url

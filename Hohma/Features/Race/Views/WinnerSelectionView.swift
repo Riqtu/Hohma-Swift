@@ -6,11 +6,13 @@ struct WinnerSelectionView: View {
     @Binding var isPresented: Bool
     let finishingParticipants: [String]
     let participants: [RaceParticipant]
+    let winnerId: String?  // Победитель уже определен сервером
     let onWinnerSelected: (String) -> Void
 
     @State private var selectedWinner: String?
     @State private var isAnimating: Bool = false
     @State private var animationProgress: Double = 0.0
+    @State private var isSelecting: Bool = false  // Флаг процесса выбора
 
     var body: some View {
         ZStack {
@@ -29,6 +31,13 @@ struct WinnerSelectionView: View {
                     .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
+                
+                if winnerId != nil {
+                    Text("Определяем победителя...")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                }
 
                 // Список финишировавших участников
                 VStack(spacing: 12) {
@@ -36,44 +45,49 @@ struct WinnerSelectionView: View {
                         if let participant = participants.first(where: { $0.id == participantId }) {
                             ParticipantCard(
                                 participant: participant,
-                                isSelected: selectedWinner == participantId,
+                                isSelected: selectedWinner == participantId || (isSelecting && winnerId == participantId),
                                 isAnimating: isAnimating && selectedWinner == participantId
                             )
                             .onTapGesture {
-                                selectWinner(participantId)
+                                // Разрешаем выбор только если победитель еще не определен сервером
+                                if winnerId == nil {
+                                    selectWinner(participantId)
+                                }
                             }
                         }
                     }
                 }
                 .padding(.horizontal)
 
-                // Кнопка выбора победителя
-                Button(action: {
-                    if let winner = selectedWinner {
-                        selectWinnerWithAnimation(winner)
+                // Кнопка выбора победителя (только для визуализации, если победитель уже определен)
+                if winnerId == nil {
+                    Button(action: {
+                        if let winner = selectedWinner {
+                            selectWinnerWithAnimation(winner)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "crown.fill")
+                            Text("Выбрать победителя")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            selectedWinner != nil ? Color("AccentColor") : Color.gray
+                        )
+                        .cornerRadius(12)
                     }
-                }) {
-                    HStack {
-                        Image(systemName: "crown.fill")
-                        Text("Выбрать победителя")
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        selectedWinner != nil ? Color("AccentColor") : Color.gray
-                    )
-                    .cornerRadius(12)
-                }
-                .disabled(selectedWinner == nil)
-                .padding(.horizontal)
+                    .disabled(selectedWinner == nil)
+                    .padding(.horizontal)
 
-                // Информация о случайном выборе
-                Text("Победитель будет выбран случайно")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                    .multilineTextAlignment(.center)
+                    // Информация о случайном выборе
+                    Text("Победитель будет выбран случайно")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                }
             }
             .padding()
             .background(
@@ -87,12 +101,26 @@ struct WinnerSelectionView: View {
             .padding()
         }
         .onAppear {
-            // Автоматически выбираем случайного победителя через 3 секунды
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                if selectedWinner == nil {
-                    let randomWinner =
-                        finishingParticipants.randomElement() ?? finishingParticipants[0]
-                    selectWinnerWithAnimation(randomWinner)
+            // Если победитель уже определен сервером, показываем анимацию выбора
+            if let winner = winnerId {
+                // Небольшая задержка для визуального эффекта
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Показываем анимацию "выбора" всех участников
+                    isSelecting = true
+                    
+                    // Через 1.5 секунды "выбираем" победителя
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        selectWinnerWithAnimation(winner)
+                    }
+                }
+            } else {
+                // Если победитель не определен, выбираем случайного через 3 секунды
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    if selectedWinner == nil {
+                        let randomWinner =
+                            finishingParticipants.randomElement() ?? finishingParticipants[0]
+                        selectWinnerWithAnimation(randomWinner)
+                    }
                 }
             }
         }
@@ -248,6 +276,7 @@ struct ParticipantCard: View {
         isPresented: .constant(true),
         finishingParticipants: ["1", "2"],
         participants: [participant1, participant2],
+        winnerId: nil,
         onWinnerSelected: { _ in }
     )
     .background(Color.black)

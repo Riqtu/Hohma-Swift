@@ -284,6 +284,9 @@ struct RaceParticipant: Codable, Identifiable {
     let id: String
     let raceId: String
     let userId: String
+    let movieExternalId: String?
+    let movieTitle: String?
+    let moviePosterUrl: String?
     let currentPosition: Int
     let totalMoves: Int
     let boostUsed: Int
@@ -303,6 +306,9 @@ struct RaceParticipant: Codable, Identifiable {
         case finalPosition, prize, isFinished, joinedAt, finishedAt, user
         case raceId = "raceId"
         case userId = "userId"
+        case movieExternalId = "movieExternalId"
+        case movieTitle = "movieTitle"
+        case moviePosterUrl = "moviePosterUrl"
     }
 
     init(from decoder: Decoder) throws {
@@ -311,6 +317,9 @@ struct RaceParticipant: Codable, Identifiable {
         id = try container.decode(String.self, forKey: .id)
         raceId = try container.decode(String.self, forKey: .raceId)
         userId = try container.decode(String.self, forKey: .userId)
+        movieExternalId = try? container.decodeIfPresent(String.self, forKey: .movieExternalId)
+        movieTitle = try? container.decodeIfPresent(String.self, forKey: .movieTitle)
+        moviePosterUrl = try? container.decodeIfPresent(String.self, forKey: .moviePosterUrl)
 
         // Handle numeric fields that might come as different types
         // Handle currentPosition which might come as Int or String
@@ -402,6 +411,24 @@ struct RaceParticipant: Codable, Identifiable {
         finishedAt = finishedAtValue == "<null>" ? nil : finishedAtValue
 
         user = try container.decode(RaceUser.self, forKey: .user)
+    }
+}
+
+/// Данные о фильме, с которым пользователь присоединяется к скачке
+struct RaceMovieSelection {
+    let title: String
+    let externalId: String?
+    let posterUrl: String?
+
+    var requestPayload: [String: Any] {
+        var payload: [String: Any] = ["movieTitle": title]
+        if let externalId = externalId {
+            payload["movieExternalId"] = "\(externalId)"
+        }
+        if let posterUrl = posterUrl {
+            payload["moviePosterUrl"] = posterUrl
+        }
+        return payload
     }
 }
 

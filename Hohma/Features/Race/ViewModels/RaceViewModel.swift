@@ -175,6 +175,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var raceCells: [RaceCellData] = []
     @Published var participants: [RaceParticipant] = []
     @Published var currentUserParticipant: RaceParticipant?
+    @Published var myParticipants: [RaceParticipant] = []
     @Published var isMyTurn: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
@@ -227,7 +228,12 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         // Находим текущего пользователя среди участников
         if let currentUserId = trpcService.currentUser?.id {
-            currentUserParticipant = participants.first { $0.userId == currentUserId }
+            let mine = participants.filter { $0.userId == currentUserId }
+            myParticipants = mine
+            currentUserParticipant = mine.first
+        } else {
+            myParticipants = []
+            currentUserParticipant = nil
         }
 
         // Инициализируем позиции участников для отображения аватарок
@@ -298,11 +304,20 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Презентацию результатов откладываем, если идет обновление перед анимацией
         guard !suppressWinnerPresentation else { return }
 
-        // Если победитель уже определён — показываем результат сразу
+        // Если победитель уже определён сервером
         if self.winnerId != nil {
-            self.raceFinished = true
+            // Если несколько участников финишировали одновременно, показываем анимацию выбора
+            // (хотя победитель уже определен сервером - это для визуального эффекта)
+            if self.finishingParticipants.count > 1 {
+                self.showingWinnerSelection = true
+                self.raceFinished = false
+            } else {
+                // Один финишер - сразу показываем результат
+                self.raceFinished = true
+            }
         } else if self.finishingParticipants.count > 1 {
-            // Несколько финишировали, победитель НЕ зафиксирован — открываем выбор и НЕ показываем экран победителя
+            // Несколько финишировали, но победитель еще не определен сервером
+            // (это не должно происходить, но на всякий случай)
             self.showingWinnerSelection = true
             self.raceFinished = false
         } else if self.finishingParticipants.count == 1 {
@@ -379,11 +394,21 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             // Показать победителя/рандом победителя синхронно
             manager.onRaceFinish = { [weak self] (payload: [String: Any]) in
                 guard let self = self else { return }
-                if let fins = payload["finishingParticipants"] as? [String] {
-                    self.finishingParticipants = fins
+                DispatchQueue.main.async {
+                    if let fins = payload["finishingParticipants"] as? [String] {
+                        self.finishingParticipants = fins
+                    }
+                    if let win = payload["winnerId"] as? String {
+                        self.winnerId = win
+                        // Если несколько участников финишировали, показываем анимацию выбора победителя
+                        // (хотя победитель уже определен сервером)
+                        if let fins = payload["finishingParticipants"] as? [String], fins.count > 1
+                        {
+                            self.showingWinnerSelection = true
+                        }
+                    }
+                    // После того как локальная анимация завершится, UI покажет победителя автоматически
                 }
-                if let win = payload["winnerId"] as? String { self.winnerId = win }
-                // После того как локальная анимация завершится, UI покажет победителя автоматически
             }
             raceSocketManager = manager
             manager.connectIfNeeded()
@@ -451,6 +476,56 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         isMyTurn = canMakeMove
 
         print("🎮 Любой участник может инициировать ход всех участников")
+    }
+
+    func joinRace(movie: RaceMovieSelection, completion: (() -> Void)? = nil) {
+        guard let raceId = race?.id else {
+            errorMessage = "Скачка не найдена"
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+
+        var request: [String: Any] = ["raceId": raceId]
+        movie.requestPayload.forEach { request[$0.key] = $0.value }
+
+        Task {
+            do {
+                let _: SuccessResponse = try await trpcService.executePOST(
+                    endpoint: "race.joinRace",
+                    body: request
+                )
+
+                await MainActor.run {
+                    self.isLoading = false
+                    self.refreshRace()
+                    NotificationCenter.default.post(name: .raceUpdated, object: nil)
+                    completion?()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Ошибка присоединения: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
+    var canJoinCurrentRace: Bool {
+        guard let race = race else { return false }
+        let currentCount = race.participants?.count ?? participants.count
+        return (race.status == .created || race.status == .waiting)
+            && currentCount < race.maxPlayers
+    }
+
+    var canStartRace: Bool {
+        guard let race = race,
+            let currentUserId = trpcService.currentUser?.id
+        else { return false }
+
+        let participantCount = race.participants?.count ?? participants.count
+        return race.status == .created && participantCount >= 2
+            && race.creator.id == currentUserId
     }
 
     func makeMove() {
@@ -572,6 +647,31 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         }
     }
 
+    func startRace() {
+        guard let raceId = race?.id else { return }
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let _: SuccessResponse = try await trpcService.executePOST(
+                    endpoint: "race.startRace",
+                    body: ["raceId": raceId]
+                )
+
+                await MainActor.run {
+                    self.isLoading = false
+                    self.refreshRace()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Ошибка запуска скачки: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
     func diceNext() {
         if let raceId = race?.id {
             raceSocketManager?.emitDiceNext(raceId: raceId)
@@ -581,6 +681,15 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
     func setWinner(participantId: String) {
         guard let raceId = race?.id else { return }
+
+        // Если победитель уже определен сервером, просто закрываем экран выбора
+        if winnerId == participantId {
+            showingWinnerSelection = false
+            raceFinished = true
+            return
+        }
+
+        // Если победитель не определен, отправляем выбор на сервер (fallback для старых гонок)
         isLoading = true
         Task {
             do {
