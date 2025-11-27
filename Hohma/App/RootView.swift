@@ -45,6 +45,11 @@ struct RootView: View {
                                     .onAppear {
                                         print("🔄 RootView: Navigating to settings")
                                     }
+                            case "stats":
+                                StatsView()
+                                    .onAppear {
+                                        print("🔄 RootView: Navigating to stats")
+                                    }
                             default:
                                 HomeView(user: authViewModel.user)
                                     .onAppear {
@@ -135,6 +140,8 @@ struct RootView: View {
                         mappedDestination = "profile"
                     case "settings":
                         mappedDestination = "settings"
+                    case "stats":
+                        mappedDestination = "stats"
                     default:
                         mappedDestination = destination
                     }
@@ -163,8 +170,8 @@ struct RootView: View {
                         }
                     } else {
                         // iPhone: переключаем selection только для существующих вкладок
-                        // wheelList и race обрабатываются через NavigationStack в HomeView
-                        if mappedDestination == "wheelList" || mappedDestination == "race" {
+                        // wheelList, race и stats обрабатываются через NavigationStack в HomeView
+                        if mappedDestination == "wheelList" || mappedDestination == "race" || mappedDestination == "stats" {
                             // Оставляем на home, HomeView сам обработает навигацию через NavigationPath
                             print(
                                 "🔄 RootView: iPhone - навигация будет обработана в HomeView через NavigationStack"

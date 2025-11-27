@@ -92,6 +92,22 @@ struct CustomSidebar: View {
                 }
 
                 SidebarButton(
+                    title: "Статистика",
+                    icon: "chart.bar.fill",
+                    isSelected: selection == "stats"
+                ) {
+                    print("🔄 CustomSidebar: Switching to stats")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "stats"])
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "stats"
+                    }
+                }
+
+                SidebarButton(
                     title: "Чаты",
                     icon: "message",
                     isSelected: selection == "chat"

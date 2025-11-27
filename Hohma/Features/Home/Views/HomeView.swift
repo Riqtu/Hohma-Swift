@@ -4,6 +4,7 @@ import SwiftUI
 enum NavigationDestination: Hashable {
     case wheelList
     case race
+    case stats
 }
 
 struct HomeView: View {
@@ -12,7 +13,7 @@ struct HomeView: View {
     @StateObject private var videoManager = VideoPlayerManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var navigationPath = NavigationPath()
-    
+
     private var isIPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
     }
@@ -20,8 +21,40 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
-                VStack(alignment: .center, spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
                     HomeHeader()
+
+                    // Кнопка статистики
+                    HStack {
+                        Button(action: {
+                            if isIPhone {
+                                navigationPath.append(NavigationDestination.stats)
+                            } else {
+                                NotificationCenter.default.post(
+                                    name: .navigationRequested,
+                                    object: nil,
+                                    userInfo: ["destination": "stats"]
+                                )
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chart.bar.fill")
+                                    .font(.system(size: 14))
+                                Text("Статистика")
+                                    .font(.system(size: 14))
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color("AccentColor"))
+                            .cornerRadius(8)
+
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 25)
+
                     let columns = [
                         GridItem(.adaptive(minimum: 340), spacing: 20)
                     ]
@@ -146,6 +179,8 @@ struct HomeView: View {
                             navigationPath.append(NavigationDestination.race)
                         } else if destination == "wheelList" || destination == "wheel" {
                             navigationPath.append(NavigationDestination.wheelList)
+                        } else if destination == "stats" {
+                            navigationPath.append(NavigationDestination.stats)
                         }
                     }
                 }
@@ -157,6 +192,9 @@ struct HomeView: View {
                         .withAppBackground()
                 case .race:
                     RaceListView()
+                        .withAppBackground()
+                case .stats:
+                    StatsView()
                         .withAppBackground()
                 }
             }
