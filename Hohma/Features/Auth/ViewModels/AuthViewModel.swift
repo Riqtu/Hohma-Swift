@@ -50,13 +50,7 @@ final class AuthViewModel: ObservableObject {
         authService.loginWithTelegramToken(token) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
-                switch result {
-                case .success(let user):
-                    self?.user = user
-                    self?.isAuthenticated = true
-                case .failure(let error):
-                    self?.errorMessage = error.localizedDescription
-                }
+                self?.completeAuth(with: result)
             }
         }
     }
@@ -70,13 +64,7 @@ final class AuthViewModel: ObservableObject {
                 authService.loginWithApple(appleRequest) { result in
                     Task { @MainActor in
                         self.isLoading = false
-                        switch result {
-                        case .success(let user):
-                            self.user = user
-                            self.isAuthenticated = true
-                        case .failure(let error):
-                            self.errorMessage = error.localizedDescription
-                        }
+                        self.completeAuth(with: result)
                     }
                 }
             } else {
@@ -85,6 +73,80 @@ final class AuthViewModel: ObservableObject {
                     self.errorMessage = "Apple авторизация не удалась"
                 }
             }
+        }
+    }
+
+    func loginWithCredentials(username: String, password: String) {
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedUsername.isEmpty, !trimmedPassword.isEmpty else {
+            errorMessage = "Введите логин и пароль"
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        authService.loginWithCredentials(
+            username: trimmedUsername,
+            password: trimmedPassword
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                self?.completeAuth(with: result)
+            }
+        }
+    }
+
+    func registerWithCredentials(
+        username: String,
+        password: String,
+        email: String?,
+        firstName: String?,
+        lastName: String?
+    ) {
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard trimmedUsername.count >= 3 else {
+            errorMessage = "Логин должен содержать минимум 3 символа"
+            return
+        }
+
+        guard trimmedPassword.count >= 8 else {
+            errorMessage = "Пароль должен содержать минимум 8 символов"
+            return
+        }
+
+        let sanitizedEmail = email?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedFirstName = firstName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedLastName = lastName?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        isLoading = true
+        errorMessage = nil
+
+        authService.registerWithCredentials(
+            username: trimmedUsername,
+            password: trimmedPassword,
+            email: sanitizedEmail?.isEmpty == true ? nil : sanitizedEmail,
+            firstName: sanitizedFirstName?.isEmpty == true ? nil : sanitizedFirstName,
+            lastName: sanitizedLastName?.isEmpty == true ? nil : sanitizedLastName
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                self?.completeAuth(with: result)
+            }
+        }
+    }
+
+    private func completeAuth(with result: Result<AuthResult, Error>) {
+        switch result {
+        case .success(let authResult):
+            self.user = authResult
+            self.isAuthenticated = true
+        case .failure(let error):
+            self.errorMessage = error.localizedDescription
         }
     }
 }

@@ -2,7 +2,7 @@
 //  MessageBubbleView.swift
 //  Hohma
 //
-//  Created by Assistant on 30.10.2025.
+//  Created by Artem Vydro on 30.10.2025.
 //
 
 import Inject
@@ -17,6 +17,7 @@ struct MessageBubbleView: View {
 
     @State private var dragOffset: CGSize = .zero
     @State private var isDragging: Bool = false
+    @State private var htmlContentHeight: CGFloat = 50  // Начальная высота для HTML контента (будет обновлена автоматически)
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -67,13 +68,33 @@ struct MessageBubbleView: View {
                 if !message.content.isEmpty && message.messageType != .system
                     && !hasVideoOrAudioAttachments
                 {
-                    Text(message.content)
-                        .font(.body)
-                        .foregroundColor(isCurrentUser ? .white : .primary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(isCurrentUser ? Color("AccentColor") : Color(.systemGray5))
-                        .cornerRadius(16)
+                    Group {
+                        if isHTMLContent(message.content) {
+                            // HTML контент
+                            HTMLMessageView(
+                                htmlContent: message.content,
+                                isCurrentUser: isCurrentUser,
+                                contentHeight: $htmlContentHeight
+                            )
+                            .frame(height: max(htmlContentHeight, 20))
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(16)
+                        } else {
+                            // Обычный текст
+                            Text(message.content)
+                                .font(.body)
+                                .foregroundColor(isCurrentUser ? .white : .primary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    isCurrentUser ? Color("AccentColor") : Color(.systemGray5)
+                                )
+                                .cornerRadius(16)
+                        }
+                    }
                 }
 
                 HStack(spacing: 4) {
@@ -95,8 +116,14 @@ struct MessageBubbleView: View {
                 }
             }
             .frame(
-                maxWidth: UIScreen.main.bounds.width * 0.75,
-                alignment: isCurrentUser ? .trailing : .leading)
+                maxWidth: isHTMLContent(message.content) && !message.content.isEmpty
+                    && message.messageType != .system && !hasVideoOrAudioAttachments
+                    ? UIScreen.main.bounds.width * 0.9
+                    : UIScreen.main.bounds.width * 0.75,
+                alignment: (isHTMLContent(message.content) && !message.content.isEmpty
+                    && message.messageType != .system && !hasVideoOrAudioAttachments)
+                    ? .center
+                    : (isCurrentUser ? .trailing : .leading))
 
             if isCurrentUser {
                 // Avatar for current user (справа)

@@ -170,4 +170,127 @@ final class AuthService {
             }
         }.resume()
     }
+
+    func loginWithCredentials(
+        username: String,
+        password: String,
+        completion: @escaping (Result<AuthResult, Error>) -> Void
+    ) {
+        let payload: [String: Any] = [
+            "username": username,
+            "password": password,
+        ]
+
+        performCredentialsRequest(
+            endpoint: "auth.login",
+            payload: payload,
+            completion: completion
+        )
+    }
+
+    func registerWithCredentials(
+        username: String,
+        password: String,
+        email: String?,
+        firstName: String?,
+        lastName: String?,
+        completion: @escaping (Result<AuthResult, Error>) -> Void
+    ) {
+        var payload: [String: Any] = [
+            "username": username,
+            "password": password,
+        ]
+
+        if let email, !email.isEmpty {
+            payload["email"] = email
+        }
+        if let firstName, !firstName.isEmpty {
+            payload["firstName"] = firstName
+        }
+        if let lastName, !lastName.isEmpty {
+            payload["lastName"] = lastName
+        }
+
+        performCredentialsRequest(
+            endpoint: "auth.register",
+            payload: payload,
+            completion: completion
+        )
+    }
+
+    private func performCredentialsRequest(
+        endpoint: String,
+        payload: [String: Any],
+        completion: @escaping (Result<AuthResult, Error>) -> Void
+    ) {
+        guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
+            let url = URL(string: "\(apiURL)/\(endpoint)")
+        else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let body = ["json": payload]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        } catch {
+            completion(.failure(error))
+            return
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let data = data else {
+                completion(.failure(NSError(domain: "No data", code: -1)))
+                return
+            }
+
+            #if DEBUG
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("Credentials auth response status: \(httpResponse.statusCode)")
+                }
+            #endif
+
+            if let httpResponse = response as? HTTPURLResponse,
+                !(200...299).contains(httpResponse.statusCode)
+            {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Server error"
+                completion(
+                    .failure(
+                        NSError(
+                            domain: "Server Error", code: httpResponse.statusCode,
+                            userInfo: [NSLocalizedDescriptionKey: errorMessage])))
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
+                let user = decoded.result.data.json.user
+                let token = decoded.result.data.json.token
+                let authResult = AuthResult(user: user, token: token)
+
+                if let authResultData = try? JSONEncoder().encode(authResult) {
+                    UserDefaults.standard.set(authResultData, forKey: "authResult")
+                }
+
+                completion(.success(authResult))
+            } catch {
+                #if DEBUG
+                    print("Credentials auth decode error: \(error)")
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("Credentials auth response body: \(responseString)")
+                    }
+                #endif
+                completion(.failure(error))
+            }
+        }.resume()
+    }
 }

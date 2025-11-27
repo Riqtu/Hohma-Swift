@@ -1,5 +1,5 @@
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct RaceJoinMovieView: View {
     @ObserveInjection var inject
@@ -58,6 +58,8 @@ struct RaceJoinMovieView: View {
                     if isLoading {
                         ProgressView("Поиск фильмов...")
                             .font(.caption)
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
                 }
 

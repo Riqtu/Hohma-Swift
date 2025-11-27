@@ -2,7 +2,7 @@
 //  ChatView.swift
 //  Hohma
 //
-//  Created by Assistant on 30.10.2025.
+//  Created by Artem Vydro on 30.10.2025.
 //
 
 import Inject
