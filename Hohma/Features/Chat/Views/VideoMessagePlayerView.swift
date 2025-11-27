@@ -9,14 +9,17 @@ import AVFoundation
 import AVKit
 import Inject
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct VideoMessagePlayerView: View {
     @ObserveInjection var inject
+    let messageId: String
     let url: URL
     let isCurrentUser: Bool
     @State private var player: AVPlayer?
     @State private var isExpanded = false // Развернуто ли видео на всю ширину
-    @State private var timeObserver: Any?
     
     // Размеры для круга и полного экрана
     private let circleSize: CGFloat = 200
@@ -45,18 +48,18 @@ struct VideoMessagePlayerView: View {
                         )
                 } else {
                     // Placeholder пока загружается - всегда круг
-                    Circle()
-                        .fill(Color(.systemGray5))
-                        .frame(
-                            width: isExpanded ? nil : circleSize,
-                            height: isExpanded ? nil : circleSize
-                        )
-                        .aspectRatio(1, contentMode: .fit)
-                        .frame(maxWidth: isExpanded ? .infinity : nil)
-                        .overlay(
-                            ProgressView()
-                                .tint(.white)
-                        )
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemGray5))
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    .frame(
+                        width: isExpanded ? nil : circleSize,
+                        height: isExpanded ? nil : circleSize
+                    )
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: isExpanded ? .infinity : nil)
                 }
             }
             .frame(maxWidth: .infinity, alignment: isCurrentUser ? .trailing : .leading)
@@ -65,7 +68,10 @@ struct VideoMessagePlayerView: View {
         .frame(height: isExpanded ? nil : circleSize) // Фиксированная высота только для круга
         .animation(.easeInOut(duration: 0.3), value: isExpanded)
         .onAppear {
-            setupPlayer()
+            // Создаем плеер асинхронно, чтобы не блокировать скролл
+            Task { @MainActor in
+                setupPlayer()
+            }
         }
         .onDisappear {
             cleanupPlayer()
@@ -77,14 +83,13 @@ struct VideoMessagePlayerView: View {
     }
     
     private func setupPlayer() {
+        // Создаем новый плеер каждый раз
         let newPlayer = AVPlayer(url: url)
         self.player = newPlayer
         
         // Автоматически запускаем воспроизведение в маленьком виде без звука
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            newPlayer.play()
-            newPlayer.isMuted = true // Без звука в маленьком виде
-        }
+        newPlayer.isMuted = !isExpanded
+        newPlayer.play()
         
         // Наблюдаем за завершением воспроизведения - перезапускаем
         NotificationCenter.default.addObserver(
@@ -117,13 +122,14 @@ struct VideoMessagePlayerView: View {
     }
     
     private func cleanupPlayer() {
-        if let observer = timeObserver, let player = player {
-            player.removeTimeObserver(observer)
-        }
-        player?.pause()
-        player = nil
-        timeObserver = nil
-        NotificationCenter.default.removeObserver(self)
+        guard let player = player else { return }
+        
+        // Удаляем observer
+        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
+        
+        // Паузим и удаляем плеер
+        player.pause()
+        self.player = nil
     }
 }
 

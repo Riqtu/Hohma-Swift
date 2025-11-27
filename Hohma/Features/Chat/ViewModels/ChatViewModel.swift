@@ -43,6 +43,7 @@ final class ChatViewModel: ObservableObject {
     private var lastTypingTime: Date?
     private var recordingSyncTask: Task<Void, Never>?
     private let messagesPageSize = 30  // Размер страницы при загрузке
+    private var nextMessagesCursor: String? = nil
 
     init() {
         setupSocketAdapter()
@@ -190,19 +191,19 @@ final class ChatViewModel: ObservableObject {
         Task {
             isLoadingMessages = true
             hasMoreMessages = true  // Сбрасываем флаг при новой загрузке
+            nextMessagesCursor = nil
 
             do {
-                let loadedMessages = try await chatService.getMessages(
+                let response = try await chatService.getMessages(
                     chatId: chatId,
                     limit: messagesPageSize,
-                    before: nil
+                    cursor: nil
                 )
+                let loadedMessages = response.items
                 self.messages = loadedMessages.sorted { $0.createdAt < $1.createdAt }
                 
-                // Если загрузили меньше чем запросили, значит больше нет сообщений
-                if loadedMessages.count < messagesPageSize {
-                    hasMoreMessages = false
-                }
+                hasMoreMessages = response.hasMore
+                nextMessagesCursor = response.hasMore ? response.nextCursor : nil
 
                 // Отмечаем как прочитанное
                 markAsRead()
@@ -222,22 +223,26 @@ final class ChatViewModel: ObservableObject {
               !isLoadingMoreMessages,
               !isLoadingMessages,
               hasMoreMessages,
-              let firstMessage = messages.first
+              let cursor = nextMessagesCursor
         else { return }
 
         Task {
             isLoadingMoreMessages = true
 
             do {
-                let loadedMessages = try await chatService.getMessages(
+                let response = try await chatService.getMessages(
                     chatId: chatId,
                     limit: messagesPageSize,
-                    before: firstMessage.id
+                    cursor: cursor
                 )
                 
-                // Если загрузили меньше чем запросили, значит больше нет сообщений
-                if loadedMessages.count < messagesPageSize {
-                    hasMoreMessages = false
+                hasMoreMessages = response.hasMore
+                nextMessagesCursor = response.hasMore ? response.nextCursor : nil
+                
+                let loadedMessages = response.items
+                guard !loadedMessages.isEmpty else {
+                    isLoadingMoreMessages = false
+                    return
                 }
                 
                 // Добавляем новые сообщения в начало списка и сортируем

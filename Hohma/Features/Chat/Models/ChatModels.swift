@@ -156,7 +156,7 @@ enum ChatRole: String, Codable, CaseIterable {
 }
 
 // MARK: - Chat Message
-struct ChatMessage: Codable, Identifiable {
+struct ChatMessage: Codable, Identifiable, Equatable {
     let id: String
     let chatId: String
     let senderId: String
@@ -230,6 +230,17 @@ struct ChatMessage: Codable, Identifiable {
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         sender = try container.decodeIfPresent(UserProfile.self, forKey: .sender)
+    }
+}
+
+extension ChatMessage {
+    static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.updatedAt == rhs.updatedAt &&
+        lhs.deletedAt == rhs.deletedAt &&
+        lhs.content == rhs.content &&
+        lhs.attachments == rhs.attachments &&
+        lhs.status == rhs.status
     }
 }
 

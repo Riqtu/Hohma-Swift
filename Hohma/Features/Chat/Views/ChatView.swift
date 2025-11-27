@@ -110,9 +110,8 @@ struct ChatView: View {
     }
 }
 
-// MARK: - ScrollView with Auto Scroll
-// Сообщения идут сверху вниз, прокрутка к последнему сообщению
-struct ScrollViewWithAutoScrollTracker: View {
+// MARK: - Modern Scroll View (iOS 17+ APIs)
+private struct ChatMessagesScrollView: View {
     let messages: [ChatMessage]
     let isLoading: Bool
     let isLoadingMore: Bool
@@ -123,233 +122,238 @@ struct ScrollViewWithAutoScrollTracker: View {
     let findMessage: (String) -> ChatMessage?
     let onReply: (ChatMessage) -> Void
 
-    @State private var firstMessageId: String? = nil
-    @State private var scrollPosition: CGFloat = 0
-    @State private var savedFirstMessageId: String? = nil  // Сохраняем ID первого сообщения перед загрузкой
-    @State private var lastLoadMoreTime: Date? = nil  // Защита от множественных вызовов
-    @State private var lastMessageId: String? = nil  // Отслеживаем последнее сообщение для автоскролла
-    @State private var hasScrolledToBottom = false  // Флаг для отслеживания начальной прокрутки
+    @State private var scrollMetrics = ChatScrollMetrics.zero
+    @State private var didPerformInitialScroll = false
+    @State private var pendingHistoryAnchor: String?
+    @State private var shouldStickToBottom = true
+    @State private var isRestoringHistoryPosition = false
+    @State private var historyLoadUnlocked = false
+    @State private var previousMessages: [ChatMessage] = []
+    @State private var didSnapshotMessages = false
 
     var body: some View {
-        SwiftUI.ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    // Индикатор загрузки в начале списка (для предыдущих сообщений)
-                    if isLoadingMore && hasMoreMessages {
-                        ProgressView()
-                            .padding()
-                            .id("loading-more")
-                    }
-
-                    if isLoading && messages.isEmpty {
-                        ProgressView()
-                            .padding()
-                            .id("loading")
-                    }
-
-                    // Сообщения в обычном порядке (сверху вниз)
-                    ForEach(messages) { message in
-                        MessageBubbleView(
-                            message: message,
-                            isCurrentUser: message.senderId == currentUserId,
-                            replyingToMessage: message.replyToId != nil
-                                ? findMessage(message.replyToId!) : nil,
-                            onReply: {
-                                onReply(message)
-                            }
-                        )
-                        .id(message.id)
-                        .contentShape(Rectangle())  // Важно для правильной обработки тапов
-                        .contextMenu {
-                            // Показываем контекстное меню только для своих сообщений
-                            if message.senderId == currentUserId, let onDelete = onDeleteMessage {
-                                Button(role: .destructive) {
-                                    onDelete(message.id)
-                                } label: {
-                                    Label("Удалить", systemImage: "trash")
-                                }
-                            }
+        GeometryReader { containerGeo in
+            SwiftUI.ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 8) {
+                        if isLoading && messages.isEmpty {
+                            ProgressView()
+                                .padding()
+                                .frame(maxWidth: .infinity)
                         }
-                        .onAppear {
-                            // Отслеживаем появление первого сообщения для загрузки предыдущих
-                            if message.id == messages.first?.id && hasMoreMessages && !isLoadingMore
-                                && !isLoading
-                            {
-                                // Защита от множественных вызовов
-                                let now = Date()
-                                if let lastTime = lastLoadMoreTime,
-                                    now.timeIntervalSince(lastTime) < 0.5
-                                {
-                                    return
-                                }
-                                lastLoadMoreTime = now
 
-                                // Сохраняем ID первого сообщения перед загрузкой
-                                savedFirstMessageId = message.id
-                                onLoadMore()
+                        ForEach(messages) { message in
+                            MessageBubbleView(
+                                message: message,
+                                isCurrentUser: message.senderId == currentUserId,
+                                replyingToMessage: message.replyToId.flatMap(findMessage),
+                                onReply: {
+                                    onReply(message)
+                                },
+                                contextMenuBuilder: {
+                                    if message.senderId == currentUserId,
+                                        let onDelete = onDeleteMessage
+                                    {
+                                        return AnyView(
+                                            Button(role: .destructive) {
+                                                onDelete(message.id)
+                                            } label: {
+                                                Label("Удалить", systemImage: "trash")
+                                            }
+                                        )
+                                    } else {
+                                        return nil
+                                    }
+                                }
+                            )
+                            .id(message.id)
+                            .contentShape(Rectangle())
+                        }
+
+                        if isLoadingMore {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Загружаем историю…")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
                             }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .background(
+                        GeometryReader { contentGeo in
+                            Color.clear.preference(
+                                key: ChatScrollMetricsKey.self,
+                                value: ChatScrollMetrics(
+                                    offset: contentGeo.frame(in: .named("chatScroll")).minY,
+                                    contentHeight: contentGeo.size.height,
+                                    containerHeight: containerGeo.size.height
+                                )
+                            )
+                        }
+                    )
                 }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 20)
-                .id("bottom")
-
-            }
-            .coordinateSpace(name: "scroll")
-            .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(
-                // Одновременный жест для закрытия клавиатуры
-                // Работает на пустых областях, не блокируя тапы на сообщения
-                TapGesture()
-                    .onEnded { _ in
-                        hideKeyboard()
-                    }
-            )
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                // Отслеживаем позицию прокрутки
-                scrollPosition = offset
-
-                // Резервный механизм: если прокрутили близко к началу (offset > -100), загружаем больше
-                // Это работает как дополнительная защита, если onAppear первого сообщения не сработал
-                if offset > -100 && hasMoreMessages && !isLoadingMore && !isLoading
-                    && !messages.isEmpty
-                {
-                    let now = Date()
-                    if let lastTime = lastLoadMoreTime, now.timeIntervalSince(lastTime) < 0.5 {
+                .coordinateSpace(name: "chatScroll")
+                .scrollDismissesKeyboard(.interactively)
+                .scrollIndicators(.hidden)
+                .onPreferenceChange(ChatScrollMetricsKey.self) { metrics in
+                    scrollMetrics = metrics
+                    handleScrollMetricsChange(metrics, proxy: proxy)
+                }
+                .onChange(of: messages.count, initial: true) { _, _ in
+                    guard didSnapshotMessages else {
+                        previousMessages = messages
+                        didSnapshotMessages = true
                         return
                     }
-                    lastLoadMoreTime = now
-
-                    // Только если еще не загружаем (savedFirstMessageId == nil)
-                    if savedFirstMessageId == nil {
-                        savedFirstMessageId = messages.first?.id
-                        onLoadMore()
-                    }
+                    handleMessagesChange(
+                        oldValue: previousMessages, newValue: messages, proxy: proxy)
+                    previousMessages = messages
                 }
-            }
-            .onAppear {
-                // При открытии чата сбрасываем флаг прокрутки
-                hasScrolledToBottom = false
-                firstMessageId = messages.first?.id
-                lastMessageId = messages.last?.id
-
-                // Прокручиваем только если сообщения уже загружены
-                if !messages.isEmpty && !isLoading {
-                    // Небольшая задержка для того, чтобы view успел отрендериться
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        scrollToBottom(proxy: proxy, animated: false)
-                        hasScrolledToBottom = true
-                    }
-                }
-            }
-            .onChange(of: isLoadingMore) { _, isCurrentlyLoadingMore in
-                // После загрузки предыдущих сообщений возвращаемся к сохраненному сообщению
-                if !isCurrentlyLoadingMore && !messages.isEmpty, let savedId = savedFirstMessageId {
-                    // Проверяем, что сообщение все еще существует
-                    if messages.contains(where: { $0.id == savedId }) {
-                        // Прокручиваем к сохраненному сообщению для сохранения позиции
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.none) {
-                                proxy.scrollTo(savedId, anchor: .top)
-                            }
-                        }
-                    }
-                    savedFirstMessageId = nil
-                    firstMessageId = messages.first?.id
-                }
-            }
-            .onChange(of: messages.count) { oldCount, newCount in
-                // Если это первая загрузка (было 0 сообщений), прокручиваем вниз после небольшой задержки
-                if oldCount == 0 && newCount > 0 {
-                    firstMessageId = messages.first?.id
-                    lastMessageId = messages.last?.id
-                    // Ждем окончания загрузки, прокрутка будет в onChange(isLoading)
-                    return
-                }
-
-                guard newCount > oldCount, let newLastMessage = messages.last else { return }
-
-                // Если загружаются предыдущие сообщения (в начале списка), не прокручиваем автоматически
-                if savedFirstMessageId != nil {
-                    // Позиция будет восстановлена в onChange(isLoadingMore)
-                    return
-                }
-
-                // Проверяем, было ли добавлено новое сообщение в конец (новое последнее сообщение)
-                let isNewMessageAtEnd = newLastMessage.id != lastMessageId
-
-                // При добавлении нового сообщения в конец прокручиваем вниз
-                // Всегда скроллим к новым сообщениям если:
-                // 1. Это сообщение текущего пользователя (свои сообщения)
-                // 2. Пользователь близко к низу (в пределах 500 пунктов от низа)
-                let isCurrentUserMessage = newLastMessage.senderId == currentUserId
-
-                if isNewMessageAtEnd && !isLoading && !isLoadingMore {
-                    lastMessageId = newLastMessage.id
-
-                    // Если это сообщение текущего пользователя - всегда скроллим
-                    // Или если пользователь близко к низу
-                    if isCurrentUserMessage || abs(scrollPosition) < 500 {
-                        // Автоматически прокручиваем к новому сообщению
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                proxy.scrollTo(newLastMessage.id, anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-            }
-            .onChange(of: isLoading) { _, isCurrentlyLoading in
-                // После первой загрузки сообщений прокручиваем вниз
-                if !isCurrentlyLoading && !messages.isEmpty && !hasScrolledToBottom {
-                    // Обновляем lastMessageId
-                    lastMessageId = messages.last?.id
-                    // Увеличиваем задержку после загрузки для более надежной прокрутки
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        scrollToBottom(proxy: proxy, animated: false)
-                        hasScrolledToBottom = true
+                .onChange(of: isLoadingMore) { _, newValue in
+                    if !newValue {
+                        restoreHistoryPositionIfNeeded(proxy: proxy)
                     }
                 }
             }
         }
     }
 
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    private func triggerHistoryLoad() {
+        guard pendingHistoryAnchor == nil else { return }
+        pendingHistoryAnchor = messages.first?.id
+        onLoadMore()
     }
 
-    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
-        // Обновляем lastMessageId
-        lastMessageId = messages.last?.id
+    private func restoreHistoryPositionIfNeeded(proxy: ScrollViewProxy) {
+        guard let anchor = pendingHistoryAnchor else { return }
+        guard messages.contains(where: { $0.id == anchor }) else {
+            pendingHistoryAnchor = nil
+            return
+        }
 
-        // Для начальной прокрутки используем больше задержки, чтобы LazyVStack успел отрендериться
-        let delay: TimeInterval = hasScrolledToBottom ? 0.1 : 0.5
+        pendingHistoryAnchor = nil
+        isRestoringHistoryPosition = true
+        DispatchQueue.main.async {
+            proxy.scrollTo(anchor, anchor: .top)
+            DispatchQueue.main.async {
+                isRestoringHistoryPosition = false
+            }
+        }
+    }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            // Проверяем, что сообщения все еще есть (на случай если они были удалены)
-            guard !self.messages.isEmpty else { return }
-
-            let targetId = self.messages.last?.id ?? "bottom"
-
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
+        guard let lastId = messages.last?.id else { return }
+        func performScroll(_ animated: Bool) {
             if animated {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    proxy.scrollTo(targetId, anchor: .bottom)
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo(lastId, anchor: .bottom)
                 }
             } else {
-                // Для начальной прокрутки пробуем несколько раз для надежности
-                proxy.scrollTo(targetId, anchor: .bottom)
+                proxy.scrollTo(lastId, anchor: .bottom)
+            }
+        }
 
-                // Повторная попытка через небольшую задержку для надежности
-                if !self.hasScrolledToBottom {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        proxy.scrollTo(targetId, anchor: .bottom)
-                    }
+        DispatchQueue.main.async {
+            performScroll(animated)
+
+            // Повторяем скролл немного позже, чтобы учесть изменение высоты
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                performScroll(false)
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    performScroll(false)
                 }
             }
         }
+    }
+
+    private func handleScrollMetricsChange(_ metrics: ChatScrollMetrics, proxy: ScrollViewProxy) {
+        shouldStickToBottom = metrics.isNearBottom
+
+        if didPerformInitialScroll && metrics.isNearBottom && !historyLoadUnlocked {
+            historyLoadUnlocked = true
+        }
+
+        if metrics.isNearTop,
+            hasMoreMessages,
+            !isLoading,
+            !isLoadingMore,
+            !isRestoringHistoryPosition,
+            historyLoadUnlocked
+        {
+            triggerHistoryLoad()
+        }
+    }
+
+    private func handleMessagesChange(
+        oldValue: [ChatMessage],
+        newValue: [ChatMessage],
+        proxy: ScrollViewProxy
+    ) {
+        guard !newValue.isEmpty else { return }
+
+        if !didPerformInitialScroll {
+            didPerformInitialScroll = true
+            scrollToBottom(proxy: proxy, animated: false)
+            return
+        }
+
+        if pendingHistoryAnchor != nil {
+            // Ждем восстановления позиции после загрузки истории
+            return
+        }
+
+        guard let lastMessage = newValue.last else { return }
+
+        let isNewMessageAppended =
+            oldValue.last?.id != lastMessage.id
+            || newValue.count > oldValue.count
+
+        guard isNewMessageAppended else { return }
+
+        let isOwnMessage = lastMessage.senderId == currentUserId
+
+        if shouldStickToBottom || isOwnMessage {
+            scrollToBottom(proxy: proxy, animated: didPerformInitialScroll)
+        }
+    }
+}
+
+// MARK: - Scroll Metrics Helpers
+private struct ChatScrollMetrics: Equatable {
+    let offset: CGFloat
+    let contentHeight: CGFloat
+    let containerHeight: CGFloat
+
+    static let zero = ChatScrollMetrics(offset: 0, contentHeight: 1, containerHeight: 1)
+
+    var distanceFromTop: CGFloat {
+        max(0, -offset)
+    }
+
+    var distanceFromBottom: CGFloat {
+        max(0, (contentHeight + offset) - containerHeight)
+    }
+
+    var isNearTop: Bool {
+        distanceFromTop < 100
+    }
+
+    var isNearBottom: Bool {
+        distanceFromBottom < 150
+    }
+}
+
+private struct ChatScrollMetricsKey: PreferenceKey {
+    static var defaultValue: ChatScrollMetrics = .init(
+        offset: 0, contentHeight: 0, containerHeight: 0)
+
+    static func reduce(value: inout ChatScrollMetrics, nextValue: () -> ChatScrollMetrics) {
+        value = nextValue()
     }
 }
 
@@ -403,7 +407,7 @@ extension ChatView {
 
     // MARK: - Messages View
     private var messagesView: some View {
-        ScrollViewWithAutoScrollTracker(
+        ChatMessagesScrollView(
             messages: viewModel.messages,
             isLoading: viewModel.isLoadingMessages,
             isLoadingMore: viewModel.isLoadingMoreMessages,

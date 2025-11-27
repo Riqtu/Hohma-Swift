@@ -44,15 +44,28 @@ final class ChatService: TRPCServiceProtocol {
 
     // MARK: - Message Operations
 
-    func getMessages(chatId: String, limit: Int = 50, before: String? = nil) async throws -> [ChatMessage] {
+    struct PaginatedMessagesResponse: Codable {
+        let items: [ChatMessage]
+        let hasMore: Bool
+        let nextCursor: String?
+    }
+
+    func getMessages(
+        chatId: String,
+        limit: Int = 50,
+        cursor: String? = nil
+    ) async throws -> PaginatedMessagesResponse {
         var input: [String: Any] = [
             "chatId": chatId,
             "limit": limit,
         ]
-        if let before = before {
-            input["before"] = before
+        if let cursor = cursor {
+            input["cursor"] = cursor
         }
-        return try await trpcService.executeGET(endpoint: "chat.getMessages", input: input)
+        return try await trpcService.executeGET(
+            endpoint: "chat.getMessages",
+            input: input
+        )
     }
 
     func sendMessage(_ request: SendMessageRequest) async throws -> ChatMessage {

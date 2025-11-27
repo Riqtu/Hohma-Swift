@@ -14,6 +14,7 @@ struct MessageBubbleView: View {
     let isCurrentUser: Bool
     let replyingToMessage: ChatMessage?  // Сообщение, на которое отвечают
     let onReply: () -> Void  // Callback для свайпа вправо
+    let contextMenuBuilder: () -> AnyView?
 
     @State private var dragOffset: CGSize = .zero
     @State private var isDragging: Bool = false
@@ -57,8 +58,12 @@ struct MessageBubbleView: View {
                             index, urlString in
                             if let url = URL(string: urlString) {
                                 AttachmentView(
-                                    url: url, messageType: message.messageType,
-                                    isCurrentUser: isCurrentUser)
+                                    url: url,
+                                    messageType: message.messageType,
+                                    isCurrentUser: isCurrentUser,
+                                    messageId: message.id,
+                                    attachmentIndex: index
+                                )
                             }
                         }
                     }
@@ -142,6 +147,7 @@ struct MessageBubbleView: View {
         .frame(maxWidth: .infinity, alignment: isCurrentUser ? .trailing : .leading)
         .padding(.horizontal, 4)
         .offset(x: isDragging ? dragOffset.width : 0)
+        .modifier(ContextMenuWrapper(builder: contextMenuBuilder))
         .simultaneousGesture(
             DragGesture(minimumDistance: 20)
                 .onChanged { value in
@@ -322,6 +328,8 @@ struct AttachmentView: View {
     let url: URL
     let messageType: MessageType
     let isCurrentUser: Bool
+    let messageId: String
+    let attachmentIndex: Int
     @State private var showFullScreen = false
 
     private var isVoiceMessage: Bool {
@@ -341,7 +349,11 @@ struct AttachmentView: View {
                 VoiceMessagePlayerView(url: url, isCurrentUser: isCurrentUser)
             } else if isVideoMessage {
                 // Видеосообщение (кружок) с плеером
-                VideoMessagePlayerView(url: url, isCurrentUser: isCurrentUser)
+                VideoMessagePlayerView(
+                    messageId: "\(messageId)-\(attachmentIndex)",
+                    url: url,
+                    isCurrentUser: isCurrentUser
+                )
             } else {
                 switch messageType {
                 case .image:
@@ -467,6 +479,21 @@ struct FullScreenImageView: View {
     }
 }
 
+private struct ContextMenuWrapper: ViewModifier {
+    let builder: () -> AnyView?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let menu = builder() {
+            content.contextMenu {
+                menu
+            }
+        } else {
+            content
+        }
+    }
+}
+
 #Preview {
     let message1JSON = """
         {
@@ -506,7 +533,8 @@ struct FullScreenImageView: View {
                 message: message1,
                 isCurrentUser: false,
                 replyingToMessage: nil,
-                onReply: {}
+                onReply: {},
+                contextMenuBuilder: { nil }
             )
         }
 
@@ -515,7 +543,14 @@ struct FullScreenImageView: View {
                 message: message2,
                 isCurrentUser: true,
                 replyingToMessage: nil,
-                onReply: {}
+                onReply: {},
+                contextMenuBuilder: {
+                    AnyView(
+                        Button(role: .destructive) {} label: {
+                            Label("Удалить", systemImage: "trash")
+                        }
+                    )
+                }
             )
         }
     }
