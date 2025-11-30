@@ -41,8 +41,25 @@ final class NetworkManager {
             return try decodeResponse(data: data, as: T.self)
 
         } catch {
+            // Не логируем ошибки отмены запросов (это нормально при refresh/навигации)
+            let shouldLog: Bool
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                shouldLog = false
+            } else {
+                let nsError = error as NSError
+                if nsError.domain == NSURLErrorDomain && nsError.code == -999 {
+                    shouldLog = false
+                } else if error is CancellationError {
+                    shouldLog = false
+                } else {
+                    shouldLog = true
+                }
+            }
+            
             #if DEBUG
+                if shouldLog {
                 print("❌ NetworkManager: Request failed with error: \(error)")
+                }
             #endif
             throw error
         }

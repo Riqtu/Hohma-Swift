@@ -10,7 +10,7 @@ import Foundation
 final class StatsService: TRPCServiceProtocol {
     static let shared = StatsService()
     private init() {}
-    
+
     // MARK: - Get Leaderboard
     func getLeaderboard(
         gameType: GameType = .all,
@@ -29,14 +29,14 @@ final class StatsService: TRPCServiceProtocol {
             input: input
         )
     }
-    
+
     // MARK: - Get User Stats
     func getUserStats(
         userId: String? = nil,
         gameType: GameType = .all
     ) async throws -> UserStatsResponse {
         var input: [String: Any] = [
-            "gameType": gameType.rawValue,
+            "gameType": gameType.rawValue
         ]
         if let userId = userId {
             input["userId"] = userId
@@ -47,4 +47,3 @@ final class StatsService: TRPCServiceProtocol {
         )
     }
 }
-

@@ -49,6 +49,14 @@ enum SocketIOEvent: String, CaseIterable {
     case chatMemberOnline = "chat:member:online"
     case chatMemberOffline = "chat:member:offline"
     case chatUnreadCountUpdated = "chat:unreadCount:updated"
+    // Movie Battle events
+    case movieBattleUpdate = "movieBattle:update"
+    case movieBattleMovieAdded = "movieBattle:movie:added"
+    case movieBattleGenerationStarted = "movieBattle:generation:started"
+    case movieBattleGenerationProgress = "movieBattle:generation:progress"
+    case movieBattleVotingStarted = "movieBattle:voting:started"
+    case movieBattleVoteCast = "movieBattle:vote:cast"
+    case movieBattleRoundComplete = "movieBattle:round:complete"
 }
 
 // MARK: - Socket.IO Data Models (Shared with WheelState)

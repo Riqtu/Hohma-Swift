@@ -92,6 +92,22 @@ struct CustomSidebar: View {
                 }
 
                 SidebarButton(
+                    title: "Битва фильмов",
+                    icon: "film",
+                    isSelected: selection == "movieBattle"
+                ) {
+                    print("🔄 CustomSidebar: Switching to movie battle")
+                    // Отправляем уведомление о навигации
+                    NotificationCenter.default.post(
+                        name: .navigationRequested, object: nil,
+                        userInfo: ["destination": "movieBattle"])
+                    // Обновляем selection с небольшой задержкой для надежности
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selection = "movieBattle"
+                    }
+                }
+
+                SidebarButton(
                     title: "Статистика",
                     icon: "chart.bar.fill",
                     isSelected: selection == "stats"

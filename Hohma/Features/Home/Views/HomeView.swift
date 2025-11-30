@@ -5,6 +5,7 @@ enum NavigationDestination: Hashable {
     case wheelList
     case race
     case stats
+    case movieBattle
 }
 
 struct HomeView: View {
@@ -61,6 +62,31 @@ struct HomeView: View {
 
                     // Массив карточек (чтобы было удобно генерировать)
                     let cards: [CardData] = [
+                        CardData(
+                            title: "Тайный фильм",
+                            description:
+                                "Новая захватывающая игра! Добавь фильм, нейросеть создаст для него загадочный постер и описание. Участники голосуют за выбывание фильмов, пока не останется один победитель. В конце узнаешь, какие фильмы скрывались за сгенерированными карточками!",
+                            imageName: "testImage",
+                            videoName: "MovieBattle",
+                            action: {
+                                if isIPhone {
+                                    // Навигация через NavigationStack для iPhone
+                                    print(
+                                        "🏠 HomeView: Переход к битве фильмов через NavigationStack")
+                                    navigationPath.append(NavigationDestination.movieBattle)
+                                } else {
+                                    // Навигация через RootView для iPad
+                                    print(
+                                        "🏠 HomeView: Отправляем уведомление о переходе к битве фильмов"
+                                    )
+                                    NotificationCenter.default.post(
+                                        name: .navigationRequested,
+                                        object: nil,
+                                        userInfo: ["destination": "movieBattle"]
+                                    )
+                                }
+                            }
+                        ),
                         CardData(
                             title: "Скачки",
                             description:
@@ -181,6 +207,8 @@ struct HomeView: View {
                             navigationPath.append(NavigationDestination.wheelList)
                         } else if destination == "stats" {
                             navigationPath.append(NavigationDestination.stats)
+                        } else if destination == "movieBattle" {
+                            navigationPath.append(NavigationDestination.movieBattle)
                         }
                     }
                 }
@@ -195,6 +223,9 @@ struct HomeView: View {
                         .withAppBackground()
                 case .stats:
                     StatsView()
+                        .withAppBackground()
+                case .movieBattle:
+                    MovieBattleListView()
                         .withAppBackground()
                 }
             }

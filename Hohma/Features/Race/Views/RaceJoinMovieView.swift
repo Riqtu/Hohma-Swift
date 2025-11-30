@@ -19,6 +19,7 @@ struct RaceJoinMovieView: View {
 
     @State private var searchDebouncer: Timer?
     @State private var searchTask: Task<Void, Never>?
+    @State private var isSelectingMovie: Bool = false  // Флаг для предотвращения поиска при выборе фильма
 
     var body: some View {
         NavigationView {
@@ -36,7 +37,7 @@ struct RaceJoinMovieView: View {
                         .cornerRadius(12)
                         .keyboardType(.default)
                         .autocorrectionDisabled()
-                        .textInputAutocapitalization(.words)
+                        .textInputAutocapitalization(.none)
                         .submitLabel(.done)
                         .onReceive(
                             NotificationCenter.default.publisher(
@@ -50,6 +51,11 @@ struct RaceJoinMovieView: View {
                             }
                         }
                         .onChange(of: movieTitle) { _, value in
+                            // Не запускаем поиск, если изменение происходит программно при выборе фильма
+                            guard !isSelectingMovie else {
+                                isSelectingMovie = false
+                                return
+                            }
                             selectedMovie = nil
                             debouncedSearch(query: value)
                         }
@@ -68,6 +74,7 @@ struct RaceJoinMovieView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(searchResults, id: \.id) { movie in
                                 Button {
+                                    isSelectingMovie = true  // Устанавливаем флаг перед изменением movieTitle
                                     selectedMovie = movie
                                     movieTitle = movie.name
                                     showingResults = false

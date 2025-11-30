@@ -5,8 +5,8 @@
 //  Created by Assistant on 27.11.2025.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 final class StatsViewModel: ObservableObject {
@@ -15,19 +15,19 @@ final class StatsViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var isLoadingUserStats: Bool = false
     @Published var errorMessage: String?
-    
+
     // Фильтры и сортировка
     @Published var selectedGameType: GameType = .all
     @Published var selectedSortBy: SortBy = .wins
-    
+
     private let statsService = StatsService.shared
-    
+
     // MARK: - Load Leaderboard
     func loadLeaderboard() {
         Task {
             isLoading = true
             errorMessage = nil
-            
+
             do {
                 let response = try await statsService.getLeaderboard(
                     gameType: selectedGameType,
@@ -38,17 +38,17 @@ final class StatsViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
                 print("❌ StatsViewModel: Ошибка загрузки лидерборда: \(error)")
             }
-            
+
             isLoading = false
         }
     }
-    
+
     // MARK: - Load User Stats
     func loadUserStats(userId: String? = nil) {
         Task {
             isLoadingUserStats = true
             errorMessage = nil
-            
+
             do {
                 let stats = try await statsService.getUserStats(
                     userId: userId,
@@ -59,11 +59,11 @@ final class StatsViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
                 print("❌ StatsViewModel: Ошибка загрузки статистики пользователя: \(error)")
             }
-            
+
             isLoadingUserStats = false
         }
     }
-    
+
     // MARK: - Apply Filters
     func applyFilters() {
         loadLeaderboard()
@@ -72,4 +72,3 @@ final class StatsViewModel: ObservableObject {
         }
     }
 }
-

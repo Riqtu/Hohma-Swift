@@ -41,7 +41,7 @@ struct CardView: View {
                             .aspectRatio(contentMode: .fill)
                     }
                 }
-                .frame(height: 100)
+                .frame(height: 120)
                 .frame(maxWidth: .infinity)
                 .clipped()
 
