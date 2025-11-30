@@ -262,8 +262,10 @@ struct RaceSceneView: View {
                 .padding(.horizontal)
             }
             // Кнопка хода или статус гонки
-            if let race = viewModel.race, race.status == .finished {
-                // Показываем статус завершенной гонки
+            // Показываем статус завершенной гонки только если экран победителя уже был показан
+            // Это предотвращает преждевременное отображение информации о победителе
+            if let race = viewModel.race, race.status == .finished, viewModel.raceFinished, !viewModel.showingWinnerSelection {
+                // Показываем статус завершенной гонки с информацией о победителе
                 VStack(spacing: 8) {
                     HStack {
                         Image(systemName: "flag.checkered")
@@ -278,6 +280,28 @@ struct RaceSceneView: View {
                         )
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.gray.opacity(0.3))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            } else if let race = viewModel.race, race.status == .finished, (!viewModel.raceFinished || viewModel.showingWinnerSelection) {
+                // Гонка завершена, но экран победителя еще не показан или показывается экран выбора
+                // Показываем только статус без информации о победителе
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "flag.checkered")
+                        Text("Гонка завершена")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    
+                    if viewModel.isAnimating || viewModel.showingWinnerSelection {
+                        Text("Определяем победителя...")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
                     }
                 }
                 .frame(maxWidth: .infinity)
