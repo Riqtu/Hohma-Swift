@@ -561,9 +561,7 @@ extension ChatView {
                             if let data = try? await item.loadTransferable(type: Data.self),
                                 let image = UIImage(data: data)
                             {
-                                await MainActor.run {
-                                    viewModel.addAttachment(ChatAttachment(image: image))
-                                }
+                                viewModel.addAttachment(ChatAttachment(image: image))
                                 continue
                             }
 
@@ -580,10 +578,8 @@ extension ChatView {
                                     try FileManager.default.copyItem(
                                         at: videoTransferable.url, to: tempURL)
                                     let thumbnail = await generateThumbnail(for: tempURL)
-                                    await MainActor.run {
-                                        viewModel.addAttachment(
-                                            ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
-                                    }
+                                    viewModel.addAttachment(
+                                        ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
                                     print("❌ Failed to save video: \(error)")
                                 }
@@ -600,19 +596,15 @@ extension ChatView {
                                     // Копируем файл во временную директорию
                                     try FileManager.default.copyItem(at: movie.url, to: tempURL)
                                     let thumbnail = await generateThumbnail(for: tempURL)
-                                    await MainActor.run {
-                                        viewModel.addAttachment(
-                                            ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
-                                    }
+                                    viewModel.addAttachment(
+                                        ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
                                     print("❌ Failed to save video: \(error)")
                                 }
                             }
                         }
                         // Сбрасываем после обработки
-                        await MainActor.run {
-                            selectedPhotoItems = []
-                        }
+                        selectedPhotoItems = []
                     }
                 }
 
@@ -1102,7 +1094,7 @@ struct VideoFileTransferable: Transferable {
         FileRepresentation(contentType: .movie) { video in
             SentTransferredFile(video.url)
         } importing: { received in
-            let url = await received.file
+            let url = try await received.file
             return VideoFileTransferable(url: url)
         }
     }

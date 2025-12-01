@@ -2,15 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- <key>API_URL</key>
+	<key>API_URL</key>
 	<string>https://hohma.su/api/trpc</string>
 	<key>WS_URL</key>
-	<string>https://ws.hohma.su</string> -->
+	<string>https://ws.hohma.su</string>
 
-	<key>API_URL</key>
+	<!-- <key>API_URL</key>
 	<string>https://riqtu.ru/api/trpc</string>
 	<key>WS_URL</key>
-	<string>https://api.riqtu.ru</string>
+	<string>https://api.riqtu.ru</string> -->
 
 	<key>APP_VERSION_DISPLAY</key>
 	<string>Версия 1.3.6</string>

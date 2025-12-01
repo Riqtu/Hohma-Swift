@@ -243,13 +243,25 @@ class PushNotificationService: NSObject, ObservableObject {
     /// Обновляет badge на иконке приложения
     func updateApplicationIconBadge(_ count: Int) {
         #if os(iOS)
-        DispatchQueue.main.async {
-            UIApplication.shared.applicationIconBadgeNumber = count
-            print("📱 PushNotificationService: Updated application icon badge to \(count)")
-        }
+            DispatchQueue.main.async {
+                if #available(iOS 17.0, *) {
+                    UNUserNotificationCenter.current().setBadgeCount(count) { error in
+                        if let error = error {
+                            print("❌ PushNotificationService: Failed to set badge count: \(error)")
+                        } else {
+                            print(
+                                "📱 PushNotificationService: Updated application icon badge to \(count)"
+                            )
+                        }
+                    }
+                } else {
+                    UIApplication.shared.applicationIconBadgeNumber = count
+                    print("📱 PushNotificationService: Updated application icon badge to \(count)")
+                }
+            }
         #endif
     }
-    
+
     /// Очищает badge на иконке приложения
     func clearApplicationIconBadge() {
         updateApplicationIconBadge(0)
@@ -413,7 +425,8 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) ->
+        withCompletionHandler completionHandler:
+            @escaping (UNNotificationPresentationOptions) ->
             Void
     ) {
         // Показываем уведомление даже когда приложение активно

@@ -271,24 +271,18 @@ final class ChatViewModel: ObservableObject {
 
             do {
                 let loadedChat = try await chatService.getChatById(chatId: chatId)
-                await MainActor.run {
-                    self.chat = loadedChat
-                    print("💬 ChatViewModel: Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")")
-                    loadMessages()
+                self.chat = loadedChat
+                print("💬 ChatViewModel: Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")")
+                loadMessages()
 
-                    // Присоединяемся к комнате чата через Socket.IO
-                    joinChat()
-                }
+                // Присоединяемся к комнате чата через Socket.IO
+                joinChat()
             } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    print("❌ ChatViewModel: Failed to load chat: \(error)")
-                }
+                errorMessage = error.localizedDescription
+                print("❌ ChatViewModel: Failed to load chat: \(error)")
             }
 
-            await MainActor.run {
-                isLoading = false
-            }
+            isLoading = false
         }
     }
 

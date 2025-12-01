@@ -208,8 +208,6 @@ class CacheManagerService: ObservableObject {
                 return Int64(0)
             }
             
-            var totalSize: Int64 = 0
-            
             // Рекурсивная функция для расчета размера только файлов приложения
             func calculateSizeRecursive(at dirURL: URL) -> Int64 {
                 var dirSize: Int64 = 0
