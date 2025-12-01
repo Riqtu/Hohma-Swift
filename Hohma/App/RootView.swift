@@ -5,6 +5,7 @@ struct RootView: View {
     @State private var selection: String = "home"
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var chatListViewModel = ChatListViewModel()
     @ObserveInjection var inject
 
     var body: some View {
@@ -36,7 +37,7 @@ struct RootView: View {
                                         print("🔄 RootView: Navigating to race")
                                     }
                             case "chat":
-                                ChatListView()
+                                ChatListView(viewModel: chatListViewModel)
                                     .onAppear {
                                         print("🔄 RootView: Navigating to chat")
                                     }
@@ -74,12 +75,13 @@ struct RootView: View {
                             .tag("home")
 
                         NavigationStack {
-                            ChatListView()
+                            ChatListView(viewModel: chatListViewModel)
                                 .withAppBackground()
                         }
                         .tabItem {
                             Label("Чаты", systemImage: "message")
                         }
+                        .badge(chatListViewModel.totalUnreadCount)
                         .tag("chat")
 
                         ProfileView(authViewModel: authViewModel)

@@ -51,6 +51,10 @@ enum SocketIOEvent: String, CaseIterable {
     case chatMemberOnline = "chat:member:online"
     case chatMemberOffline = "chat:member:offline"
     case chatUnreadCountUpdated = "chat:unreadCount:updated"
+    case chatListUpdated = "chat:list:updated"
+    // User global room events
+    case userJoin = "user:join"
+    case userLeave = "user:leave"
     // Movie Battle events
     case movieBattleUpdate = "movieBattle:update"
     case movieBattleMovieAdded = "movieBattle:movie:added"

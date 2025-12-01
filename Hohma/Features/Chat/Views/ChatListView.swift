@@ -11,9 +11,14 @@ import SwiftUI
 
 struct ChatListView: View {
     @ObserveInjection var inject
-    @StateObject private var viewModel = ChatListViewModel()
+    @ObservedObject var viewModel: ChatListViewModel
     @State private var chatToDelete: Chat? = nil
     @State private var navigationPath = NavigationPath()
+    
+    // Инициализатор для использования с shared viewModel или создания нового
+    init(viewModel: ChatListViewModel? = nil) {
+        self._viewModel = ObservedObject(wrappedValue: viewModel ?? ChatListViewModel())
+    }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -47,7 +52,12 @@ struct ChatListView: View {
                     .onDisappear {
                         // Обновляем список чатов при возврате из чата
                         // чтобы обновить счетчик непрочитанных сообщений
-                        viewModel.refreshChats()
+                        print("💬 ChatListView: ChatView disappeared, refreshing chat list")
+                        // Используем небольшую задержку, чтобы убедиться, что навигация завершена
+                        Task {
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                            await viewModel.refreshChatsAsync()
+                        }
                     }
             }
         }
@@ -100,7 +110,18 @@ struct ChatListView: View {
             }
         }
         .onAppear {
+            print("💬 ChatListView: onAppear - loading chats")
             viewModel.loadChats()
+        }
+        .onChange(of: navigationPath.count) { oldValue, newValue in
+            // Обновляем список чатов при изменении навигации (возврат из чата)
+            if newValue < oldValue {
+                print("💬 ChatListView: Navigation path changed (returned from chat), refreshing")
+                Task {
+                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды для завершения анимации
+                    await viewModel.refreshChatsAsync()
+                }
+            }
         }
         .onReceive(
             NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
@@ -108,9 +129,13 @@ struct ChatListView: View {
             // Обновляем список чатов при возврате приложения в foreground
             viewModel.refreshChats()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .chatListUpdated)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .chatListUpdated)) { notification in
             // Обновляем список чатов при получении уведомления об обновлении
             // Это происходит при отметке сообщений как прочитанных или при получении новых сообщений
+            let chatId = notification.userInfo?["chatId"] as? String ?? "unknown"
+            print("💬 ChatListView: Received .chatListUpdated notification for chat \(chatId)")
+            print("💬 ChatListView: Current chats count: \(viewModel.chats.count)")
+            print("💬 ChatListView: Calling refreshChats()...")
             viewModel.refreshChats()
         }
     }
@@ -165,10 +190,10 @@ struct ChatListView: View {
     // MARK: - Chat List
     private var chatListView: some View {
         List {
-            ForEach(viewModel.chats) { chat in
+            ForEach(viewModel.chats, id: \.id) { chat in
                 NavigationLink(value: chat) {
                     ChatCellView(chat: chat)
-                        .id("\(chat.id)-\(chat.unreadCountValue)")  // Принудительное обновление при изменении счетчика
+                        .id("chat-\(chat.id)-\(chat.unreadCountValue)-\(chat.lastMessageAt ?? "")-\(chat.updatedAt)")  // Принудительное обновление при изменении
                 }
                 .contentShape(Rectangle())
                 .listRowBackground(Color.clear)
@@ -251,23 +276,64 @@ struct ChatCellView: View {
         return count
     }
 
+    // Computed property для URL аватарки с timestamp для принудительного обновления
+    private var avatarURL: URL? {
+        guard let avatarUrl = chat.displayAvatarUrl, !avatarUrl.isEmpty else {
+            return nil
+        }
+        // Добавляем timestamp для принудительного обновления кеша
+        let urlWithTimestamp = avatarUrl.contains("?") 
+            ? "\(avatarUrl)&t=\(chat.updatedAt.hashValue)" 
+            : "\(avatarUrl)?t=\(chat.updatedAt.hashValue)"
+        return URL(string: urlWithTimestamp)
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
             // Avatar
-            AsyncImage(url: URL(string: chat.displayAvatarUrl ?? "")) { image in
-                image
+            Group {
+                if let url = avatarURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            Image(
+                                systemName: chat.type == .private
+                                    ? "person.circle.fill" : "person.2.circle.fill"
+                            )
+                            .resizable()
+                            .foregroundColor(.secondary)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Image(
+                                systemName: chat.type == .private
+                                    ? "person.circle.fill" : "person.2.circle.fill"
+                            )
+                            .resizable()
+                            .foregroundColor(.secondary)
+                        @unknown default:
+                            Image(
+                                systemName: chat.type == .private
+                                    ? "person.circle.fill" : "person.2.circle.fill"
+                            )
+                            .resizable()
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    Image(
+                        systemName: chat.type == .private
+                            ? "person.circle.fill" : "person.2.circle.fill"
+                    )
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Image(
-                    systemName: chat.type == .private
-                        ? "person.circle.fill" : "person.2.circle.fill"
-                )
-                .resizable()
-                .foregroundColor(.secondary)
+                    .foregroundColor(.secondary)
+                }
             }
             .frame(width: 50, height: 50)
             .clipShape(Circle())
+            .id("avatar-\(chat.id)-\(chat.displayAvatarUrl ?? "")-\(chat.updatedAt)")  // Уникальный ID для принудительного обновления
 
             // Content
             VStack(alignment: .leading, spacing: 4) {

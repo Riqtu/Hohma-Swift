@@ -19,6 +19,7 @@ final class ChatSocketManager {
     var onMemberOffline: ((String) -> Void)?  // userId
     var onUnreadCountUpdated: ((String, String, Int) -> Void)?  // chatId, userId, unreadCount
     var onMessageReaction: ((String, [MessageReaction]) -> Void)?  // messageId, allReactions
+    var onChatListUpdated: ((String) -> Void)?  // chatId - для обновления списка чатов
 
     init(socket: SocketIOServiceAdapter) {
         self.socket = socket
@@ -157,6 +158,37 @@ final class ChatSocketManager {
                 }
             }
         }
+        
+        socket.on(.chatListUpdated) { [weak self] data in
+            guard let self = self else { return }
+            print("💬 ChatSocketManager: chat:list:updated event received, data size: \(data.count)")
+            
+            // Пробуем распарсить данные разными способами
+            var chatId: String?
+            
+            // Способ 1: Прямой парсинг JSON
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                print("💬 ChatSocketManager: Parsed as JSON dict: \(json)")
+                chatId = json["chatId"] as? String
+            } else if let jsonString = String(data: data, encoding: .utf8) {
+                print("💬 ChatSocketManager: Data as string: \(jsonString)")
+                // Пробуем распарсить строку как JSON
+                if let jsonData = jsonString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                    chatId = json["chatId"] as? String
+                }
+            }
+            
+            if let chatId = chatId {
+                print("💬 ChatSocketManager: chat:list:updated - chatId: \(chatId)")
+                self.onChatListUpdated?(chatId)
+            } else {
+                print("❌ ChatSocketManager: chat:list:updated - failed to extract chatId from data")
+                print("❌ ChatSocketManager: Raw data: \(data.map { String(format: "%02x", $0) }.joined())")
+                // Все равно вызываем callback, чтобы обновить список
+                self.onChatListUpdated?("unknown")
+            }
+        }
     }
 
     func connectIfNeeded() {
@@ -186,6 +218,18 @@ final class ChatSocketManager {
             "isTyping": isTyping,
         ]
         socket.emit(.chatTyping, data: payload)
+    }
+    
+    func joinUser(userId: String) {
+        let payload: [String: Any] = ["userId": userId]
+        socket.emit(.userJoin, data: payload)
+        print("💬 ChatSocketManager: Joining user global room for user \(userId)")
+    }
+    
+    func leaveUser(userId: String) {
+        let payload: [String: Any] = ["userId": userId]
+        socket.emit(.userLeave, data: payload)
+        print("💬 ChatSocketManager: Leaving user global room for user \(userId)")
     }
 }
 

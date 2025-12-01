@@ -494,6 +494,13 @@ final class ChatViewModel: ObservableObject {
                         messages.append(sentMessage)
                         messages.sort { $0.createdAt < $1.createdAt }
                     }
+                    
+                    // Отправляем уведомление для обновления списка чатов
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": chatId]
+                    )
                 }
                 
                 // Затем отправляем обычные вложения (фото/видео из галереи) как альбом
@@ -544,6 +551,13 @@ final class ChatViewModel: ObservableObject {
                             messages.sort { $0.createdAt < $1.createdAt }
                         }
                     }
+                    
+                    // Отправляем уведомление для обновления списка чатов
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": chatId]
+                    )
                 } else if !content.isEmpty && videoMessages.isEmpty {
                     // Текстовое сообщение, если нет вложений
                     // Обновляем временное сообщение
@@ -589,6 +603,13 @@ final class ChatViewModel: ObservableObject {
                             messages.sort { $0.createdAt < $1.createdAt }
                         }
                     }
+                    
+                    // Отправляем уведомление для обновления списка чатов
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": chatId]
+                    )
                 } else if videoMessages.isEmpty && regularAttachments.isEmpty {
                     // Удаляем временное сообщение, если нет вложений и текста
                     if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
@@ -682,6 +703,13 @@ final class ChatViewModel: ObservableObject {
                         messages.sort { $0.createdAt < $1.createdAt }
                     }
                 }
+                
+                // Отправляем уведомление для обновления списка чатов
+                NotificationCenter.default.post(
+                    name: .chatListUpdated,
+                    object: nil,
+                    userInfo: ["chatId": chatId]
+                )
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ ChatViewModel: Failed to send sticker: \(error)")

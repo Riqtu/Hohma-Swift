@@ -239,6 +239,22 @@ class PushNotificationService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Application Icon Badge
+    /// Обновляет badge на иконке приложения
+    func updateApplicationIconBadge(_ count: Int) {
+        #if os(iOS)
+        DispatchQueue.main.async {
+            UIApplication.shared.applicationIconBadgeNumber = count
+            print("📱 PushNotificationService: Updated application icon badge to \(count)")
+        }
+        #endif
+    }
+    
+    /// Очищает badge на иконке приложения
+    func clearApplicationIconBadge() {
+        updateApplicationIconBadge(0)
+    }
+
     // MARK: - Notification Categories
     func setupNotificationCategories() {
         let categories: Set<UNNotificationCategory> = [
