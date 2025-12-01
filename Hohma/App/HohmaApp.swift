@@ -29,6 +29,9 @@ struct hohmaApp: App {
         preloadCommonVideos()
         setupOrientation()
         setupPushNotifications()
+        
+        // Инициализируем менеджер кэша
+        _ = CacheManagerService.shared
     }
 
     private func setupAudioSession() {

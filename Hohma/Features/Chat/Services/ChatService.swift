@@ -36,6 +36,17 @@ final class ChatService: TRPCServiceProtocol {
     func updateChat(_ request: UpdateChatRequest) async throws -> Chat {
         return try await trpcService.executePOST(endpoint: "chat.updateChat", body: request.dictionary)
     }
+    
+    func updateChatBackground(chatId: String, backgroundUrl: String?) async throws -> Chat {
+        let request = UpdateChatRequest(
+            chatId: chatId,
+            name: nil,
+            description: nil,
+            avatarUrl: nil,
+            backgroundUrl: backgroundUrl
+        )
+        return try await trpcService.executePOST(endpoint: "chat.updateChat", body: request.dictionary)
+    }
 
     func leaveChat(chatId: String) async throws {
         let input: [String: Any] = ["chatId": chatId]
@@ -110,6 +121,46 @@ final class ChatService: TRPCServiceProtocol {
             "userId": userId,
         ]
         let _: EmptyResponse = try await trpcService.executePOST(endpoint: "chat.removeMember", body: input)
+    }
+    
+    // MARK: - Member Settings Operations
+    
+    func updateMemberSettings(chatId: String, notifications: Bool? = nil, isMuted: Bool? = nil) async throws -> ChatMember {
+        var input: [String: Any] = ["chatId": chatId]
+        if let notifications = notifications {
+            input["notifications"] = notifications
+        }
+        if let isMuted = isMuted {
+            input["isMuted"] = isMuted
+        }
+        return try await trpcService.executePOST(endpoint: "chat.updateMemberSettings", body: input)
+    }
+    
+    func updateMemberRole(chatId: String, userId: String, role: ChatRole) async throws -> ChatMember {
+        let input: [String: Any] = [
+            "chatId": chatId,
+            "userId": userId,
+            "role": role.rawValue,
+        ]
+        return try await trpcService.executePOST(endpoint: "chat.updateMemberRole", body: input)
+    }
+    
+    // MARK: - Reaction Operations
+    
+    func addReaction(messageId: String, emoji: String) async throws -> MessageReaction {
+        let body: [String: Any] = [
+            "messageId": messageId,
+            "emoji": emoji,
+        ]
+        return try await trpcService.executePOST(endpoint: "chat.addReaction", body: body)
+    }
+    
+    func removeReaction(messageId: String, emoji: String) async throws {
+        let body: [String: Any] = [
+            "messageId": messageId,
+            "emoji": emoji,
+        ]
+        let _: EmptyResponse = try await trpcService.executePOST(endpoint: "chat.removeReaction", body: body)
     }
 }
 

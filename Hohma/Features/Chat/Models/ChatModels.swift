@@ -15,6 +15,7 @@ struct Chat: Codable, Identifiable, Hashable {
     let name: String?
     let description: String?
     let avatarUrl: String?
+    let backgroundUrl: String?
     let createdAt: String
     let updatedAt: String
     let lastMessageAt: String?
@@ -28,6 +29,7 @@ struct Chat: Codable, Identifiable, Hashable {
         case name
         case description
         case avatarUrl
+        case backgroundUrl
         case createdAt
         case updatedAt
         case lastMessageAt
@@ -44,6 +46,7 @@ struct Chat: Codable, Identifiable, Hashable {
         name = try container.decodeIfPresent(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+        backgroundUrl = try container.decodeIfPresent(String.self, forKey: .backgroundUrl)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         lastMessageAt = try container.decodeIfPresent(String.self, forKey: .lastMessageAt)
@@ -64,8 +67,14 @@ struct Chat: Codable, Identifiable, Hashable {
     // Вычисляемое свойство для аватарки чата
     var displayAvatarUrl: String? {
         if type == .private, let members = members, members.count > 0 {
+            // Для приватного чата показываем аватарку другого участника
+            let currentUserId = TRPCService.shared.currentUser?.id
+            if let otherMember = members.first(where: { $0.userId != currentUserId }) {
+                return otherMember.user?.avatarUrl
+            }
             return members.first?.user?.avatarUrl
         }
+        // Для группового чата показываем аватарку чата
         return avatarUrl
     }
 
@@ -155,6 +164,35 @@ enum ChatRole: String, Codable, CaseIterable {
     case owner = "OWNER"
 }
 
+// MARK: - Message Reaction
+struct MessageReaction: Codable, Identifiable {
+    let id: String
+    let messageId: String
+    let userId: String
+    let emoji: String
+    let createdAt: String
+    let user: UserProfile?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case messageId
+        case userId
+        case emoji
+        case createdAt
+        case user
+    }
+}
+
+extension MessageReaction: Equatable {
+    static func == (lhs: MessageReaction, rhs: MessageReaction) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.messageId == rhs.messageId &&
+        lhs.userId == rhs.userId &&
+        lhs.emoji == rhs.emoji &&
+        lhs.createdAt == rhs.createdAt
+    }
+}
+
 // MARK: - Chat Message
 struct ChatMessage: Codable, Identifiable, Equatable {
     let id: String
@@ -169,6 +207,7 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     let updatedAt: String
     let deletedAt: String?
     let sender: UserProfile?
+    let reactions: [MessageReaction]?
     // replyTo не включаем, чтобы избежать рекурсии в value type - используем только replyToId для связи
 
     enum CodingKeys: String, CodingKey {
@@ -184,6 +223,7 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         case updatedAt
         case deletedAt
         case sender
+        case reactions
         // replyTo исключен из CodingKeys, чтобы избежать рекурсии
     }
 
@@ -199,7 +239,8 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         createdAt: String,
         updatedAt: String,
         deletedAt: String? = nil,
-        sender: UserProfile? = nil
+        sender: UserProfile? = nil,
+        reactions: [MessageReaction]? = nil
     ) {
         self.id = id
         self.chatId = chatId
@@ -213,6 +254,7 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
         self.sender = sender
+        self.reactions = reactions
     }
 
     init(from decoder: Decoder) throws {
@@ -230,6 +272,7 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         sender = try container.decodeIfPresent(UserProfile.self, forKey: .sender)
+        reactions = try container.decodeIfPresent([MessageReaction].self, forKey: .reactions)
     }
 }
 
@@ -240,7 +283,8 @@ extension ChatMessage {
         lhs.deletedAt == rhs.deletedAt &&
         lhs.content == rhs.content &&
         lhs.attachments == rhs.attachments &&
-        lhs.status == rhs.status
+        lhs.status == rhs.status &&
+        lhs.reactions == rhs.reactions
     }
 }
 
@@ -249,6 +293,7 @@ enum MessageType: String, Codable, CaseIterable {
     case text = "TEXT"
     case image = "IMAGE"
     case file = "FILE"
+    case sticker = "STICKER"
     case system = "SYSTEM"
 }
 
@@ -256,26 +301,49 @@ enum MessageType: String, Codable, CaseIterable {
 struct ChatAttachment: Identifiable {
     let id = UUID()
     let image: UIImage?
+    let videoURL: URL?
+    let thumbnail: UIImage?
     let fileData: Data?
     let fileName: String?
     let fileExtension: String?
+    let isVideoMessage: Bool  // Флаг для видеосообщений (кружок), в отличие от обычных видео из галереи
     
     var isImage: Bool {
         return image != nil
     }
     
+    var isVideo: Bool {
+        return videoURL != nil || (fileExtension?.lowercased() == "mp4" || fileExtension?.lowercased() == "mov")
+    }
+    
     init(image: UIImage) {
         self.image = image
+        self.videoURL = nil
+        self.thumbnail = nil
         self.fileData = nil
         self.fileName = nil
         self.fileExtension = nil
+        self.isVideoMessage = false
     }
     
-    init(fileData: Data, fileName: String, fileExtension: String) {
+    init(videoURL: URL, thumbnail: UIImage? = nil) {
         self.image = nil
+        self.videoURL = videoURL
+        self.thumbnail = thumbnail
+        self.fileData = nil
+        self.fileName = nil
+        self.fileExtension = videoURL.pathExtension.isEmpty ? "mp4" : videoURL.pathExtension
+        self.isVideoMessage = false  // Видео из галереи - не видеосообщение
+    }
+    
+    init(fileData: Data, fileName: String, fileExtension: String, isVideoMessage: Bool = false) {
+        self.image = nil
+        self.videoURL = nil
+        self.thumbnail = nil
         self.fileData = fileData
         self.fileName = fileName
         self.fileExtension = fileExtension
+        self.isVideoMessage = isVideoMessage
     }
 }
 
@@ -330,12 +398,14 @@ struct UpdateChatRequest: Codable {
     let name: String?
     let description: String?
     let avatarUrl: String?
+    let backgroundUrl: String?
 
     var dictionary: [String: Any] {
         var dict: [String: Any] = ["chatId": chatId]
         if let name = name { dict["name"] = name }
         if let description = description { dict["description"] = description }
         if let avatarUrl = avatarUrl { dict["avatarUrl"] = avatarUrl }
+        if let backgroundUrl = backgroundUrl { dict["backgroundUrl"] = backgroundUrl }
         return dict
     }
 }

@@ -5,8 +5,8 @@
 //  Created by Assistant on 30.10.2025.
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 struct CreateChatView: View {
     @ObserveInjection var inject
@@ -15,6 +15,7 @@ struct CreateChatView: View {
     @State private var chatName: String = ""
     @State private var chatDescription: String = ""
     @State private var selectedUserIds: Set<String> = []
+    @State private var selectedUsers: [UserProfile] = []  // Храним выбранных пользователей отдельно
     @State private var chatType: ChatType = .private
     @State private var searchQuery: String = ""
 
@@ -25,6 +26,23 @@ struct CreateChatView: View {
                 Picker("Тип чата", selection: $chatType) {
                     Text("Личный").tag(ChatType.private)
                     Text("Групповой").tag(ChatType.group)
+                }
+                .onChange(of: chatType) { _, newType in
+                    // При смене типа чата очищаем выбранных пользователей, если нужно
+                    if newType == .private && selectedUserIds.count > 1 {
+                        // Оставляем только первого выбранного пользователя
+                        let firstUserId = selectedUserIds.first
+                        selectedUserIds.removeAll()
+                        selectedUsers.removeAll()
+                        if let firstId = firstUserId,
+                            let firstUser = viewModel.searchResults.first(where: {
+                                $0.id == firstId
+                            }) ?? selectedUsers.first(where: { $0.id == firstId })
+                        {
+                            selectedUserIds.insert(firstId)
+                            selectedUsers.append(firstUser)
+                        }
+                    }
                 }
             }
 
@@ -55,8 +73,12 @@ struct CreateChatView: View {
                         ) {
                             if selectedUserIds.contains(user.id) {
                                 selectedUserIds.remove(user.id)
+                                selectedUsers.removeAll { $0.id == user.id }
                             } else {
                                 selectedUserIds.insert(user.id)
+                                if !selectedUsers.contains(where: { $0.id == user.id }) {
+                                    selectedUsers.append(user)
+                                }
                             }
                         }
                     }
@@ -64,9 +86,9 @@ struct CreateChatView: View {
             }
 
             // Selected users
-            if !selectedUserIds.isEmpty {
-                Section("Выбрано пользователей: \(selectedUserIds.count)") {
-                    ForEach(viewModel.searchResults.filter { selectedUserIds.contains($0.id) }) { user in
+            if !selectedUsers.isEmpty {
+                Section("Выбрано пользователей: \(selectedUsers.count)") {
+                    ForEach(selectedUsers) { user in
                         HStack {
                             AsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in
                                 image
@@ -85,6 +107,7 @@ struct CreateChatView: View {
 
                             Button(action: {
                                 selectedUserIds.remove(user.id)
+                                selectedUsers.removeAll { $0.id == user.id }
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
@@ -133,11 +156,21 @@ struct CreateChatView: View {
                 type: chatType,
                 userIds: Array(selectedUserIds),
                 name: chatType == .group ? (chatName.isEmpty ? nil : chatName) : nil,
-                description: chatType == .group ? (chatDescription.isEmpty ? nil : chatDescription) : nil,
+                description: chatType == .group
+                    ? (chatDescription.isEmpty ? nil : chatDescription) : nil,
                 avatarUrl: nil
             )
-            
+
             if viewModel.createdChat != nil {
+                // Отправляем уведомление о создании чата для навигации
+                NotificationCenter.default.post(
+                    name: .navigationRequested,
+                    object: nil,
+                    userInfo: [
+                        "destination": "chat",
+                        "chatId": viewModel.createdChat!.id,
+                    ]
+                )
                 dismiss()
             }
         }
@@ -184,5 +217,3 @@ struct UserSelectionRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
-

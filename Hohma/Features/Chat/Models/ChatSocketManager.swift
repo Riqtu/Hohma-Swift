@@ -18,6 +18,7 @@ final class ChatSocketManager {
     var onMemberOnline: ((String) -> Void)?  // userId
     var onMemberOffline: ((String) -> Void)?  // userId
     var onUnreadCountUpdated: ((String, String, Int) -> Void)?  // chatId, userId, unreadCount
+    var onMessageReaction: ((String, [MessageReaction]) -> Void)?  // messageId, allReactions
 
     init(socket: SocketIOServiceAdapter) {
         self.socket = socket
@@ -33,31 +34,37 @@ final class ChatSocketManager {
             guard let self = self else { return }
             do {
                 // Socket.IO отправляет данные в формате: { message: ChatMessage }
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let messageDict = json["message"] as? [String: Any],
-                   let messageData = try? JSONSerialization.data(withJSONObject: messageDict)
-                {
-                    let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601withMilliseconds
-                    let message = try decoder.decode(ChatMessage.self, from: messageData)
-                    print("💬 ChatSocketManager: chat:message received - \(message.id)")
-                    self.onNewMessage?(message)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let messageDict = json?["message"] as? [String: Any] else {
+                    print("❌ ChatSocketManager: chat:message - missing 'message' key in payload")
+                    return
                 }
+                
+                let messageData = try JSONSerialization.data(withJSONObject: messageDict)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let message = try decoder.decode(ChatMessage.self, from: messageData)
+                print("💬 ChatSocketManager: chat:message received - \(message.id)")
+                self.onNewMessage?(message)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:message payload: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("❌ ChatSocketManager: Raw payload: \(jsonString)")
+                }
             }
         }
 
         socket.on(.chatTyping) { [weak self] data in
             guard let self = self else { return }
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let userId = json["userId"] as? String,
-                   let isTyping = json["isTyping"] as? Bool
-                {
-                    print("💬 ChatSocketManager: chat:typing received - userId: \(userId), isTyping: \(isTyping)")
-                    self.onTyping?(userId, isTyping)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let userId = json?["userId"] as? String,
+                      let isTyping = json?["isTyping"] as? Bool else {
+                    print("❌ ChatSocketManager: chat:typing - missing required fields")
+                    return
                 }
+                print("💬 ChatSocketManager: chat:typing received - userId: \(userId), isTyping: \(isTyping)")
+                self.onTyping?(userId, isTyping)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:typing payload: \(error)")
             }
@@ -66,12 +73,13 @@ final class ChatSocketManager {
         socket.on(.chatMemberOnline) { [weak self] data in
             guard let self = self else { return }
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let userId = json["userId"] as? String
-                {
-                    print("💬 ChatSocketManager: chat:member:online received - userId: \(userId)")
-                    self.onMemberOnline?(userId)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let userId = json?["userId"] as? String else {
+                    print("❌ ChatSocketManager: chat:member:online - missing 'userId' field")
+                    return
                 }
+                print("💬 ChatSocketManager: chat:member:online received - userId: \(userId)")
+                self.onMemberOnline?(userId)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:member:online payload: \(error)")
             }
@@ -80,12 +88,13 @@ final class ChatSocketManager {
         socket.on(.chatMemberOffline) { [weak self] data in
             guard let self = self else { return }
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let userId = json["userId"] as? String
-                {
-                    print("💬 ChatSocketManager: chat:member:offline received - userId: \(userId)")
-                    self.onMemberOffline?(userId)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let userId = json?["userId"] as? String else {
+                    print("❌ ChatSocketManager: chat:member:offline - missing 'userId' field")
+                    return
                 }
+                print("💬 ChatSocketManager: chat:member:offline received - userId: \(userId)")
+                self.onMemberOffline?(userId)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:member:offline payload: \(error)")
             }
@@ -94,12 +103,13 @@ final class ChatSocketManager {
         socket.on(.chatMessageDeleted) { [weak self] data in
             guard let self = self else { return }
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let messageId = json["messageId"] as? String
-                {
-                    print("💬 ChatSocketManager: chat:message:deleted received - messageId: \(messageId)")
-                    self.onMessageDeleted?(messageId)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let messageId = json?["messageId"] as? String else {
+                    print("❌ ChatSocketManager: chat:message:deleted - missing 'messageId' field")
+                    return
                 }
+                print("💬 ChatSocketManager: chat:message:deleted received - messageId: \(messageId)")
+                self.onMessageDeleted?(messageId)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:message:deleted payload: \(error)")
             }
@@ -108,16 +118,43 @@ final class ChatSocketManager {
         socket.on(.chatUnreadCountUpdated) { [weak self] data in
             guard let self = self else { return }
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let chatId = json["chatId"] as? String,
-                   let userId = json["userId"] as? String,
-                   let unreadCount = json["unreadCount"] as? Int
-                {
-                    print("💬 ChatSocketManager: chat:unreadCount:updated received - chatId: \(chatId), userId: \(userId), unreadCount: \(unreadCount)")
-                    self.onUnreadCountUpdated?(chatId, userId, unreadCount)
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let chatId = json?["chatId"] as? String,
+                      let userId = json?["userId"] as? String,
+                      let unreadCount = json?["unreadCount"] as? Int else {
+                    print("❌ ChatSocketManager: chat:unreadCount:updated - missing required fields")
+                    return
                 }
+                print("💬 ChatSocketManager: chat:unreadCount:updated received - chatId: \(chatId), userId: \(userId), unreadCount: \(unreadCount)")
+                self.onUnreadCountUpdated?(chatId, userId, unreadCount)
             } catch {
                 print("❌ ChatSocketManager: failed to parse chat:unreadCount:updated payload: \(error)")
+            }
+        }
+        
+        socket.on(.chatMessageReaction) { [weak self] data in
+            guard let self = self else { return }
+            do {
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let messageId = json?["messageId"] as? String,
+                      let allReactionsArray = json?["allReactions"] as? [[String: Any]] else {
+                    print("❌ ChatSocketManager: chat:message:reaction - missing required fields")
+                    return
+                }
+                
+                // Декодируем реакции
+                let reactionsData = try JSONSerialization.data(withJSONObject: allReactionsArray)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601withMilliseconds
+                let reactions = try decoder.decode([MessageReaction].self, from: reactionsData)
+                
+                print("💬 ChatSocketManager: chat:message:reaction received - messageId: \(messageId), reactions count: \(reactions.count)")
+                self.onMessageReaction?(messageId, reactions)
+            } catch {
+                print("❌ ChatSocketManager: failed to parse chat:message:reaction payload: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("❌ ChatSocketManager: Raw payload: \(jsonString)")
+                }
             }
         }
     }

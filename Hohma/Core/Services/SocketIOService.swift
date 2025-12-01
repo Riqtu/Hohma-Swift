@@ -14,6 +14,7 @@ extension Notification.Name {
     static let roomUsersUpdated = Notification.Name("roomUsersUpdated")
     static let deepLinkToWheel = Notification.Name("deepLinkToWheel")
     static let chatListUpdated = Notification.Name("chatListUpdated")
+    static let chatBackgroundUpdated = Notification.Name("chatBackgroundUpdated")
 }
 
 // MARK: - Socket.IO Events
@@ -46,6 +47,7 @@ enum SocketIOEvent: String, CaseIterable {
     case chatMessage = "chat:message"
     case chatMessageUpdated = "chat:message:updated"
     case chatMessageDeleted = "chat:message:deleted"
+    case chatMessageReaction = "chat:message:reaction"
     case chatMemberOnline = "chat:member:online"
     case chatMemberOffline = "chat:member:offline"
     case chatUnreadCountUpdated = "chat:unreadCount:updated"

@@ -5,20 +5,49 @@
 //  Created by Artem Vydro on 30.10.2025.
 //
 
+import AVFoundation
 import Inject
 import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @ObserveInjection var inject
     let chatId: String
     @StateObject private var viewModel = ChatViewModel()
     @State private var messageToDelete: String? = nil
-    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    @State private var showSettings = false
+    @State private var chatBackgroundUrl: String? = nil
 
     var body: some View {
         ZStack {
+            // Фон чата - используем GeometryReader для ограничения размера
+            if let backgroundUrl = chatBackgroundUrl {
+                GeometryReader { geometry in
+                    AsyncImage(url: URL(string: backgroundUrl)) { phase in
+                        switch phase {
+                        case .empty:
+                            Color.clear
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .opacity(0.1)
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .clipped()
+                        case .failure:
+                            Color.clear
+                        @unknown default:
+                            Color.clear
+                        }
+                    }
+                }
+                .allowsHitTesting(false)  // Фон не должен перехватывать нажатия
+                .ignoresSafeArea()
+            }
+
             VStack(spacing: 0) {
                 // Messages
                 messagesView
@@ -63,6 +92,12 @@ struct ChatView: View {
             }
         }
         .appBackground()
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    hideKeyboard()
+                }
+        )
         .navigationTitle(viewModel.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -79,9 +114,42 @@ struct ChatView: View {
                     }
                 }
             }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showSettings = true
+                }) {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundColor(.accentColor)
+                }
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            ChatSettingsView(chatId: chatId)
+        }
+        .sheet(isPresented: $viewModel.showStickerPicker) {
+            StickerPickerView { stickerUrl in
+                viewModel.sendSticker(stickerUrl: stickerUrl, packId: "")
+            }
+            .presentationDetents([.height(300)])
         }
         .onAppear {
             viewModel.loadChat(chatId: chatId)
+            // Инициализируем фон при появлении
+            chatBackgroundUrl = viewModel.chat?.backgroundUrl
+        }
+        .onChange(of: viewModel.chat?.backgroundUrl) { _, newValue in
+            chatBackgroundUrl = newValue
+            print("💬 ChatView: Background URL updated: \(newValue ?? "nil")")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .chatBackgroundUpdated)) {
+            notification in
+            if let updatedChatId = notification.userInfo?["chatId"] as? String,
+                updatedChatId == chatId
+            {
+                // Перезагружаем чат для получения обновленного фона
+                viewModel.loadChat(chatId: chatId)
+            }
         }
         .onDisappear {
             viewModel.leaveChat()
@@ -121,6 +189,7 @@ private struct ChatMessagesScrollView: View {
     let onDeleteMessage: ((String) -> Void)?
     let findMessage: (String) -> ChatMessage?
     let onReply: (ChatMessage) -> Void
+    let onReaction: (String, String) -> Void  // messageId, emoji
 
     @State private var scrollMetrics = ChatScrollMetrics.zero
     @State private var didPerformInitialScroll = false
@@ -135,7 +204,7 @@ private struct ChatMessagesScrollView: View {
         GeometryReader { containerGeo in
             SwiftUI.ScrollViewReader { proxy in
                 ScrollView(.vertical) {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: 8, pinnedViews: []) {
                         if isLoading && messages.isEmpty {
                             ProgressView()
                                 .padding()
@@ -149,6 +218,9 @@ private struct ChatMessagesScrollView: View {
                                 replyingToMessage: message.replyToId.flatMap(findMessage),
                                 onReply: {
                                     onReply(message)
+                                },
+                                onReaction: { emoji in
+                                    onReaction(message.id, emoji)
                                 },
                                 contextMenuBuilder: {
                                     if message.senderId == currentUserId,
@@ -167,7 +239,10 @@ private struct ChatMessagesScrollView: View {
                                 }
                             )
                             .id(message.id)
-                            .contentShape(Rectangle())
+                            .onAppear {
+                                // Принудительная загрузка медиа при появлении в viewport
+                                // Это помогает загружать изображения при скролле
+                            }
                         }
 
                         if isLoadingMore {
@@ -424,6 +499,9 @@ extension ChatView {
             },
             onReply: { message in
                 viewModel.setReplyingToMessage(message)
+            },
+            onReaction: { messageId, emoji in
+                viewModel.handleReaction(messageId: messageId, emoji: emoji)
             }
         )
     }
@@ -466,27 +544,87 @@ extension ChatView {
             HStack(spacing: 12) {
                 // Кнопка выбора файла
                 PhotosPicker(
-                    selection: $selectedPhotoItem,
-                    matching: .images
+                    selection: $selectedPhotoItems,
+                    maxSelectionCount: 10,
+                    matching: .any(of: [.images, .videos])
                 ) {
                     Image(systemName: "paperclip")
                         .font(.title2)
                         .foregroundColor(.accentColor)
                 }
                 .disabled(viewModel.isSending || viewModel.selectedAttachments.count >= 10)
-                .onChange(of: selectedPhotoItem) { _, newItem in
-                    guard let newItem = newItem else { return }
+                .onChange(of: selectedPhotoItems) { _, newItems in
+                    guard !newItems.isEmpty else { return }
                     Task {
-                        if let data = try? await newItem.loadTransferable(type: Data.self),
-                            let image = UIImage(data: data)
-                        {
-                            await MainActor.run {
-                                viewModel.addAttachment(ChatAttachment(image: image))
-                                selectedPhotoItem = nil  // Сбрасываем после обработки
+                        for item in newItems {
+                            // Пробуем загрузить как изображение
+                            if let data = try? await item.loadTransferable(type: Data.self),
+                                let image = UIImage(data: data)
+                            {
+                                await MainActor.run {
+                                    viewModel.addAttachment(ChatAttachment(image: image))
+                                }
+                                continue
                             }
+
+                            // Если не изображение, пробуем загрузить как видео через URL
+                            if let videoTransferable = await
+                                (try? item.loadTransferable(type: VideoFileTransferable.self))
+                            {
+                                let tempURL = FileManager.default.temporaryDirectory
+                                    .appendingPathComponent(UUID().uuidString)
+                                    .appendingPathExtension("mp4")
+
+                                do {
+                                    // Копируем файл во временную директорию
+                                    try FileManager.default.copyItem(
+                                        at: videoTransferable.url, to: tempURL)
+                                    let thumbnail = await generateThumbnail(for: tempURL)
+                                    await MainActor.run {
+                                        viewModel.addAttachment(
+                                            ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
+                                    }
+                                } catch {
+                                    print("❌ Failed to save video: \(error)")
+                                }
+                                continue
+                            }
+
+                            // Альтернативный способ для видео - через Movie
+                            if let movie = await (try? item.loadTransferable(type: Movie.self)) {
+                                let tempURL = FileManager.default.temporaryDirectory
+                                    .appendingPathComponent(UUID().uuidString)
+                                    .appendingPathExtension("mp4")
+
+                                do {
+                                    // Копируем файл во временную директорию
+                                    try FileManager.default.copyItem(at: movie.url, to: tempURL)
+                                    let thumbnail = await generateThumbnail(for: tempURL)
+                                    await MainActor.run {
+                                        viewModel.addAttachment(
+                                            ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
+                                    }
+                                } catch {
+                                    print("❌ Failed to save video: \(error)")
+                                }
+                            }
+                        }
+                        // Сбрасываем после обработки
+                        await MainActor.run {
+                            selectedPhotoItems = []
                         }
                     }
                 }
+
+                // Кнопка выбора стикера
+                Button(action: {
+                    viewModel.showStickerPicker.toggle()
+                }) {
+                    Image(systemName: "face.smiling")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                }
+                .disabled(viewModel.isSending)
 
                 TextField("Введите сообщение...", text: $viewModel.messageInput, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -760,6 +898,27 @@ extension ChatView {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 80, height: 80)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else if attachment.videoURL != nil {
+                    ZStack {
+                        if let thumbnail = attachment.thumbnail {
+                            Image(uiImage: thumbnail)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.systemGray5))
+                                .frame(width: 80, height: 80)
+                        }
+
+                        // Иконка видео
+                        Image(systemName: "play.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .background(Color.black.opacity(0.5))
+                            .clipShape(Circle())
+                    }
                 } else {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color(.systemGray5))
@@ -880,6 +1039,84 @@ extension ChatView {
             } else {
                 return "Файл"
             }
+        }
+    }
+
+    // MARK: - Helper Functions
+
+    // MARK: - Video Thumbnail Cache
+    private actor VideoThumbnailCache {
+        static let shared = VideoThumbnailCache()
+        private var cache: [URL: UIImage] = [:]
+
+        func getThumbnail(for url: URL) -> UIImage? {
+            return cache[url]
+        }
+
+        func setThumbnail(_ image: UIImage, for url: URL) {
+            cache[url] = image
+            if cache.count > 50 {
+                let firstKey = cache.keys.first
+                if let key = firstKey {
+                    cache.removeValue(forKey: key)
+                }
+            }
+        }
+    }
+
+    private func generateThumbnail(for videoURL: URL) async -> UIImage? {
+        // Проверяем кэш сначала
+        if let cachedThumbnail = await VideoThumbnailCache.shared.getThumbnail(for: videoURL) {
+            return cachedThumbnail
+        }
+
+        let asset = AVURLAsset(url: videoURL)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        imageGenerator.requestedTimeToleranceAfter = .zero
+        imageGenerator.requestedTimeToleranceBefore = .zero
+        // Уменьшаем размер превью для лучшей производительности
+        imageGenerator.maximumSize = CGSize(width: 400, height: 400)
+
+        do {
+            let cgImage = try await imageGenerator.image(at: CMTime.zero).image
+            let thumbnail = UIImage(cgImage: cgImage)
+
+            // Сохраняем в кэш
+            await VideoThumbnailCache.shared.setThumbnail(thumbnail, for: videoURL)
+
+            return thumbnail
+        } catch {
+            print("❌ Failed to generate thumbnail: \(error.localizedDescription)")
+            return nil
+        }
+    }
+}
+
+// MARK: - Video Transferable Types
+
+struct VideoFileTransferable: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { video in
+            SentTransferredFile(video.url)
+        } importing: { received in
+            let url = await received.file
+            return VideoFileTransferable(url: url)
+        }
+    }
+}
+
+struct Movie: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { movie in
+            SentTransferredFile(movie.url)
+        } importing: { received in
+            let url = try await received.file
+            return Movie(url: url)
         }
     }
 }

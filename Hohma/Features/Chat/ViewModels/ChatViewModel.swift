@@ -32,8 +32,10 @@ final class ChatViewModel: ObservableObject {
     @Published var isCancelingVideo: Bool = false
     @Published var showVideoControls: Bool = false  // Показывать ли overlay с кнопками управления
     @Published var replyingToMessage: ChatMessage? = nil  // Сообщение, на которое отвечаем
+    @Published var showStickerPicker: Bool = false  // Показывать ли панель выбора стикеров
 
     private let chatService = ChatService.shared
+    private let stickerService = StickerService.shared
     private let audioRecorder = AudioRecorderService()
     let videoRecorder = VideoRecorderService()  // Public для доступа из View
     private var chatSocketManager: ChatSocketManager?
@@ -44,6 +46,34 @@ final class ChatViewModel: ObservableObject {
     private var recordingSyncTask: Task<Void, Never>?
     private let messagesPageSize = 30  // Размер страницы при загрузке
     private var nextMessagesCursor: String? = nil
+    private var messageIds: Set<String> = [] // Для быстрой проверки дубликатов
+    private var pendingMessages: [String: String] = [:] // Временные ID -> реальные ID
+    
+    // MARK: - Helper Methods
+    
+    private func convertAuthUserToUserProfile(_ authUser: AuthUser?) -> UserProfile? {
+        guard let authUser = authUser else { return nil }
+        return UserProfile(
+            id: authUser.id,
+            name: authUser.name,
+            username: authUser.username,
+            firstName: authUser.firstName,
+            lastName: authUser.lastName,
+            avatarUrl: authUser.avatarUrl?.absoluteString,
+            email: authUser.email,
+            coins: authUser.coins,
+            clicks: authUser.clicks
+        )
+    }
+    
+    private func formatDateForMessage(_ date: Date) -> String {
+        // Используем тот же формат, что и сервер: "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0) // UTC
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        return formatter.string(from: date)
+    }
 
     init() {
         setupSocketAdapter()
@@ -57,14 +87,19 @@ final class ChatViewModel: ObservableObject {
             while !Task.isCancelled {
                 guard let self = self else { break }
                 
+                // Проверяем, что задача не отменена перед каждым обновлением
+                guard !Task.isCancelled else { break }
+                
                 if self.audioRecorder.isRecording {
                     await MainActor.run {
+                        guard !Task.isCancelled else { return }
                         self.isRecordingVoice = true
                         self.voiceRecordingDuration = self.audioRecorder.recordingDuration
                         self.voiceAudioLevel = self.audioRecorder.audioLevel
                     }
                 } else if self.isRecordingVoice {
                     await MainActor.run {
+                        guard !Task.isCancelled else { return }
                         self.isRecordingVoice = false
                         self.voiceRecordingDuration = 0
                         self.voiceAudioLevel = 0.0
@@ -80,12 +115,10 @@ final class ChatViewModel: ObservableObject {
         recordingSyncTask?.cancel()
         videoRecordingSyncTask?.cancel()
         typingTimer?.invalidate()
-        // leaveChat() не вызываем в deinit, так как это main actor метод
-        // Вместо этого используем Task для безопасного вызова
+        // Очищаем ресурсы синхронно в deinit
+        // leaveChat() вызываем через прямой вызов, так как manager не требует MainActor
         if let chatId = chatId, let manager = chatSocketManager {
-            Task { @MainActor in
-                manager.leaveChat(chatId: chatId)
-            }
+            manager.leaveChat(chatId: chatId)
         }
     }
 
@@ -116,8 +149,32 @@ final class ChatViewModel: ObservableObject {
         manager.onNewMessage = { [weak self] message in
             guard let self = self else { return }
             Task { @MainActor in
-                // Добавляем сообщение только если его еще нет
-                if !self.messages.contains(where: { $0.id == message.id }) {
+                // Проверяем, не является ли это сообщение заменой временного
+                // Ищем временное сообщение от того же пользователя с похожим содержимым
+                if message.senderId == self.currentUserId,
+                   let tempIndex = self.messages.firstIndex(where: { tempMessage in
+                       tempMessage.id.hasPrefix("temp-") &&
+                       tempMessage.senderId == message.senderId &&
+                       tempMessage.content == message.content &&
+                       tempMessage.messageType == message.messageType &&
+                       tempMessage.attachments == message.attachments
+                   }) {
+                    // Заменяем временное сообщение на реальное
+                    let tempMessageId = self.messages[tempIndex].id
+                    self.messages[tempIndex] = message
+                    self.messageIds.remove(tempMessageId)
+                    self.messageIds.insert(message.id)
+                    self.messages.sort { $0.createdAt < $1.createdAt }
+                    
+                    // Отправляем уведомление об обновлении списка чатов
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": message.chatId]
+                    )
+                } else if !self.messageIds.contains(message.id) {
+                    // Добавляем сообщение только если его еще нет
+                    self.messageIds.insert(message.id)
                     self.messages.append(message)
                     self.messages.sort { $0.createdAt < $1.createdAt }
                     
@@ -156,6 +213,49 @@ final class ChatViewModel: ObservableObject {
             Task { @MainActor in
                 // Удаляем сообщение из списка при получении события через Socket.IO
                 self.messages.removeAll { $0.id == messageId }
+                self.messageIds.remove(messageId)
+            }
+        }
+        
+        manager.onUnreadCountUpdated = { [weak self] chatId, userId, unreadCount in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // Обновляем счетчик непрочитанных для текущего чата
+                if chatId == self.chatId {
+                    // Отправляем уведомление об обновлении списка чатов
+                    NotificationCenter.default.post(
+                        name: .chatListUpdated,
+                        object: nil,
+                        userInfo: ["chatId": chatId]
+                    )
+                }
+            }
+        }
+        
+        manager.onMessageReaction = { [weak self] messageId, reactions in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // Обновляем реакции для сообщения
+                if let index = self.messages.firstIndex(where: { $0.id == messageId }) {
+                    let updatedMessage = self.messages[index]
+                    // Создаем новое сообщение с обновленными реакциями
+                    let updatedChatMessage = ChatMessage(
+                        id: updatedMessage.id,
+                        chatId: updatedMessage.chatId,
+                        senderId: updatedMessage.senderId,
+                        content: updatedMessage.content,
+                        messageType: updatedMessage.messageType,
+                        attachments: updatedMessage.attachments,
+                        status: updatedMessage.status,
+                        replyToId: updatedMessage.replyToId,
+                        createdAt: updatedMessage.createdAt,
+                        updatedAt: updatedMessage.updatedAt,
+                        deletedAt: updatedMessage.deletedAt,
+                        sender: updatedMessage.sender,
+                        reactions: reactions
+                    )
+                    self.messages[index] = updatedChatMessage
+                }
             }
         }
     }
@@ -171,17 +271,24 @@ final class ChatViewModel: ObservableObject {
 
             do {
                 let loadedChat = try await chatService.getChatById(chatId: chatId)
-                self.chat = loadedChat
-                loadMessages()
+                await MainActor.run {
+                    self.chat = loadedChat
+                    print("💬 ChatViewModel: Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")")
+                    loadMessages()
 
-                // Присоединяемся к комнате чата через Socket.IO
-                joinChat()
+                    // Присоединяемся к комнате чата через Socket.IO
+                    joinChat()
+                }
             } catch {
-                errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to load chat: \(error)")
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    print("❌ ChatViewModel: Failed to load chat: \(error)")
+                }
             }
 
-            isLoading = false
+            await MainActor.run {
+                isLoading = false
+            }
         }
     }
 
@@ -201,6 +308,8 @@ final class ChatViewModel: ObservableObject {
                 )
                 let loadedMessages = response.items
                 self.messages = loadedMessages.sorted { $0.createdAt < $1.createdAt }
+                // Обновляем Set для быстрой проверки дубликатов
+                self.messageIds = Set(loadedMessages.map { $0.id })
                 
                 hasMoreMessages = response.hasMore
                 nextMessagesCursor = response.hasMore ? response.nextCursor : nil
@@ -259,6 +368,8 @@ final class ChatViewModel: ObservableObject {
                 }
                 
                 self.messages = uniqueMessages.sorted { $0.createdAt < $1.createdAt }
+                // Обновляем Set для быстрой проверки дубликатов
+                self.messageIds = seenIds
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ ChatViewModel: Failed to load more messages: \(error)")
@@ -303,12 +414,60 @@ final class ChatViewModel: ObservableObject {
         let content = messageInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let attachmentsToUpload = selectedAttachments
         
-        // Очищаем input перед отправкой
-        messageInput = ""
-        selectedAttachments = []
-
         // Сохраняем сообщение для ответа перед очисткой для возможного восстановления при ошибке
         let savedReplyingToMessage = replyingToMessage
+        
+        // Создаем временное сообщение для оптимистичного обновления
+        let tempMessageId = "temp-\(UUID().uuidString)"
+        let now = formatDateForMessage(Date())
+        
+        // Разделяем видеосообщения и обычные вложения
+        let videoMessages = attachmentsToUpload.filter { $0.isVideoMessage }
+        let regularAttachments = attachmentsToUpload.filter { !$0.isVideoMessage }
+        
+        // Определяем тип сообщения заранее (для временного сообщения)
+        let messageType: MessageType
+        if !regularAttachments.isEmpty {
+            let allImages = regularAttachments.allSatisfy { $0.isImage }
+            let hasVideos = regularAttachments.contains { $0.isVideo }
+            // Если есть фото или видео (или оба) - используем IMAGE для альбомов
+            messageType = (allImages || hasVideos) ? .image : .file
+        } else {
+            messageType = .text
+        }
+        
+        // Создаем временное сообщение только для обычных вложений или текста
+        // Видеосообщения отправляются без временного сообщения
+        var tempMessage: ChatMessage? = nil
+        if !regularAttachments.isEmpty || (!content.isEmpty && videoMessages.isEmpty) {
+            tempMessage = ChatMessage(
+                id: tempMessageId,
+                chatId: chatId,
+                senderId: currentUserId ?? "",
+                content: content.isEmpty ? (messageType == .image ? (regularAttachments.count > 1 ? "Альбом" : "Фото") : "Файл") : content,
+                messageType: messageType,
+                attachments: [], // Вложения будут добавлены после загрузки
+                status: .sent, // Временно показываем как отправленное
+                replyToId: savedReplyingToMessage?.id,
+                createdAt: now,
+                updatedAt: now,
+                deletedAt: nil,
+                sender: convertAuthUserToUserProfile(TRPCService.shared.currentUser),
+                reactions: nil
+            )
+            
+            // Добавляем временное сообщение сразу в список
+            if let tempMsg = tempMessage {
+                messageIds.insert(tempMessageId)
+                messages.append(tempMsg)
+                messages.sort { $0.createdAt < $1.createdAt }
+            }
+        }
+        
+        // Очищаем input после добавления временного сообщения
+        messageInput = ""
+        selectedAttachments = []
+        replyingToMessage = nil
         
         Task {
             isSending = true
@@ -316,39 +475,126 @@ final class ChatViewModel: ObservableObject {
             errorMessage = nil
 
             do {
-                // Загружаем вложения, если есть
-                var attachmentURLs: [String] = []
-                if !attachmentsToUpload.isEmpty {
-                    attachmentURLs = try await uploadAttachments(attachmentsToUpload)
+                // Сначала отправляем видеосообщения отдельно (каждое отдельным сообщением)
+                for videoMessage in videoMessages {
+                    let videoURLs = try await uploadAttachments([videoMessage])
+                    guard let videoURL = videoURLs.first else { continue }
+                    
+                    let request = SendMessageRequest(
+                        chatId: chatId,
+                        content: "Видеосообщение",
+                        messageType: .file,
+                        attachments: [videoURL],
+                        replyToId: savedReplyingToMessage?.id
+                    )
+                    
+                    let sentMessage = try await chatService.sendMessage(request)
+                    if !messageIds.contains(sentMessage.id) {
+                        messageIds.insert(sentMessage.id)
+                        messages.append(sentMessage)
+                        messages.sort { $0.createdAt < $1.createdAt }
+                    }
                 }
-
-                // Определяем тип сообщения
-                let messageType: MessageType
-                if !attachmentURLs.isEmpty {
-                    // Проверяем, все ли вложения - изображения
-                    let allImages = attachmentsToUpload.allSatisfy { $0.isImage }
-                    messageType = allImages ? .image : .file
-                } else {
-                    messageType = .text
-                }
-
-                let request = SendMessageRequest(
-                    chatId: chatId,
-                    content: content.isEmpty ? (messageType == .image ? "Фото" : "Файл") : content,
-                    messageType: messageType,
-                    attachments: attachmentURLs.isEmpty ? nil : attachmentURLs,
-                    replyToId: savedReplyingToMessage?.id
-                )
                 
-                // Очищаем сообщение для ответа после отправки
-                replyingToMessage = nil
+                // Затем отправляем обычные вложения (фото/видео из галереи) как альбом
+                if !regularAttachments.isEmpty {
+                    let attachmentURLs = try await uploadAttachments(regularAttachments)
+                    
+                    // Обновляем временное сообщение с загруженными вложениями
+                    if let tempMsg = tempMessage, let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                        let updatedTempMessage = ChatMessage(
+                            id: tempMessageId,
+                            chatId: chatId,
+                            senderId: currentUserId ?? "",
+                            content: content.isEmpty ? (regularAttachments.count > 1 ? "Альбом" : "Фото") : content,
+                            messageType: messageType,
+                            attachments: attachmentURLs,
+                            status: .sent,
+                            replyToId: savedReplyingToMessage?.id,
+                            createdAt: tempMsg.createdAt,
+                            updatedAt: formatDateForMessage(Date()),
+                            deletedAt: nil,
+                            sender: convertAuthUserToUserProfile(TRPCService.shared.currentUser),
+                            reactions: nil
+                        )
+                        messages[tempIndex] = updatedTempMessage
+                    }
+                    
+                    let request = SendMessageRequest(
+                        chatId: chatId,
+                        content: content.isEmpty ? (regularAttachments.count > 1 ? "Альбом" : "Фото") : content,
+                        messageType: messageType,
+                        attachments: attachmentURLs,
+                        replyToId: savedReplyingToMessage?.id
+                    )
 
-                let sentMessage = try await chatService.sendMessage(request)
-                
-                // Добавляем сообщение в список
-                if !messages.contains(where: { $0.id == sentMessage.id }) {
-                    messages.append(sentMessage)
-                    messages.sort { $0.createdAt < $1.createdAt }
+                    let sentMessage = try await chatService.sendMessage(request)
+                    
+                    // Заменяем временное сообщение на реальное
+                    if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                        messages[tempIndex] = sentMessage
+                        messageIds.remove(tempMessageId)
+                        messageIds.insert(sentMessage.id)
+                        messages.sort { $0.createdAt < $1.createdAt }
+                    } else {
+                        // Если временное сообщение не найдено, просто добавляем реальное
+                        if !messageIds.contains(sentMessage.id) {
+                            messageIds.insert(sentMessage.id)
+                            messages.append(sentMessage)
+                            messages.sort { $0.createdAt < $1.createdAt }
+                        }
+                    }
+                } else if !content.isEmpty && videoMessages.isEmpty {
+                    // Текстовое сообщение, если нет вложений
+                    // Обновляем временное сообщение
+                    if let tempMsg = tempMessage, let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                        let updatedTempMessage = ChatMessage(
+                            id: tempMessageId,
+                            chatId: chatId,
+                            senderId: currentUserId ?? "",
+                            content: content,
+                            messageType: .text,
+                            attachments: [],
+                            status: .sent,
+                            replyToId: savedReplyingToMessage?.id,
+                            createdAt: tempMsg.createdAt,
+                            updatedAt: formatDateForMessage(Date()),
+                            deletedAt: nil,
+                            sender: convertAuthUserToUserProfile(TRPCService.shared.currentUser),
+                            reactions: nil
+                        )
+                        messages[tempIndex] = updatedTempMessage
+                    }
+                    
+                    let request = SendMessageRequest(
+                        chatId: chatId,
+                        content: content,
+                        messageType: .text,
+                        attachments: nil,
+                        replyToId: savedReplyingToMessage?.id
+                    )
+                    
+                    let sentMessage = try await chatService.sendMessage(request)
+                    
+                    // Заменяем временное сообщение на реальное
+                    if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                        messages[tempIndex] = sentMessage
+                        messageIds.remove(tempMessageId)
+                        messageIds.insert(sentMessage.id)
+                        messages.sort { $0.createdAt < $1.createdAt }
+                    } else {
+                        if !messageIds.contains(sentMessage.id) {
+                            messageIds.insert(sentMessage.id)
+                            messages.append(sentMessage)
+                            messages.sort { $0.createdAt < $1.createdAt }
+                        }
+                    }
+                } else if videoMessages.isEmpty && regularAttachments.isEmpty {
+                    // Удаляем временное сообщение, если нет вложений и текста
+                    if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                        messages.remove(at: tempIndex)
+                        messageIds.remove(tempMessageId)
+                    }
                 }
 
                 // Останавливаем индикатор печати
@@ -356,6 +602,13 @@ final class ChatViewModel: ObservableObject {
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ ChatViewModel: Failed to send message: \(error)")
+                
+                // Удаляем временное сообщение при ошибке
+                if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                    messages.remove(at: tempIndex)
+                    messageIds.remove(tempMessageId)
+                }
+                
                 // Восстанавливаем текст сообщения и сообщение для ответа при ошибке
                 messageInput = content
                 selectedAttachments = attachmentsToUpload
@@ -364,6 +617,85 @@ final class ChatViewModel: ObservableObject {
 
             isSending = false
             isUploadingAttachments = false
+        }
+    }
+    
+    // MARK: - Sticker Operations
+    
+    func sendSticker(stickerUrl: String, packId: String) {
+        guard let chatId = chatId, !isSending else { return }
+        
+        // Создаем временное сообщение для оптимистичного обновления
+        let tempMessageId = "temp-\(UUID().uuidString)"
+        let now = formatDateForMessage(Date())
+        let savedReplyingToMessage = replyingToMessage
+        
+        let tempMessage = ChatMessage(
+            id: tempMessageId,
+            chatId: chatId,
+            senderId: currentUserId ?? "",
+            content: "",
+            messageType: .sticker,
+            attachments: [stickerUrl],
+            status: .sent,
+            replyToId: savedReplyingToMessage?.id,
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: nil,
+            sender: convertAuthUserToUserProfile(TRPCService.shared.currentUser),
+            reactions: nil
+        )
+        
+        // Добавляем временное сообщение сразу
+        messageIds.insert(tempMessageId)
+        messages.append(tempMessage)
+        messages.sort { $0.createdAt < $1.createdAt }
+        
+        replyingToMessage = nil
+        showStickerPicker = false
+        
+        Task {
+            isSending = true
+            errorMessage = nil
+            
+            do {
+                let request = SendMessageRequest(
+                    chatId: chatId,
+                    content: "",
+                    messageType: .sticker,
+                    attachments: [stickerUrl],
+                    replyToId: savedReplyingToMessage?.id
+                )
+                
+                let sentMessage = try await chatService.sendMessage(request)
+                
+                // Заменяем временное сообщение на реальное
+                if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                    messages[tempIndex] = sentMessage
+                    messageIds.remove(tempMessageId)
+                    messageIds.insert(sentMessage.id)
+                    messages.sort { $0.createdAt < $1.createdAt }
+                } else {
+                    if !messageIds.contains(sentMessage.id) {
+                        messageIds.insert(sentMessage.id)
+                        messages.append(sentMessage)
+                        messages.sort { $0.createdAt < $1.createdAt }
+                    }
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+                print("❌ ChatViewModel: Failed to send sticker: \(error)")
+                
+                // Удаляем временное сообщение при ошибке
+                if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
+                    messages.remove(at: tempIndex)
+                    messageIds.remove(tempMessageId)
+                }
+                
+                replyingToMessage = savedReplyingToMessage
+            }
+            
+            isSending = false
         }
     }
     
@@ -394,6 +726,17 @@ final class ChatViewModel: ObservableObject {
             if let image = attachment.image {
                 // Загружаем изображение
                 url = try await FileUploadService.shared.uploadImage(image)
+            } else if let videoURL = attachment.videoURL {
+                // Загружаем видео
+                let videoData = try Data(contentsOf: videoURL)
+                let fileExtension = attachment.fileExtension ?? "mp4"
+                let mimeType = FileUploadService.getMimeType(for: fileExtension)
+                let fullFileName = "chat/\(UUID().uuidString).\(fileExtension)"
+                url = try await FileUploadService.shared.uploadFile(
+                    fileData: videoData,
+                    fileName: fullFileName,
+                    mimeType: mimeType
+                )
             } else if let fileData = attachment.fileData {
                 // Загружаем файл
                 let fileExtension = attachment.fileExtension ?? "bin"
@@ -419,6 +762,7 @@ final class ChatViewModel: ObservableObject {
             do {
                 try await chatService.deleteMessage(messageId: messageId)
                 messages.removeAll { $0.id == messageId }
+                messageIds.remove(messageId)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -599,7 +943,8 @@ final class ChatViewModel: ObservableObject {
                 let videoAttachment = ChatAttachment(
                     fileData: data,
                     fileName: "video_message.mp4",
-                    fileExtension: "mp4"
+                    fileExtension: "mp4",
+                    isVideoMessage: true  // Помечаем как видеосообщение
                 )
                 
                 // Добавляем к вложениям и отправляем
@@ -640,13 +985,18 @@ final class ChatViewModel: ObservableObject {
             while !Task.isCancelled {
                 guard let self = self else { break }
                 
+                // Проверяем, что задача не отменена перед каждым обновлением
+                guard !Task.isCancelled else { break }
+                
                 if self.videoRecorder.isRecording {
                     await MainActor.run {
+                        guard !Task.isCancelled else { return }
                         self.isRecordingVideo = true
                         self.videoRecordingDuration = self.videoRecorder.recordingDuration
                     }
                 } else if self.isRecordingVideo {
                     await MainActor.run {
+                        guard !Task.isCancelled else { return }
                         self.isRecordingVideo = false
                         self.videoRecordingDuration = 0
                     }
@@ -694,6 +1044,44 @@ final class ChatViewModel: ObservableObject {
     
     func findMessage(by id: String) -> ChatMessage? {
         return messages.first { $0.id == id }
+    }
+    
+    // MARK: - Reaction Operations
+    
+    func handleReaction(messageId: String, emoji: String) {
+        Task {
+            do {
+                // Проверяем, есть ли уже такая реакция от текущего пользователя
+                guard let message = messages.first(where: { $0.id == messageId }),
+                      let currentUserId = TRPCService.shared.currentUser?.id else {
+                    return
+                }
+                
+                let hasReaction = message.reactions?.contains { reaction in
+                    reaction.userId == currentUserId && reaction.emoji == emoji
+                } ?? false
+                
+                if hasReaction {
+                    // Удаляем реакцию
+                    try await chatService.removeReaction(messageId: messageId, emoji: emoji)
+                } else {
+                    // Добавляем реакцию
+                    _ = try await chatService.addReaction(messageId: messageId, emoji: emoji)
+                }
+                
+                // Обновляем сообщение локально
+                await refreshMessage(messageId: messageId)
+            } catch {
+                errorMessage = error.localizedDescription
+                print("❌ ChatViewModel: Failed to handle reaction: \(error)")
+            }
+        }
+    }
+    
+    private func refreshMessage(messageId: String) {
+        // Перезагружаем сообщения для получения обновленных реакций
+        // В реальном приложении лучше обновить только конкретное сообщение
+        loadMessages()
     }
 }
 

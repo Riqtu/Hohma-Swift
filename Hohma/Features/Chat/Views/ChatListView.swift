@@ -301,10 +301,18 @@ struct ChatCellView: View {
                 }
 
                 if let lastMessage = chat.messages?.last {
-                    Text(lastMessage.content)
-                        .font(.subheadline)
-                        .foregroundColor(unreadCount > 0 ? .primary : .secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        let (icon, text) = getLastMessagePreview(for: lastMessage)
+                        if let icon = icon {
+                            Image(systemName: icon)
+                                .font(.caption)
+                                .foregroundColor(unreadCount > 0 ? .primary : .secondary)
+                        }
+                        Text(text)
+                            .font(.subheadline)
+                            .foregroundColor(unreadCount > 0 ? .primary : .secondary)
+                            .lineLimit(1)
+                    }
                 } else if unreadCount > 0 {
                     // Показываем индикатор непрочитанных, даже если нет последнего сообщения
                     Text("Непрочитанные сообщения")
@@ -316,6 +324,21 @@ struct ChatCellView: View {
         }
         .padding(.horizontal, 25)
         .padding(.vertical, 8)
+    }
+
+    private func getLastMessagePreview(for message: ChatMessage) -> (icon: String?, text: String) {
+        switch message.messageType {
+        case .sticker:
+            return ("face.smiling", "Стикер")
+        case .image:
+            return ("photo", "Фото")
+        case .file:
+            return ("doc", "Файл")
+        case .system:
+            return (nil, message.content)
+        case .text:
+            return (nil, message.content)
+        }
     }
 
     private func formatDate(_ dateString: String) -> String {

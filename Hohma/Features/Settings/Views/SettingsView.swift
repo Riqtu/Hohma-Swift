@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showingWebView = false
     @State private var webViewURL: URL?
     @State private var webViewTitle = ""
+    @State private var showingCacheSettings = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String ?? "Версия 1.3.1"
@@ -48,6 +49,15 @@ struct SettingsView: View {
                             .padding(.horizontal)
 
                         VStack(spacing: 12) {
+                            SettingsRow(
+                                icon: "externaldrive",
+                                title: "Управление кэшем",
+                                subtitle: "Настройки кэширования данных",
+                                action: {
+                                    showingCacheSettings = true
+                                }
+                            )
+                            
                             SettingsRow(
                                 icon: "info.circle",
                                 title: "О приложении",
@@ -138,6 +148,9 @@ struct SettingsView: View {
             if let url = webViewURL {
                 WebViewSheet(url: url, title: webViewTitle)
             }
+        }
+        .sheet(isPresented: $showingCacheSettings) {
+            CacheSettingsView()
         }
 
         .onChange(of: showingWebView) { _, newValue in
