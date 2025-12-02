@@ -1,7 +1,8 @@
 import AVFoundation
 import SwiftUI
+import UIKit
 
-/// Видео фон компонент с поддержкой управления звуком
+/// Видео фон компонент с поддержкой управления звуком и бесконечного зацикливания
 ///
 /// Пример использования:
 /// ```swift
@@ -11,449 +12,151 @@ import SwiftUI
 /// // Со звуком (может прерывать другие приложения)
 /// VideoBackgroundView(player: player, isMuted: false)
 /// ```
-#if os(iOS)
-    import UIKit
+class VideoPlayerView: UIView {
+    let playerLayer: AVPlayerLayer
+    private var statusObserver: NSKeyValueObservation?
+    private var isVisible: Bool = true
 
-    class VideoPlayerView: UIView {
-        let playerLayer: AVPlayerLayer
-        private var timeObserver: Any?
-        private var playerItemObserver: NSKeyValueObservation?
-        private var didPlayToEndObserver: NSObjectProtocol?
-        private var isVisible: Bool = true
-        private var isLoading: Bool = false
-        private var isExternalURL: Bool = false
-        private var isMuted: Bool = true
-        private var hasPlayedBefore: Bool = false
+    init(player: AVPlayer, isMuted: Bool = true) {
+        self.playerLayer = AVPlayerLayer(player: player)
+        super.init(frame: .zero)
 
-        init(player: AVPlayer, isMuted: Bool = true) {
-            self.playerLayer = AVPlayerLayer(player: player)
-            self.isMuted = isMuted
-            super.init(frame: .zero)
+        // Настраиваем layer
+        playerLayer.videoGravity = .resizeAspectFill
+        playerLayer.backgroundColor = UIColor.clear.cgColor
+        layer.addSublayer(playerLayer)
 
-            // Определяем, является ли это внешним URL
-            if let urlAsset = player.currentItem?.asset as? AVURLAsset {
-                self.isExternalURL = urlAsset.url.scheme == "http" || urlAsset.url.scheme == "https"
+        // Настраиваем аудиосессию
+        setupAudioSession(isMuted: isMuted)
+
+        // Настраиваем observer для готовности
+        setupObserver(player: player)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        statusObserver?.invalidate()
+    }
+
+    private func setupAudioSession(isMuted: Bool) {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            if isMuted {
+                try audioSession.setCategory(
+                    .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
+            } else {
+                try audioSession.setCategory(.playback, mode: .default, options: [])
             }
+            try audioSession.setActive(true)
+        } catch {
+            print("❌ Ошибка настройки аудиосессии: \(error)")
+        }
+    }
 
-            // Настраиваем аудиосессию для работы с другими приложениями
-            setupAudioSession()
+    func setupObserver(player: AVPlayer) {
+        // Очищаем предыдущий observer
+        statusObserver?.invalidate()
 
-            // Важно: настраиваем layer правильно
-            self.playerLayer.videoGravity = .resizeAspectFill
-            self.playerLayer.backgroundColor = UIColor.clear.cgColor
-            self.playerLayer.opacity = 1.0
-
-            // Добавляем layer к view
-            self.layer.addSublayer(playerLayer)
-
-            // Принудительно устанавливаем frame
+        statusObserver = player.currentItem?.observe(\.status, options: [.new]) {
+            [weak self] item, _ in
             DispatchQueue.main.async {
-                self.playerLayer.frame = self.bounds
-            }
-
-            setupPlayerObservers()
-            startPlaybackIfReady()
-        }
-
-        required init?(coder: NSCoder) { fatalError() }
-
-        deinit {
-            cleanupObservers()
-        }
-
-        private func cleanupObservers() {
-            if let timeObserver = timeObserver {
-                playerLayer.player?.removeTimeObserver(timeObserver)
-                self.timeObserver = nil
-            }
-            playerItemObserver?.invalidate()
-            playerItemObserver = nil
-            
-            if let didPlayToEndObserver = didPlayToEndObserver {
-                NotificationCenter.default.removeObserver(didPlayToEndObserver)
-                self.didPlayToEndObserver = nil
-            }
-        }
-
-        func setupPlayerObservers() {
-            // Очищаем только observer'ы, которые будем пересоздавать
-            if let timeObserver = timeObserver {
-                playerLayer.player?.removeTimeObserver(timeObserver)
-                self.timeObserver = nil
-            }
-            playerItemObserver?.invalidate()
-            playerItemObserver = nil
-            
-            if let didPlayToEndObserver = didPlayToEndObserver {
-                NotificationCenter.default.removeObserver(didPlayToEndObserver)
-                self.didPlayToEndObserver = nil
-            }
-            
-            // Observer для отслеживания состояния playerItem
-            playerItemObserver = playerLayer.player?.currentItem?.observe(\.status, options: [.new])
-            {
-                [weak self] item, _ in
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    
-                    switch item.status {
-                    case .readyToPlay:
-                        self.isLoading = false
-                        // Запускаем воспроизведение только если view видим
-                        if self.isVisible {
-                            self.startPlaybackIfReady()
-                        }
-                        // Принудительно обновляем layout
-                        self.setNeedsLayout()
-                        self.layoutSubviews()
-                    case .failed:
-                        self.isLoading = false
-                        // Обработка ошибок для внешних URL
-                        if let error = item.error {
-                            print("❌ Ошибка воспроизведения видео: \(error)")
-                            // Для внешних URL можно попробовать перезагрузить
-                            if self.isExternalURL {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                                    self.retryLoading()
-                                }
-                            }
-                        }
-                    case .unknown:
-                        self.isLoading = true
-                        break
-                    @unknown default:
-                        self.isLoading = false
-                        break
-                    }
-                }
-            }
-
-            // Observer для зацикливания
-            if let playerItem = playerLayer.player?.currentItem {
-                didPlayToEndObserver = NotificationCenter.default.addObserver(
-                    forName: .AVPlayerItemDidPlayToEndTime,
-                    object: playerItem,
-                    queue: .main
-                ) { [weak self] _ in
-                    guard let self = self, self.isVisible else { return }
-                    // Перематываем на начало и перезапускаем
-                    self.playerLayer.player?.seek(to: .zero) { [weak self] finished in
-                        if finished {
-                            self?.playerLayer.player?.play()
-                        }
-                    }
-                }
-            }
-
-            // Проверяем текущий статус
-            startPlaybackIfReady()
-        }
-        
-        private func startPlaybackIfReady() {
-            guard isVisible else { return }
-            
-            guard let player = playerLayer.player else { return }
-            
-            // Проверяем статус playerItem
-            guard let playerItem = player.currentItem else { return }
-            
-            if playerItem.status == .readyToPlay {
-                // Если видео уже играло и было остановлено, перематываем на начало
-                let currentTime = player.currentTime()
-                let duration = playerItem.duration
-                
-                // Проверяем, дошло ли видео до конца или почти до конца
-                if hasPlayedBefore && !currentTime.isIndefinite && !duration.isIndefinite {
-                    let currentSeconds = CMTimeGetSeconds(currentTime)
-                    let durationSeconds = CMTimeGetSeconds(duration)
-                    
-                    // Если видео доиграло до конца или почти до конца (в пределах 0.5 секунды)
-                    if currentSeconds >= durationSeconds - 0.5 || currentSeconds >= durationSeconds {
-                        player.seek(to: .zero) { [weak self] finished in
-                            guard let self = self else { return }
-                            if finished {
-                                self.playerLayer.player?.play()
-                            }
-                        }
-                        return
-                    }
-                }
-                
-                // Если видео не играло или находится не в конце, просто запускаем
-                if player.timeControlStatus != .playing {
-                    player.play()
-                    hasPlayedBefore = true
-                }
-            }
-        }
-
-        private func setupAudioSession() {
-            #if os(iOS)
-                do {
-                    let audioSession = AVAudioSession.sharedInstance()
-
-                    if isMuted {
-                        // Для фонового видео без звука - не прерываем другие приложения
-                        try audioSession.setCategory(
-                            .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
-                    } else {
-                        // Для видео со звуком - стандартная настройка
-                        try audioSession.setCategory(.playback, mode: .default, options: [])
-                    }
-
-                    try audioSession.setActive(true)
-                } catch {
-                    print("❌ Ошибка настройки аудиосессии: \(error)")
-                }
-            #endif
-        }
-
-        private func retryLoading() {
-            guard let urlAsset = playerLayer.player?.currentItem?.asset as? AVURLAsset else {
-                return
-            }
-            let newPlayerItem = AVPlayerItem(url: urlAsset.url)
-            playerLayer.player?.replaceCurrentItem(with: newPlayerItem)
-        }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            playerLayer.frame = bounds
-            playerLayer.setNeedsDisplay()
-        }
-
-        func setVisible(_ visible: Bool) {
-            let wasVisible = isVisible
-            isVisible = visible
-            
-            guard let player = playerLayer.player else { return }
-            
-            if visible {
-                // Когда view становится видимым, запускаем воспроизведение
-                if !wasVisible {
-                    // Если view стал видимым после того, как был скрыт, перезапускаем
-                    startPlaybackIfReady()
-                } else {
-                    // Если view уже был видимым, просто продолжаем воспроизведение
+                guard let self = self else { return }
+                if item.status == .readyToPlay && self.isVisible {
                     if player.timeControlStatus != .playing {
                         player.play()
                     }
                 }
-            } else {
-                // Когда view скрывается, останавливаем воспроизведение
-                player.pause()
+            }
+        }
+
+        // Если уже готов, запускаем сразу
+        if player.currentItem?.status == .readyToPlay && isVisible {
+            if player.timeControlStatus != .playing {
+                player.play()
             }
         }
     }
 
-    struct VideoBackgroundView: UIViewRepresentable {
-        let player: AVPlayer
-        let isMuted: Bool
-        var isVisible: Bool = true
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        playerLayer.frame = bounds
+    }
 
-        init(player: AVPlayer, isMuted: Bool = true, isVisible: Bool = true) {
-            self.player = player
-            self.isMuted = isMuted
-            self.isVisible = isVisible
+    func setVisible(_ visible: Bool) {
+        isVisible = visible
+        guard let player = playerLayer.player else { return }
+
+        if visible {
+            // Запускаем видео если оно готово
+            if player.currentItem?.status == .readyToPlay {
+                if player.timeControlStatus != .playing {
+                    player.play()
+                }
+            }
+        } else {
+            player.pause()
         }
+    }
+}
 
-        func makeUIView(context: Context) -> VideoPlayerView {
-            let view = VideoPlayerView(player: player, isMuted: isMuted)
-            context.coordinator.view = view
+struct VideoBackgroundView: UIViewRepresentable {
+    let player: AVPlayer
+    let isMuted: Bool
+    var isVisible: Bool = true
+
+    init(player: AVPlayer, isMuted: Bool = true, isVisible: Bool = true) {
+        self.player = player
+        self.isMuted = isMuted
+        self.isVisible = isVisible
+    }
+
+    func makeUIView(context: Context) -> VideoPlayerView {
+        let view = VideoPlayerView(player: player, isMuted: isMuted)
+        context.coordinator.view = view
+        view.setVisible(isVisible)
+        return view
+    }
+
+    func updateUIView(_ uiView: VideoPlayerView, context: Context) {
+        context.coordinator.view = uiView
+
+        // Обновляем видимость
+        if context.coordinator.isVisible != isVisible {
             context.coordinator.isVisible = isVisible
-            view.setVisible(isVisible)
-            return view
+            uiView.setVisible(isVisible)
         }
 
-        func updateUIView(_ uiView: VideoPlayerView, context: Context) {
-            context.coordinator.view = uiView
-            
-            // Обновляем видимость
-            if context.coordinator.isVisible != isVisible {
-                context.coordinator.isVisible = isVisible
-                uiView.setVisible(isVisible)
-            }
-            
-            // Обновляем плеер если нужно
-            if uiView.playerLayer.player !== player {
-                uiView.playerLayer.player = player
-                // Переустанавливаем наблюдатели при смене плеера
-                uiView.setupPlayerObservers()
-            }
-
-            // Принудительно обновляем layout
-            DispatchQueue.main.async {
-                uiView.setNeedsLayout()
-                uiView.layoutSubviews()
-            }
+        // Обновляем плеер если нужно
+        if uiView.playerLayer.player !== player {
+            uiView.playerLayer.player = player
+            // Переустанавливаем observer для нового плеера
+            uiView.setupObserver(player: player)
         }
-        
-        func makeCoordinator() -> Coordinator {
-            Coordinator()
-        }
-        
-        class Coordinator {
-            weak var view: VideoPlayerView?
-            var isVisible: Bool = true
-        }
-        
-        static func dismantleUIView(_ uiView: VideoPlayerView, coordinator: Coordinator) {
-            coordinator.isVisible = false
-            uiView.setVisible(false)
-        }
-    }
 
-#elseif os(macOS)
-    import AppKit
-
-    class VideoPlayerView: NSView {
-        let playerLayer: AVPlayerLayer
-        private var playerItemObserver: NSKeyValueObservation?
-        private var isVisible: Bool = true
-        private var isLoading: Bool = false
-        private var isExternalURL: Bool = false
-        private var isMuted: Bool = true
-
-        init(player: AVPlayer, isMuted: Bool = true) {
-            self.playerLayer = AVPlayerLayer(player: player)
-            self.isMuted = isMuted
-            super.init(frame: .zero)
-
-            // Определяем, является ли это внешним URL
-            if let urlAsset = player.currentItem?.asset as? AVURLAsset {
-                self.isExternalURL = urlAsset.url.scheme == "http" || urlAsset.url.scheme == "https"
-            }
-
-            // Настраиваем аудиосессию для работы с другими приложениями
-            setupAudioSession()
-
-            self.wantsLayer = true
-            self.layer = CALayer()
-
-            // Важно: настраиваем layer правильно
-            playerLayer.videoGravity = .resizeAspectFill
-            playerLayer.backgroundColor = NSColor.clear.cgColor
-            playerLayer.opacity = 1.0
-            playerLayer.frame = bounds
-            playerLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-
-            layer?.addSublayer(playerLayer)
-
-            setupPlayerObservers()
-
-            // Принудительно запускаем воспроизведение
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if player.currentItem?.status == .readyToPlay {
+        // Если view видим и видео готово, но не играет - запускаем
+        if isVisible {
+            if let playerItem = player.currentItem, playerItem.status == .readyToPlay {
+                if player.timeControlStatus != .playing {
                     player.play()
                 }
             }
         }
-
-        required init?(coder: NSCoder) { fatalError() }
-
-        deinit {
-            cleanupObservers()
-        }
-
-        private func cleanupObservers() {
-            playerItemObserver?.invalidate()
-            playerItemObserver = nil
-        }
-
-        private func setupPlayerObservers() {
-            // Observer для отслеживания состояния playerItem
-            playerItemObserver = playerLayer.player?.currentItem?.observe(\.status, options: [.new])
-            {
-                [weak self] item, _ in
-                DispatchQueue.main.async {
-                    if item.status == .readyToPlay {
-                        self?.playerLayer.player?.play()
-
-                        // Принудительно обновляем layout
-                        self?.layout()
-                    }
-                }
-            }
-
-            // Observer для зацикливания
-            NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: playerLayer.player?.currentItem,
-                queue: .main
-            ) { [weak self] _ in
-                self?.playerLayer.player?.seek(to: .zero)
-                self?.playerLayer.player?.play()
-            }
-
-            // Проверяем текущий статус
-            if let player = playerLayer.player, player.currentItem?.status == .readyToPlay {
-                player.play()
-            }
-        }
-
-        private func setupAudioSession() {
-            #if os(macOS)
-                // На macOS аудиосессия настраивается автоматически
-                // Просто устанавливаем muted состояние плеера
-                playerLayer.player?.isMuted = isMuted
-            #endif
-        }
-
-        private func retryLoading() {
-            guard let urlAsset = playerLayer.player?.currentItem?.asset as? AVURLAsset else {
-                return
-            }
-            let newPlayerItem = AVPlayerItem(url: urlAsset.url)
-            playerLayer.player?.replaceCurrentItem(with: newPlayerItem)
-        }
-
-        override func layout() {
-            super.layout()
-            playerLayer.frame = bounds
-            playerLayer.setNeedsDisplay()
-        }
-
-        func setVisible(_ visible: Bool) {
-            isVisible = visible
-            if visible {
-                playerLayer.player?.play()
-            } else {
-                playerLayer.player?.pause()
-            }
-        }
     }
 
-    struct VideoBackgroundView: NSViewRepresentable {
-        let player: AVPlayer
-        let isMuted: Bool
-
-        init(player: AVPlayer, isMuted: Bool = true) {
-            self.player = player
-            self.isMuted = isMuted
-        }
-
-        func makeNSView(context: Context) -> VideoPlayerView {
-            let view = VideoPlayerView(player: player, isMuted: isMuted)
-            return view
-        }
-
-        func updateNSView(_ nsView: VideoPlayerView, context: Context) {
-            // Обновляем плеер если нужно
-            if nsView.playerLayer.player !== player {
-                nsView.playerLayer.player = player
-
-                // Принудительно запускаем воспроизведение
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    if player.currentItem?.status == .readyToPlay {
-                        player.play()
-                    }
-                }
-            }
-
-            // Принудительно обновляем layout
-            DispatchQueue.main.async {
-                nsView.layout()
-            }
-        }
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
     }
-#endif
+
+    class Coordinator {
+        weak var view: VideoPlayerView?
+        var isVisible: Bool = true
+    }
+
+    static func dismantleUIView(_ uiView: VideoPlayerView, coordinator: Coordinator) {
+        coordinator.isVisible = false
+        uiView.setVisible(false)
+    }
+}

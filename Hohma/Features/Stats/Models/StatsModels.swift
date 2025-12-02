@@ -15,7 +15,8 @@ enum GameType: String, Codable, CaseIterable {
     case all = "all"
     case wheel = "wheel"
     case race = "race"
-    
+    case battle = "battle"
+
     var displayName: String {
         switch self {
         case .all:
@@ -24,6 +25,8 @@ enum GameType: String, Codable, CaseIterable {
             return "Колесо фортуны"
         case .race:
             return "Скачки"
+        case .battle:
+            return "Тайный фильм"
         }
     }
 }
@@ -34,7 +37,7 @@ enum SortBy: String, Codable, CaseIterable {
     case participations = "participations"
     case winRate = "winRate"
     case totalPrize = "totalPrize"
-    
+
     var displayName: String {
         switch self {
         case .wins:
@@ -62,6 +65,7 @@ struct GameStats: Codable {
     let all: UserStats
     let wheel: UserStats
     let race: UserStats
+    let battle: UserStats
 }
 
 // MARK: - Leaderboard Entry
@@ -72,7 +76,7 @@ struct LeaderboardEntry: Codable, Identifiable {
     let user: UserProfile
     let stats: GameStats
     let currentStats: UserStats
-    
+
     enum CodingKeys: String, CodingKey {
         case user
         case stats
@@ -92,4 +96,3 @@ struct UserStatsResponse: Codable {
     let stats: GameStats
     let currentStats: UserStats
 }
-

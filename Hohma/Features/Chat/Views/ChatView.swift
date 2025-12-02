@@ -1094,7 +1094,7 @@ struct VideoFileTransferable: Transferable {
         FileRepresentation(contentType: .movie) { video in
             SentTransferredFile(video.url)
         } importing: { received in
-            let url = try await received.file
+            let url = received.file
             return VideoFileTransferable(url: url)
         }
     }
@@ -1107,7 +1107,7 @@ struct Movie: Transferable {
         FileRepresentation(contentType: .movie) { movie in
             SentTransferredFile(movie.url)
         } importing: { received in
-            let url = try await received.file
+            let url = received.file
             return Movie(url: url)
         }
     }

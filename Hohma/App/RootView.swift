@@ -96,7 +96,6 @@ struct RootView: View {
                             }
                             .tag("settings")
                     }
-                    .tint(Color.primary)
                 }
             }
         }

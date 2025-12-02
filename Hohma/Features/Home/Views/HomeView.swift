@@ -1,3 +1,4 @@
+import AVFoundation
 import Inject
 import SwiftUI
 
@@ -13,183 +14,218 @@ struct HomeView: View {
     @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
     @State private var navigationPath = NavigationPath()
+    @State private var backgroundPlayer: AVPlayer?
 
     private var isIPhone: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
     }
 
+    private var backgroundVideoName: String {
+        colorScheme == .dark ? "back-dark" : "back-light"
+    }
+
+    private var overlayColor: Color {
+        colorScheme == .dark ? .black : .white
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HomeHeader()
+            ZStack {
+                // Видеофон на весь экран
+                if let player = backgroundPlayer {
+                    VideoBackgroundView(player: player)
+                        .ignoresSafeArea()
+                        .overlay(
+                            overlayColor.opacity(0.6)
+                                .ignoresSafeArea()
+                        )
+                } else {
+                    // Показываем градиент пока видео загружается
+                    AnimatedGradientBackground()
+                        .ignoresSafeArea()
+                        .overlay(
+                            overlayColor.opacity(0.6)
+                                .ignoresSafeArea()
+                        )
+                }
 
-                    // Кнопка статистики
-                    HStack {
-                        Button(action: {
-                            if isIPhone {
-                                navigationPath.append(NavigationDestination.stats)
-                            } else {
-                                NotificationCenter.default.post(
-                                    name: .navigationRequested,
-                                    object: nil,
-                                    userInfo: ["destination": "stats"]
-                                )
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.system(size: 14))
-                                Text("Статистика")
-                                    .font(.system(size: 14))
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color("AccentColor"))
-                            .cornerRadius(8)
+                GeometryReader { geometry in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            HomeHeader(onStatsTap: {
+                                if isIPhone {
+                                    navigationPath.append(NavigationDestination.stats)
+                                } else {
+                                    NotificationCenter.default.post(
+                                        name: .navigationRequested,
+                                        object: nil,
+                                        userInfo: ["destination": "stats"]
+                                    )
+                                }
+                            })
 
+                            let columns = [
+                                GridItem(.adaptive(minimum: 340), spacing: 20)
+                            ]
+
+                            // Массив карточек (чтобы было удобно генерировать)
+                            let cards: [CardData] = [
+                                CardData(
+                                    title: "Тайный фильм",
+                                    description:
+                                        "Новая захватывающая игра! Добавь фильм, нейросеть создаст для него загадочный постер и описание. Участники голосуют за выбывание фильмов, пока не останется один победитель. В конце узнаешь, какие фильмы скрывались за сгенерированными карточками!",
+                                    imageName: "testImage",
+                                    videoName: "MovieBattle",
+                                    action: {
+                                        if isIPhone {
+                                            // Навигация через NavigationStack для iPhone
+                                            print(
+                                                "🏠 HomeView: Переход к битве фильмов через NavigationStack"
+                                            )
+                                            navigationPath.append(NavigationDestination.movieBattle)
+                                        } else {
+                                            // Навигация через RootView для iPad
+                                            print(
+                                                "🏠 HomeView: Отправляем уведомление о переходе к битве фильмов"
+                                            )
+                                            NotificationCenter.default.post(
+                                                name: .navigationRequested,
+                                                object: nil,
+                                                userInfo: ["destination": "movieBattle"]
+                                            )
+                                        }
+                                    }
+                                ),
+                                CardData(
+                                    title: "Скачки",
+                                    description:
+                                        "Попробуй свои силы в скачках! Это не просто развлечение — это настоящая гонка, где ты можешь стать победителем. Просто нажми на кнопку, и ты будешь участвовать в скачках с другими игроками. Удачи! - (BETA)",
+                                    imageName: "testImage",
+                                    videoName: "races",
+                                    action: {
+                                        if isIPhone {
+                                            // Навигация через NavigationStack для iPhone
+                                            print(
+                                                "🏠 HomeView: Переход к скачкам через NavigationStack"
+                                            )
+                                            navigationPath.append(NavigationDestination.race)
+                                        } else {
+                                            // Навигация через RootView для iPad
+                                            print(
+                                                "🏠 HomeView: Отправляем уведомление о переходе к скачкам"
+                                            )
+                                            NotificationCenter.default.post(
+                                                name: .navigationRequested,
+                                                object: nil,
+                                                userInfo: ["destination": "race"]
+                                            )
+                                        }
+                                    }
+                                ),
+                                CardData(
+                                    title: "Колесо фильмов",
+                                    description:
+                                        "Это развлекательный сервис, который помогает выбрать, какой фильм посмотреть. Просто нажми на кнопку, и колесо случайным образом выберет фильм из разных жанров, эпох и стран. Это отличный способ избавиться от мук выбора и открыть для себя новые киноленты!",
+                                    imageName: "testImage",
+                                    videoName: "movie",
+                                    action: {
+                                        if isIPhone {
+                                            // Навигация через NavigationStack для iPhone
+                                            print(
+                                                "🏠 HomeView: Переход к колесу через NavigationStack"
+                                            )
+                                            navigationPath.append(NavigationDestination.wheelList)
+                                        } else {
+                                            // Навигация через RootView для iPad
+                                            print(
+                                                "🏠 HomeView: Отправляем уведомление о переходе к колесу"
+                                            )
+                                            NotificationCenter.default.post(
+                                                name: .navigationRequested,
+                                                object: nil,
+                                                userInfo: ["destination": "wheelList"]
+                                            )
+                                        }
+                                    }
+                                ),
+
+                                // TODO: Add back later
+                                // CardData(
+                                //     title: "ХОХМА.ДОСЬЕ",
+                                //     description:
+                                //         "Добро пожаловать в ХОХМА.ДОСЬЕ — секретный архив участников легендарной группы. Здесь собраны досье на каждого: привычки, мемы, цитаты, фразы, луки, клички и компромат. Удобный способ вспомнить, кто такой Дима, чем живёт Настя и почему Артём снова в чёрной рубашке. Всё, что ты боялся забыть — мы записали.",
+                                //     imageName: "testImage",
+                                //     videoName: "persons",
+                                //     action: {
+                                //         // Навигация для карточки досье
+                                //         // NotificationCenter.default.post(
+                                //         //     name: .navigationRequested,
+                                //         //     object: nil,
+                                //         //     userInfo: ["destination": "dossier"]
+                                //         // )
+                                //     }
+                                // ),
+                                // CardData(
+                                //     title: "Аффирмации",
+                                //     description:
+                                //         "Получай персональные аффирмации каждый день — чтобы верить в себя, настраиваться на позитив и достигать большего. Просто, искренне и с заботой о твоём настроении.",
+                                //     imageName: "testImage",
+                                //     videoName: "affirmation",
+                                //     action: {
+                                //         // Навигация для карточки аффирмаций
+                                //         // NotificationCenter.default.post(
+                                //         //     name: .navigationRequested,
+                                //         //     object: nil,
+                                //         //     userInfo: ["destination": "affirmations"]
+                                //         // )
+                                //     }
+                                // ),
+                            ]
+
+                            LazyVGrid(columns: columns, spacing: 20) {
+                                ForEach(cards) { card in
+                                    CardView(
+                                        title: card.title,
+                                        description: card.description,
+                                        imageName: card.imageName,
+                                        videoName: card.videoName,
+                                        player: card.videoName.flatMap {
+                                            videoManager.player(resourceName: $0)
+                                        },
+                                        action: card.action
+                                    )
+                                }
+                            }
                         }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 25)
-
-                    let columns = [
-                        GridItem(.adaptive(minimum: 340), spacing: 20)
-                    ]
-
-                    // Массив карточек (чтобы было удобно генерировать)
-                    let cards: [CardData] = [
-                        CardData(
-                            title: "Тайный фильм",
-                            description:
-                                "Новая захватывающая игра! Добавь фильм, нейросеть создаст для него загадочный постер и описание. Участники голосуют за выбывание фильмов, пока не останется один победитель. В конце узнаешь, какие фильмы скрывались за сгенерированными карточками!",
-                            imageName: "testImage",
-                            videoName: "MovieBattle",
-                            action: {
-                                if isIPhone {
-                                    // Навигация через NavigationStack для iPhone
-                                    print(
-                                        "🏠 HomeView: Переход к битве фильмов через NavigationStack")
-                                    navigationPath.append(NavigationDestination.movieBattle)
-                                } else {
-                                    // Навигация через RootView для iPad
-                                    print(
-                                        "🏠 HomeView: Отправляем уведомление о переходе к битве фильмов"
-                                    )
-                                    NotificationCenter.default.post(
-                                        name: .navigationRequested,
-                                        object: nil,
-                                        userInfo: ["destination": "movieBattle"]
-                                    )
-                                }
-                            }
-                        ),
-                        CardData(
-                            title: "Скачки",
-                            description:
-                                "Попробуй свои силы в скачках! Это не просто развлечение — это настоящая гонка, где ты можешь стать победителем. Просто нажми на кнопку, и ты будешь участвовать в скачках с другими игроками. Удачи! - (BETA)",
-                            imageName: "testImage",
-                            videoName: "races",
-                            action: {
-                                if isIPhone {
-                                    // Навигация через NavigationStack для iPhone
-                                    print("🏠 HomeView: Переход к скачкам через NavigationStack")
-                                    navigationPath.append(NavigationDestination.race)
-                                } else {
-                                    // Навигация через RootView для iPad
-                                    print("🏠 HomeView: Отправляем уведомление о переходе к скачкам")
-                                    NotificationCenter.default.post(
-                                        name: .navigationRequested,
-                                        object: nil,
-                                        userInfo: ["destination": "race"]
-                                    )
-                                }
-                            }
-                        ),
-                        CardData(
-                            title: "Колесо фильмов",
-                            description:
-                                "Это развлекательный сервис, который помогает выбрать, какой фильм посмотреть. Просто нажми на кнопку, и колесо случайным образом выберет фильм из разных жанров, эпох и стран. Это отличный способ избавиться от мук выбора и открыть для себя новые киноленты!",
-                            imageName: "testImage",
-                            videoName: "movie",
-                            action: {
-                                if isIPhone {
-                                    // Навигация через NavigationStack для iPhone
-                                    print("🏠 HomeView: Переход к колесу через NavigationStack")
-                                    navigationPath.append(NavigationDestination.wheelList)
-                                } else {
-                                    // Навигация через RootView для iPad
-                                    print("🏠 HomeView: Отправляем уведомление о переходе к колесу")
-                                    NotificationCenter.default.post(
-                                        name: .navigationRequested,
-                                        object: nil,
-                                        userInfo: ["destination": "wheelList"]
-                                    )
-                                }
-                            }
-                        ),
-
-                        // TODO: Add back later
-                        // CardData(
-                        //     title: "ХОХМА.ДОСЬЕ",
-                        //     description:
-                        //         "Добро пожаловать в ХОХМА.ДОСЬЕ — секретный архив участников легендарной группы. Здесь собраны досье на каждого: привычки, мемы, цитаты, фразы, луки, клички и компромат. Удобный способ вспомнить, кто такой Дима, чем живёт Настя и почему Артём снова в чёрной рубашке. Всё, что ты боялся забыть — мы записали.",
-                        //     imageName: "testImage",
-                        //     videoName: "persons",
-                        //     action: {
-                        //         // Навигация для карточки досье
-                        //         // NotificationCenter.default.post(
-                        //         //     name: .navigationRequested,
-                        //         //     object: nil,
-                        //         //     userInfo: ["destination": "dossier"]
-                        //         // )
-                        //     }
-                        // ),
-                        // CardData(
-                        //     title: "Аффирмации",
-                        //     description:
-                        //         "Получай персональные аффирмации каждый день — чтобы верить в себя, настраиваться на позитив и достигать большего. Просто, искренне и с заботой о твоём настроении.",
-                        //     imageName: "testImage",
-                        //     videoName: "affirmation",
-                        //     action: {
-                        //         // Навигация для карточки аффирмаций
-                        //         // NotificationCenter.default.post(
-                        //         //     name: .navigationRequested,
-                        //         //     object: nil,
-                        //         //     userInfo: ["destination": "affirmations"]
-                        //         // )
-                        //     }
-                        // ),
-                    ]
-
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(cards) { card in
-                            CardView(
-                                title: card.title,
-                                description: card.description,
-                                imageName: card.imageName,
-                                videoName: card.videoName,
-                                player: card.videoName.flatMap {
-                                    videoManager.player(resourceName: $0)
-                                },
-                                action: card.action
-                            )
-                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .padding(.bottom)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
-                .padding(.bottom)
+            }
+            .onAppear {
+                setupBackgroundPlayer()
+                // Принудительно запускаем видео при возврате на экран
+                if let player = backgroundPlayer {
+                    if player.currentItem?.status == .readyToPlay {
+                        player.play()
+                    }
+                }
+            }
+            .onDisappear {
+                backgroundPlayer?.pause()
+            }
+            .onChange(of: colorScheme) { _, _ in
+                // Перезагружаем видео при смене темы
+                backgroundPlayer?.pause()
+                setupBackgroundPlayer()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
-                    // Возобновляем все плееры при возвращении в активное состояние
                     videoManager.resumeAllPlayers()
                 case .inactive, .background:
-                    // Приостанавливаем все плееры при переходе в неактивное состояние
                     videoManager.pauseAllPlayers()
                 @unknown default:
                     break
@@ -229,9 +265,16 @@ struct HomeView: View {
                         .withAppBackground()
                 }
             }
-            .appBackground()
             .enableInjection()
         }
+    }
+
+    private func setupBackgroundPlayer() {
+        let videoName = backgroundVideoName
+        // Предварительно загружаем видео
+        videoManager.preloadVideo(resourceName: videoName)
+        // Получаем плеер (он автоматически запустится когда будет готов)
+        backgroundPlayer = videoManager.player(resourceName: videoName)
     }
 }
 

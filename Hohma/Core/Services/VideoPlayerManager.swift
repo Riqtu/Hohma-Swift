@@ -19,20 +19,22 @@ final class VideoPlayerManager: ObservableObject {
     // MARK: - Cached Player Structure
     private class CachedPlayer {
         let player: AVPlayer
+        var looper: AVPlayerLooper? // Для бесконечного зацикливания локальных видео
+        var endTimeObserver: NSObjectProtocol? // Для зацикливания внешних URL
         var isReady: Bool = false
         var isLoading: Bool = false
         var lastUsed: Date = Date()
-        var observers: [NSObjectProtocol] = []
         private var cancellables = Set<AnyCancellable>()
-        var restartCount: Int = 0
+        private var isLocalFile: Bool = false
 
-        init(player: AVPlayer) {
+        init(player: AVPlayer, isLocalFile: Bool) {
             self.player = player
+            self.isLocalFile = isLocalFile
             setupObservers()
         }
 
         deinit {
-            cleanupObservers()
+            cleanup()
         }
 
         private func setupObservers() {
@@ -40,80 +42,51 @@ final class VideoPlayerManager: ObservableObject {
             player.currentItem?.publisher(for: \.status)
                 .sink { [weak self] status in
                     DispatchQueue.main.async {
-
+                        guard let self = self else { return }
                         switch status {
                         case .readyToPlay:
-                            self?.isReady = true
-                            self?.isLoading = false
-
-                        case .failed:
-                            self?.isReady = false
-                            self?.isLoading = false
-
-                        case .unknown:
-                            self?.isReady = false
-                            self?.isLoading = true
-
-                        @unknown default:
-                            self?.isReady = false
-                            self?.isLoading = false
-                        }
-                    }
-                }
-                .store(in: &cancellables)
-
-            // Observer для окончания видео
-            NotificationCenter.default.publisher(
-                for: .AVPlayerItemDidPlayToEndTime, object: player.currentItem
-            )
-            .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    // Ограничиваем количество перезапусков для внешних URL
-                    if let self = self {
-                        self.restartCount += 1
-
-                        // Для внешних URL ограничиваем перезапуски до 2 раз
-                        let maxRestarts = self.player.currentItem?.asset is AVURLAsset ? 2 : 10
-
-                        if self.restartCount <= maxRestarts {
-
-                            // Добавляем задержку перед перезапуском для внешних URL
-                            let delay = self.player.currentItem?.asset is AVURLAsset ? 1.0 : 0.1
-
-                            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                                self.player.seek(to: .zero)
+                            self.isReady = true
+                            self.isLoading = false
+                            // Автоматически запускаем воспроизведение когда готово
+                            if self.player.timeControlStatus != .playing {
                                 self.player.play()
                             }
-                        } else {
-                            self.player.pause()
-
-                            // Для внешних URL после достижения лимита перезапусков
-                            // помечаем плеер как не готовый, чтобы он был заменен
-                            if self.player.currentItem?.asset is AVURLAsset {
-                                self.isReady = false
-                            }
-                        }
-                    }
-                }
-            }
-            .store(in: &cancellables)
-
-            // Observer для приостановки
-            player.publisher(for: \.rate)
-                .sink { rate in
-                    DispatchQueue.main.async {
-                        if rate == 0 {
+                        case .failed:
+                            self.isReady = false
+                            self.isLoading = false
+                        case .unknown:
+                            self.isReady = false
+                            self.isLoading = true
+                        @unknown default:
+                            self.isReady = false
+                            self.isLoading = false
                         }
                     }
                 }
                 .store(in: &cancellables)
         }
 
-        private func cleanupObservers() {
-            for observer in observers {
-                NotificationCenter.default.removeObserver(observer)
+        func setupEndTimeObserver() {
+            guard let playerItem = player.currentItem else { return }
+            endTimeObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: playerItem,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self = self else { return }
+                self.player.seek(to: .zero)
+                self.player.play()
             }
-            observers.removeAll()
+        }
+
+        private func cleanup() {
+            // AVPlayerLooper автоматически останавливается при деаллокации
+            looper = nil
+            if let observer = endTimeObserver {
+                NotificationCenter.default.removeObserver(observer)
+                endTimeObserver = nil
+            }
+            cancellables.removeAll()
         }
 
         func updateLastUsed() {
@@ -135,68 +108,45 @@ final class VideoPlayerManager: ObservableObject {
 
     // MARK: - Setup Methods
     private func setupAudioSession() {
-        #if os(iOS)
-            do {
-                let audioSession = AVAudioSession.sharedInstance()
-                // Настраиваем для работы с другими приложениями (Spotify, Apple Music и т.д.)
-                try audioSession.setCategory(
-                    .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
-                try audioSession.setActive(true)
-            } catch {
-                print("❌ Ошибка настройки аудиосессии: \(error)")
-            }
-        #endif
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            // Настраиваем для работы с другими приложениями (Spotify, Apple Music и т.д.)
+            try audioSession.setCategory(
+                .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
+            try audioSession.setActive(true)
+        } catch {
+            print("❌ Ошибка настройки аудиосессии: \(error)")
+        }
     }
 
     private func setupAppLifecycleObservers() {
-        #if os(iOS)
-            let willResignObserver = NotificationCenter.default.addObserver(
-                forName: UIApplication.willResignActiveNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.pauseAllPlayers()
-            }
+        let willResignObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.pauseAllPlayers()
+        }
 
-            let didBecomeObserver = NotificationCenter.default.addObserver(
-                forName: UIApplication.didBecomeActiveNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.resumeAllPlayers()
-            }
+        let didBecomeObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.resumeAllPlayers()
+        }
 
-            let didEnterBackgroundObserver = NotificationCenter.default.addObserver(
-                forName: UIApplication.didEnterBackgroundNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.pauseAllPlayers()
-            }
+        let didEnterBackgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.pauseAllPlayers()
+        }
 
-            appLifecycleObservers.append(contentsOf: [
-                willResignObserver, didBecomeObserver, didEnterBackgroundObserver,
-            ])
-
-        #elseif os(macOS)
-            let willResignObserver = NotificationCenter.default.addObserver(
-                forName: NSApplication.willResignActiveNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.pauseAllPlayers()
-            }
-
-            let didBecomeObserver = NotificationCenter.default.addObserver(
-                forName: NSApplication.didBecomeActiveNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.resumeAllPlayers()
-            }
-
-            appLifecycleObservers.append(contentsOf: [willResignObserver, didBecomeObserver])
-        #endif
+        appLifecycleObservers.append(contentsOf: [
+            willResignObserver, didBecomeObserver, didEnterBackgroundObserver,
+        ])
     }
 
     private func setupMemoryWarningObserver() {
@@ -228,30 +178,12 @@ final class VideoPlayerManager: ObservableObject {
         // Проверяем кэш
         if let cachedPlayer = cache[key] {
             cachedPlayer.updateLastUsed()
-
-            // Если плеер готов, возвращаем его
-            if cachedPlayer.isReady {
-                return cachedPlayer.player
-            }
-
-            // Если плеер загружается, ждем
-            if cachedPlayer.isLoading {
-                return cachedPlayer.player
-            }
-
-            // Если плеер в плохом состоянии (failed), удаляем его
-            if cachedPlayer.player.currentItem?.status == .failed {
-                removePlayer(for: key)
-            } else {
-                // Если плеер в unknown состоянии, даем ему время
-                return cachedPlayer.player
-            }
+            return cachedPlayer.player
         }
 
         // Создаем новый плеер
         guard let url = Bundle.main.url(forResource: resourceName, withExtension: resourceExtension)
         else {
-
             if let resourcePath = Bundle.main.resourcePath {
                 do {
                     let contents = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
@@ -263,7 +195,7 @@ final class VideoPlayerManager: ObservableObject {
             return nil
         }
 
-        return createPlayer(for: url, key: key)
+        return createPlayer(for: url, key: key, isLocalFile: true)
     }
 
     func player(url: URL) -> AVPlayer {
@@ -271,72 +203,65 @@ final class VideoPlayerManager: ObservableObject {
 
         // Проверяем кэш
         if let cachedPlayer = cache[key] {
-
-            // Если плеер готов, возвращаем его
-            if cachedPlayer.isReady {
-                cachedPlayer.lastUsed = Date()
-                return cachedPlayer.player
-            }
-
-            // Если плеер загружается, даем ему еще время
-            let timeSinceCreation = Date().timeIntervalSince(cachedPlayer.lastUsed)
-            let maxWaitTime = url.scheme == "http" || url.scheme == "https" ? 5.0 : 10.0
-
-            if timeSinceCreation < maxWaitTime {
-
-                cachedPlayer.lastUsed = Date()
-                return cachedPlayer.player
-            }
-
-            // Если плеер не готов слишком долго, удаляем его
-            cache.removeValue(forKey: key)
+            cachedPlayer.updateLastUsed()
+            return cachedPlayer.player
         }
 
         // Создаем новый плеер
-        return createPlayer(for: url, key: key)
+        let isLocalFile = url.scheme != "http" && url.scheme != "https"
+        return createPlayer(for: url, key: key, isLocalFile: isLocalFile)
     }
 
     // MARK: - Private Methods
-    private func createPlayer(for url: URL, key: String) -> AVPlayer {
-
+    private func createPlayer(for url: URL, key: String, isLocalFile: Bool) -> AVPlayer {
         let player: AVPlayer
+        var looper: AVPlayerLooper?
 
-        // Проверяем, является ли URL внешним
-        if url.scheme == "http" || url.scheme == "https" {
-            // Для внешних URL используем потоковое воспроизведение
-
-            // Создаем AVPlayerItem с настройками для потокового воспроизведения
+        if isLocalFile {
+            // Для локальных файлов используем AVQueuePlayer + AVPlayerLooper для бесконечного зацикливания
             let playerItem = AVPlayerItem(url: url)
-
-            // Настройки для быстрого старта без полной загрузки
-            playerItem.preferredForwardBufferDuration = 5.0  // Увеличиваем буфер для стабильности
-            playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
-
-            // Дополнительные настройки для стабильности
-            playerItem.preferredPeakBitRate = 0  // Автоматический выбор битрейта
-
-            // Создаем плеер с настроенным item
-            player = AVPlayer(playerItem: playerItem)
-
-            // Дополнительные настройки для внешних URL
-            player.automaticallyWaitsToMinimizeStalling = true  // Включаем для стабильности
-            player.allowsExternalPlayback = false
-
-        } else {
-            // Для локальных файлов используем обычный подход
-            player = AVPlayer(url: url)
+            let queuePlayer = AVQueuePlayer(playerItem: playerItem)
+            
+            // Создаем looper для бесконечного зацикливания
+            looper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
+            
+            player = queuePlayer
             player.automaticallyWaitsToMinimizeStalling = false
+        } else {
+            // Для внешних URL используем потоковое воспроизведение
+            let playerItem = AVPlayerItem(url: url)
+            playerItem.preferredForwardBufferDuration = 5.0
+            playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
+            playerItem.preferredPeakBitRate = 0
+            
+            player = AVPlayer(playerItem: playerItem)
+            player.automaticallyWaitsToMinimizeStalling = true
+            player.allowsExternalPlayback = false
         }
 
         player.isMuted = true
         player.actionAtItemEnd = .none
 
         // Создаем cached player
-        let cachedPlayer = CachedPlayer(player: player)
+        let cachedPlayer = CachedPlayer(player: player, isLocalFile: isLocalFile)
+        cachedPlayer.looper = looper
+        
+        // Для внешних URL настраиваем observer для зацикливания
+        if !isLocalFile {
+            cachedPlayer.setupEndTimeObserver()
+        }
+        
         cache[key] = cachedPlayer
 
-        // Начинаем воспроизведение
-        player.play()
+        // Начинаем воспроизведение когда готово
+        if let playerItem = player.currentItem {
+            if playerItem.status == .readyToPlay {
+                player.play()
+            }
+        } else {
+            // Если еще не готов, запустится автоматически через observer
+            player.play()
+        }
 
         return player
     }
@@ -351,8 +276,12 @@ final class VideoPlayerManager: ObservableObject {
 
     func resumeAllPlayers() {
         for (_, cachedPlayer) in cache {
-            if cachedPlayer.player.timeControlStatus == .paused && cachedPlayer.isReady {
-                cachedPlayer.player.play()
+            let player = cachedPlayer.player
+            // Запускаем видео если оно готово и не играет
+            if player.currentItem?.status == .readyToPlay {
+                if player.timeControlStatus != .playing {
+                    player.play()
+                }
             }
         }
     }
@@ -382,7 +311,9 @@ final class VideoPlayerManager: ObservableObject {
 
     private func removePlayer(for key: String) {
         guard let cachedPlayer = cache[key] else { return }
-
+        
+        // AVPlayerLooper автоматически останавливается при деаллокации
+        cachedPlayer.looper = nil
         cachedPlayer.player.pause()
         cache.removeValue(forKey: key)
     }

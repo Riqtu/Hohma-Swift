@@ -167,6 +167,52 @@ Seamless looping animation: A mysterious library scene. Masked characters sit ar
 
 ---
 
+## Изображение 5: Парад персонажей в волшебном лесу
+
+### Описание сцены:
+
+Фантастическая праздничная сцена в темном волшебном лесу, где множество персонажей движутся в параде. Персонажи на различных средствах передвижения (змея, страус, роботизированный медведь, метла, парящие в воздухе). В воздухе парит конфетти, кинобобины, хлопушка. Прожекторы освещают сцену, грибы светятся, энергетические сферы парят.
+
+### ⚠️ ВАЖНО: Используйте общие описания вместо конкретных персонажей
+
+### Промпт 1 (Активное движение персонажей - РЕКОМЕНДУЕТСЯ):
+
+```
+Seamless looping parade animation: A magical dark forest clearing with tall dark trees. Fantasy characters move actively in continuous parade from left to right: a character in hat and leather jacket rides a giant green snake that slithers and coils, the character raises hand overhead and moves it, a character on a flying broomstick leans forward and back, moves hands, the broom tilts and moves through air, a figure in dark clothing with sunglasses floats and moves arms, gestures, a figure in metallic red-gold suit floats forward, raises glowing palm, moves arms, chest light pulses, a character in flowing blue dress holds glowing wand, moves it in graceful arcs, gestures with free hand, a man on a robotic bear with glowing eyes - the bear runs on all fours, the man leans and shifts weight, a small creature on a large furry creature - the furry creature runs, the small creature bounces slightly, a man in suit on a running ostrich - the ostrich strides, the man leans forward. Characters gesture with hands. Colorful confetti falls continuously. Glowing mushrooms pulse. Energy spheres drift. Film reel rotates. Clapperboard floats. Spotlight beams sweep. As characters exit right, they seamlessly reappear from left. All characters are actively moving, gesturing, shifting positions. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic lighting, highly detailed, seamless loop, 4-5 seconds, perfect for iOS game card.
+```
+
+### Промпт 2 (Динамичное движение с жестами):
+
+```
+Seamless looping camera pan: Camera slowly pans from left to right following a magical parade in a dark forest. Fantasy characters move and gesture actively: character on giant snake raises whip, swings it, snake coils and slithers, character on broom leans left and right, moves hands, broom tilts, figure in dark clothing floats, moves arms, gestures, figure in glowing metallic armor floats forward, raises glowing palms, moves arms in gestures, character with wand moves wand in circles, gestures gracefully, man on robotic bear shifts weight as bear runs, small creature on furry mount bounces as mount runs, man on ostrich leans as ostrich strides. Characters with swords gesture. Characters turn heads, move bodies, shift positions. Colorful confetti falls. Glowing mushrooms pulse. Energy spheres drift. Film reel rotates. Spotlight beams move. Camera completes pan and returns to start. All movement loops perfectly. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic cinematic lighting, highly detailed, seamless loop, 4-5 seconds, ideal for iOS game card video.
+```
+
+### Промпт 3 (Множественные движения одновременно):
+
+```
+Seamless loop: Wide static shot of a magical forest parade. Fantasy characters move and gesture actively across frame from left to right: character on giant green snake raises whip overhead, swings it, snake coils and slithers forward, character on broomstick leans forward and back, moves hands, broom tilts and flies, figure in dark clothing floats, moves arms, gestures with weapon, figure in glowing metallic armor floats, raises glowing palms, moves arms, character moves wand in graceful arcs, gestures with hand, man on robotic bear shifts as bear runs on all fours, small creature bounces on furry mount as it runs, man leans on ostrich as it strides. Characters with swords raise and lower swords, gesture. Characters turn heads, shift positions, move bodies. As they exit right, they seamlessly reappear from left with same movements. Colorful confetti falls continuously. Glowing mushrooms pulse. Energy spheres float. Film reel rotates. Spotlight beams sweep. All movements loop perfectly. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic lighting, highly detailed, seamless loop, 3-4 seconds, optimized for iOS game card display.
+```
+
+### Промпт 4 (Активное движение с пульсацией):
+
+```
+Seamless looping animation: A magical dark forest with glowing mushrooms that pulse rhythmically. Fantasy characters move and gesture actively in parade: character on snake raises whip, swings it, snake coils forward, character on broom leans and moves, broom tilts, figure in dark clothing floats and gestures, figure in metallic armor floats forward, raises glowing palms that pulse, moves arms, chest light pulses, character moves glowing wand in arcs, wand pulses, gestures, man on robotic bear shifts as bear runs, glowing eyes pulse. All characters are actively moving, gesturing, shifting. Colorful confetti falls continuously. Energy spheres pulse and drift. Film reel rotates slowly. Spotlight beams sweep. Characters move forward with active gestures, and as they reach the end, they seamlessly loop back to start with same movements. The glowing elements pulse in rhythm. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic lighting, highly detailed, seamless loop, 4-5 seconds, perfect for iOS game card.
+```
+
+### Промпт 5 (Орбитальная камера с активным движением):
+
+```
+Seamless looping camera orbit: Camera slowly circles around a magical forest parade scene. Fantasy characters move and gesture actively: character on giant snake raises whip, swings it, snake coils, character on broom leans, moves hands, broom tilts, figure in dark clothing floats, gestures, figure in glowing metallic armor floats, raises palms, moves arms, character moves wand, gestures, man on robotic bear shifts as bear runs, small creature bounces on mount, man leans on ostrich. Characters with swords gesture. Characters turn heads, shift positions. Colorful confetti falls. Glowing mushrooms pulse. Energy spheres float. Film reel rotates. Spotlight beams move. Camera completes a full 360-degree orbit and returns to start. All character movements loop perfectly. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic cinematic lighting, highly detailed, seamless loop, 4-5 seconds, perfect for iOS game card.
+```
+
+### Промпт 6 (Фокус на центральных персонажах с движением):
+
+```
+Seamless loop: A magical dark forest parade. Camera focuses on center where characters move actively: figure in glowing metallic armor floats forward, raises glowing palms, moves arms in gestures, chest light pulses, character in blue dress moves glowing wand in graceful circles, gestures with free hand, wand pulses, character on broom leans left and right, moves hands, broom tilts, figure in dark clothing floats nearby, moves arms, gestures. These central characters move forward with active gestures, then loop seamlessly back. Other characters (character on snake raising whip, man on robotic bear shifting, small creature bouncing on mount, man leaning on ostrich) move actively in background. Colorful confetti falls continuously. Glowing mushrooms pulse. Energy spheres float. Spotlight beams sweep. All movements loop perfectly. IMPORTANT: No new characters appear or disappear - the same characters remain throughout, only moving and gesturing. The number and types of characters stay constant. Magical festive atmosphere, dramatic lighting, highly detailed, seamless loop, 3-4 seconds, perfect for iOS game card.
+```
+
+---
+
 ## 📱 Рекомендации для iOS карточек игр
 
 ### Для изображения 1 (Колесо фортуны):
@@ -206,6 +252,16 @@ Seamless looping animation: A mysterious library scene. Masked characters sit ar
 - **Важно:** Центр стола остается пустым - карты и свитки статичны, ничего не появляется
 - **Стиль:** Мистическая библиотека, тайное собрание, магическая атмосфера
 - **Фокус:** Активная дискуссия, множественные жесты персонажей, табличка "SECRET FILM"
+
+### Для изображения 5 (Парад персонажей в волшебном лесу):
+
+- **Оптимальный промпт:** Промпт 1 (парад с движением слева направо)
+- **Длительность:** 4-5 секунд
+- **Движения:** Непрерывное движение персонажей слева направо с зацикливанием
+- **Анимация:** Движение персонажей на различных средствах передвижения, падающее конфетти, парящие объекты, пульсирующее свечение
+- **Элементы:** Кинобобины, хлопушка, энергетические сферы, светящиеся грибы, прожекторы
+- **Стиль:** Праздничная фантастика, кинематографическая атмосфера, магический лес
+- **Фокус:** Динамичный парад, множество персонажей в движении, праздничная атмосфера
 
 ### 🎬 Технические требования для iOS:
 
@@ -264,3 +320,101 @@ Seamless looping animation: A mysterious library scene. Masked characters sit ar
 2. Выберите тот, где начало и конец наиболее похожи
 3. В видеоредакторе создайте плавный переход
 4. Экспортируйте оптимизированную версию для iOS
+
+---
+
+## Изображение 6: Магический лес с кинематографическими элементами (Светлый вариант)
+
+### Описание сцены:
+
+Светлый магический лес с солнечными лучами, где парят кинопленки, хлопушка, прожекторы освещают сцену. Светящиеся грибы, конфетти, магические сферы создают праздничную атмосферу. Кинематографические элементы интегрированы в природную среду.
+
+### ⚠️ ВАЖНО: Используйте общие описания, избегайте конкретных названий фильмов
+
+### Промпт 1 (Яркое освещение и движение - РЕКОМЕНДУЕТСЯ):
+
+```
+Seamless looping animation: Static camera view of a bright magical forest with tall ancient trees. Dramatic spotlights attached to tree trunks cast warm golden beams downward, creating pools of bright light. Translucent film strips float and drift slowly through the air, curving gently. A black clapperboard floats in upper right, gently swaying. Sunbeams stream through the canopy, creating dappled light patterns. Colorful confetti (red, yellow, blue, pink) falls continuously in a gentle cascade, looping seamlessly. Glowing mushrooms in blue, purple, and teal pulse softly on the mossy forest floor. Magical glowing orbs with intricate patterns float slowly up and down. A film reel rests on tree roots. Wooden boxes with film equipment are visible. Sunlight particles drift in the air. Camera remains completely static, only elements move. All movements loop perfectly. Bright warm lighting, light magical atmosphere, highly detailed, seamless loop, 4-5 seconds, perfect for background video.
+```
+
+### Промпт 2 (Пульсирующее свечение элементов):
+
+```
+Seamless loop: A sunlit magical forest clearing with cinematic elements. Film strips float and drift through the air. Glowing mushrooms pulse rhythmically - brighter, then dimmer, then brighter again in continuous cycle. Magical orbs pulse with soft light. Confetti falls continuously. Spotlights cast warm beams that subtly shift. The clapperboard gently sways. Film reel remains static. All glowing elements pulse in perfect rhythm. The scene returns to starting state seamlessly. Bright warm lighting, magical forest atmosphere, highly detailed, seamless looping animation, 3-4 seconds, ideal for background video.
+```
+
+### Промпт 3 (Медленное движение камеры):
+
+```
+Seamless looping camera movement: Slow gentle camera drift through a bright magical forest. Film strips float and curve through the air. A clapperboard floats in upper right. Spotlights cast warm beams. Colorful confetti falls continuously. Glowing mushrooms pulse on mossy ground. Magical orbs float slowly. Camera moves forward gently, then loops seamlessly back to start position. Film reel and wooden boxes remain static. Sunbeams stream through trees. Warm magical atmosphere, highly detailed, seamless loop, 4-5 seconds, perfect for background video.
+```
+
+### Промпт 4 (Статичная камера - движение элементов):
+
+```
+Seamless loop: Static wide shot of a bright magical forest. Film strips float and drift slowly through the air, moving in gentle curves. Confetti falls continuously from top to bottom, then loops seamlessly. Glowing mushrooms pulse rhythmically. Magical orbs float slowly up and down. Spotlights cast warm beams. Clapperboard gently sways. All floating elements move in continuous loops. Film reel and boxes stay static. Sunbeams create dappled light. The scene loops perfectly. Warm magical atmosphere, highly detailed, seamless loop, 3-4 seconds, optimized for background video.
+```
+
+---
+
+## Изображение 7: Магический лес с кинематографическими элементами (Темный вариант)
+
+### Описание сцены:
+
+Темный мистический лес с драматическим освещением от прожекторов. Парящие кинопленки, хлопушка, театральная маска. Светящиеся грибы, конфетти, магические сферы. Атмосфера таинственности и кинематографической магии.
+
+### ⚠️ ВАЖНО: Используйте общие описания, избегайте конкретных названий фильмов
+
+### Промпт 1 (Драматическое освещение и движение - РЕКОМЕНДУЕТСЯ):
+
+```
+Seamless looping animation: Static camera view of a dark mystical forest with tall ancient trees. Dramatic spotlights attached to tree branches cast warm golden beams downward, creating pools of light. Translucent film strips float and drift slowly through the air, curving gently. A black clapperboard floats in upper right, gently swaying. A pale theatrical mask floats nearby, moving slowly. Colorful confetti (red, yellow, blue, pink) falls continuously, looping seamlessly. Glowing blue mushrooms pulse softly on mossy ground. Magical glowing orbs with intricate patterns float slowly up and down. A dark film reel rests on roots. Mist drifts slowly in background. Camera remains completely static, only elements move. All movements loop perfectly. Dramatic lighting, dark magical atmosphere, highly detailed, seamless loop, 4-5 seconds, perfect for background video.
+```
+
+### Промпт 2 (Пульсирующее свечение в темном лесу):
+
+```
+Seamless loop: A dark mystical forest with dramatic spotlight beams. Film strips float and drift through the air. Glowing blue mushrooms pulse rhythmically - brighter, then dimmer, then brighter again in continuous cycle. Magical orbs pulse with soft green-blue light. Confetti falls continuously. Spotlights cast warm beams that subtly shift. The clapperboard and mask gently sway. Film reel remains static. Mist drifts slowly. All glowing elements pulse in perfect rhythm. The scene returns to starting state seamlessly. Dramatic dark lighting, mysterious magical atmosphere, highly detailed, seamless looping animation, 3-4 seconds, ideal for background video.
+```
+
+### Промпт 3 (Медленное движение камеры в темном лесу):
+
+```
+Seamless looping camera movement: Slow gentle camera drift through a dark mystical forest. Film strips float and curve through the air. A clapperboard floats in upper right. A theatrical mask floats nearby. Dramatic spotlights cast warm golden beams. Colorful confetti falls continuously. Glowing blue mushrooms pulse on mossy ground. Magical orbs float slowly. Mist drifts in background. Camera moves forward gently, then loops seamlessly back to start position. Film reel and wooden boxes remain static. Dramatic lighting creates depth. Dark magical atmosphere, highly detailed, seamless loop, 4-5 seconds, perfect for background video.
+```
+
+### Промпт 4 (Статичная камера - движение элементов в темноте):
+
+```
+Seamless loop: Static wide shot of a dark mystical forest. Film strips float and drift slowly through the air, moving in gentle curves. Confetti falls continuously from top to bottom, then loops seamlessly. Glowing blue mushrooms pulse rhythmically. Magical orbs float slowly up and down. Dramatic spotlights cast warm beams. Clapperboard and mask gently sway. Mist drifts slowly. All floating elements move in continuous loops. Film reel and boxes stay static. Dramatic lighting creates atmosphere. The scene loops perfectly. Dark mysterious magical atmosphere, highly detailed, seamless loop, 3-4 seconds, optimized for background video.
+```
+
+---
+
+## 📱 Рекомендации для фоновых видео
+
+### Для изображения 6 (Светлый магический лес):
+
+- **Оптимальный промпт:** Промпт 1 (плавающие пленки и конфетти)
+- **Длительность:** 3-5 секунд
+- **Движения:** Медленное плавание пленок, падающее конфетти, пульсирующее свечение грибов
+- **Анимация:** Плавные движения элементов, ритмичное свечение, мягкие движения камеры
+- **Стиль:** Светлый магический лес, кинематографическая атмосфера, праздничное настроение
+- **Фокус:** Атмосферное фоновое видео, не отвлекающее от контента
+
+### Для изображения 7 (Темный магический лес):
+
+- **Оптимальный промпт:** Промпт 1 (драматическое освещение и движение)
+- **Длительность:** 3-5 секунд
+- **Движения:** Медленное плавание пленок, падающее конфетти, пульсирующее свечение, дрейф тумана
+- **Анимация:** Плавные движения элементов, драматическое освещение, ритмичное свечение
+- **Стиль:** Темный мистический лес, драматическая кинематографическая атмосфера
+- **Фокус:** Атмосферное фоновое видео с драматическим освещением
+
+### Особенности фоновых видео:
+
+1. **Спокойные движения** - не отвлекают от контента приложения
+2. **Медленная анимация** - плавные, успокаивающие движения
+3. **Пульсирующее свечение** - ритмичное, но не навязчивое
+4. **Зацикливание** - идеальное для непрерывного воспроизведения
+5. **Атмосферность** - создают настроение, но не перегружают интерфейс

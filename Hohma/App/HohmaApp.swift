@@ -91,6 +91,7 @@ struct hohmaApp: App {
 
                 RootView()
             }
+            .tint(Color("AccentColor"))
         }
         .onChange(of: scenePhase) { _, newPhase in
             handleScenePhaseChange(newPhase)

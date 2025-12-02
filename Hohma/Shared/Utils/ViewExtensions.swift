@@ -36,8 +36,8 @@ extension View {
     func cardStyle() -> some View {
         self.background(.ultraThinMaterial)
             .cornerRadius(12)
-            .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-            .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
+            .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 12)
+            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 
     /// Применяет фон к экрану (для отдельных экранов)

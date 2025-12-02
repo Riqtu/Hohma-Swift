@@ -18,53 +18,23 @@ struct AnimatedGradientBackground: View {
     @ObserveInjection var inject
     @Environment(\.colorScheme) private var colorScheme
 
-    // Получаем компоненты AccentColor
-    private var accentColorComponents: SIMD3<Double> {
-        #if os(macOS)
-            // Для macOS используем NSColor
-            if let nsColor = NSColor(named: "AccentColor") {
-                var red: CGFloat = 0
-                var green: CGFloat = 0
-                var blue: CGFloat = 0
-                var alpha: CGFloat = 0
-                nsColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-                return SIMD3(Double(red), Double(green), Double(blue))
-            }
-        #else
-            // Для iOS используем UIColor
-            if let uiColor = UIColor(named: "AccentColor") {
-                var red: CGFloat = 0
-                var green: CGFloat = 0
-                var blue: CGFloat = 0
-                var alpha: CGFloat = 0
-                uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-                return SIMD3(Double(red), Double(green), Double(blue))
-            }
-        #endif
-
-        return SIMD3(1.0, 0.5, 0.5)  // Розовый fallback
-    }
-
-    // Функция для применения прозрачности к SIMD3
-    private func applyOpacity(_ color: SIMD3<Double>, opacity: Double) -> SIMD3<Double> {
-        return color * opacity
-    }
-
-    // Теперь массив rgb для каждого цвета
+    // Массив rgb для каждого цвета - серые оттенки в зависимости от темы
     var gradients: [[SIMD3<Double>]] {
         if colorScheme == .dark {
+            // Темная тема - очень темные серые оттенки
             return [
-                [SIMD3(0.12, 0.12, 0.13), applyOpacity(accentColorComponents, opacity: 0.3)],
-                [applyOpacity(accentColorComponents, opacity: 0.2), SIMD3(0.22, 0.22, 0.25)],
-                [SIMD3(0.05, 0.05, 0.08), applyOpacity(accentColorComponents, opacity: 0.4)],
-                [applyOpacity(accentColorComponents, opacity: 0.1), SIMD3(0.15, 0.15, 0.17)],
+                [SIMD3(0.05, 0.05, 0.06), SIMD3(0.08, 0.08, 0.09)],
+                [SIMD3(0.07, 0.07, 0.08), SIMD3(0.10, 0.10, 0.11)],
+                [SIMD3(0.04, 0.04, 0.05), SIMD3(0.09, 0.09, 0.10)],
+                [SIMD3(0.06, 0.06, 0.07), SIMD3(0.11, 0.11, 0.12)],
             ]
         } else {
+            // Светлая тема - светлосерые оттенки
             return [
-                [SIMD3(0.98, 0.98, 0.99), SIMD3(0.99, 0.99, 1.0)],
-                [SIMD3(0.95, 0.95, 0.97), SIMD3(0.99, 0.99, 1.0)],
-                [SIMD3(0.97, 0.97, 0.99), SIMD3(0.98, 0.98, 1.0)],
-                [SIMD3(0.99, 0.99, 1.0), SIMD3(0.96, 0.96, 0.98)],
+                [SIMD3(0.95, 0.95, 0.96), SIMD3(0.97, 0.97, 0.98)],
+                [SIMD3(0.93, 0.93, 0.94), SIMD3(0.96, 0.96, 0.97)],
+                [SIMD3(0.94, 0.94, 0.95), SIMD3(0.98, 0.98, 0.99)],
+                [SIMD3(0.96, 0.96, 0.97), SIMD3(0.92, 0.92, 0.93)],
             ]
         }
     }

@@ -12,8 +12,6 @@ struct CardView: View {
     @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @State private var videoPlayer: AVPlayer?
-    @State private var isVideoReady: Bool = false
-    @State private var playerObserver: NSKeyValueObservation?
     @State private var isPressed: Bool = false
     @State private var isHovered: Bool = false
     @State private var isVideoVisible: Bool = true
@@ -22,18 +20,17 @@ struct CardView: View {
     let description: String
     let imageName: String?  // имя в Assets или URL
     let videoName: String?  // имя видео в Assets
-    let player: AVPlayer?  // <-- сюда передавай готовый
+    let player: AVPlayer?  // готовый плеер из VideoPlayerManager
     let action: (() -> Void)?
 
     var body: some View {
         Button(action: {
-            print("🎴 CardView: Нажатие на карточку '\(title)'")
             action?()
         }) {
             VStack(alignment: .leading, spacing: 12) {
-                // Показываем либо видео, либо картинку, либо ничего
+                // Показываем либо видео, либо картинку
                 Group {
-                    if let player = player ?? videoPlayer, isVideoReady {
+                    if let player = player ?? videoPlayer {
                         VideoBackgroundView(player: player, isVisible: isVideoVisible)
                     } else if let imageName, !imageName.isEmpty {
                         Image(imageName)
@@ -80,65 +77,31 @@ struct CardView: View {
         .onAppear {
             isVideoVisible = true
             setupVideoIfNeeded()
+            // Принудительно запускаем видео если оно готово
+            if let player = player ?? videoPlayer {
+                if player.currentItem?.status == .readyToPlay {
+                    if player.timeControlStatus != .playing {
+                        player.play()
+                    }
+                }
+            }
         }
         .onDisappear {
             isVideoVisible = false
-            cleanupVideo()
         }
         .enableInjection()
     }
 
     private func setupVideoIfNeeded() {
-        print("🎴 CardView: Настройка видео для \(title)")
-
         // Если уже есть готовый плеер, используем его
-        if let player = player {
-            print("🎴 CardView: Используем готовый плеер")
-            setupPlayerObserver(player)
+        if player != nil {
             return
         }
 
         // Если есть имя видео, загружаем его
         if let videoName = videoName, !videoName.isEmpty {
-            print("🎴 CardView: Загружаем видео \(videoName)")
             videoPlayer = videoManager.player(resourceName: videoName)
-            if let player = videoPlayer {
-                setupPlayerObserver(player)
-            }
         }
-    }
-
-    private func setupPlayerObserver(_ player: AVPlayer) {
-        // Очищаем предыдущий observer
-        playerObserver?.invalidate()
-
-        playerObserver = player.currentItem?.observe(\.status, options: [.new]) { item, _ in
-            DispatchQueue.main.async {
-                print("🎴 CardView: Статус плеера для \(self.title): \(item.status.rawValue)")
-                self.isVideoReady = item.status == .readyToPlay
-                if self.isVideoReady {
-                    print("🎴 CardView: Видео готово для \(self.title)")
-                }
-            }
-        }
-
-        // Проверяем текущий статус
-        if player.currentItem?.status == .readyToPlay {
-            print("🎴 CardView: Плеер уже готов для \(title)")
-            self.isVideoReady = true
-        }
-    }
-
-    private func cleanupVideo() {
-        print("🎴 CardView: Очистка видео для \(title)")
-        playerObserver?.invalidate()
-        playerObserver = nil
-
-        if player == nil {  // Только если это не внешний плеер
-            videoPlayer?.pause()
-            videoPlayer = nil
-        }
-        isVideoReady = false
     }
 }
 
