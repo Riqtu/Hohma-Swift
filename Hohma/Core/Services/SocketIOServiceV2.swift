@@ -18,6 +18,9 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private var authToken: String?
+    
+    // Сохраняем обработчики события connect для вызова при подключении
+    private var connectHandlers: [(Data) -> Void] = []
 
     // MARK: - Published Properties
     @Published var isConnected = false
@@ -80,6 +83,17 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                 self?.isConnected = true
                 self?.isConnecting = false
                 self?.error = nil
+            }
+            
+            // Вызываем все зарегистрированные обработчики события connect
+            if let self = self {
+                let emptyData = Data()
+                DispatchQueue.main.async {
+                    for handler in self.connectHandlers {
+                        handler(emptyData)
+                    }
+                    print("📨 SocketIOServiceV2: Called \(self.connectHandlers.count) connect handlers")
+                }
             }
 
             // Обработчики событий регистрируются напрямую через метод on()
@@ -168,10 +182,35 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
             return
         }
 
-        // Регистрируем обработчик напрямую в сокете
+        // Специальная обработка события connect - сохраняем обработчик и вызываем его при подключении
+        if event == .connect {
+            print("📝 SocketIOServiceV2: Registering connect handler (will be called on clientEvent: .connect)")
+            connectHandlers.append(handler)
+            // Если уже подключены, вызываем обработчик сразу
+            if isConnected {
+                DispatchQueue.main.async {
+                    handler(Data())
+                }
+            }
+            return
+        }
+
+        // Регистрируем обработчик напрямую в сокете для других событий
         socket.on(event.rawValue) { data, ack in
-            print("📨 SocketIOServiceV2: Received event: \(event.rawValue)")
+            print("📨 SocketIOServiceV2: ===== Received event: \(event.rawValue) =====")
+            print("📊 SocketIOServiceV2: Event data count: \(data.count)")
             print("📊 SocketIOServiceV2: Event data: \(data)")
+            
+            // Специальная обработка для chat:list:updated
+            if event == .chatListUpdated {
+                print("📨 SocketIOServiceV2: Processing chat:list:updated event")
+                if let firstData = data.first {
+                    print("📨 SocketIOServiceV2: First data type: \(type(of: firstData))")
+                    if let dictData = firstData as? [String: Any] {
+                        print("📨 SocketIOServiceV2: chat:list:updated data: \(dictData)")
+                    }
+                }
+            }
 
             // Преобразуем данные в Data для совместимости
             var eventData = Data()

@@ -4,16 +4,27 @@ import SwiftUI
 @MainActor
 class SettingsViewModel: ObservableObject {
     @Published var themeSettings = ThemeSettings()
+    @Published var raceSoundVolume: Double = 0.5 {
+        didSet {
+            saveRaceSoundVolume()
+            // Обновляем громкость в сервисе звука
+            RaceAudioService.shared.updateVolume(raceSoundVolume)
+        }
+    }
 
     private let userDefaults = UserDefaults.standard
     private let themeKey = "app_theme"
+    private let raceSoundVolumeKey = "race_sound_volume"
 
     init() {
         loadThemeSettings()
+        loadRaceSoundVolume()
         // Применяем сохраненную тему при инициализации
         applyTheme(themeSettings.currentTheme)
+        // Применяем сохраненную громкость
+        RaceAudioService.shared.updateVolume(raceSoundVolume)
         print(
-            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue)")
+            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue), громкость: \(raceSoundVolume)")
     }
 
     func setTheme(_ theme: AppTheme) {
@@ -43,6 +54,20 @@ class SettingsViewModel: ObservableObject {
     private func saveThemeSettings() {
         userDefaults.set(themeSettings.currentTheme.rawValue, forKey: themeKey)
         userDefaults.synchronize()  // Принудительно сохраняем изменения
+    }
+    
+    private func loadRaceSoundVolume() {
+        if userDefaults.object(forKey: raceSoundVolumeKey) != nil {
+            raceSoundVolume = userDefaults.double(forKey: raceSoundVolumeKey)
+        } else {
+            // Значение по умолчанию
+            raceSoundVolume = 0.5
+        }
+    }
+    
+    private func saveRaceSoundVolume() {
+        userDefaults.set(raceSoundVolume, forKey: raceSoundVolumeKey)
+        userDefaults.synchronize()
     }
 
     private func applyTheme(_ theme: AppTheme) {

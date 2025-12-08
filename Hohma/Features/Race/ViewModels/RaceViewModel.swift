@@ -726,6 +726,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Подготавливаем шаги анимации для каждого участника
         prepareAnimationSteps()
 
+        // Запускаем звук лошади во время анимации
+        Task { @MainActor in
+            RaceAudioService.shared.playHorseSound()
+        }
+
         // Запускаем одновременную анимацию всех участников
         print("🎬 Запускаем одновременную анимацию всех участников")
         animateAllParticipantsSimultaneously()
@@ -818,6 +823,11 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     private func finishAnimation() {
+        // Останавливаем звук лошади, так как анимация завершается
+        Task { @MainActor in
+            RaceAudioService.shared.stopHorseSound()
+        }
+        
         // Финальная пауза
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(.easeOut(duration: 0.2)) {

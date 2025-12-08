@@ -49,6 +49,54 @@ struct SettingsView: View {
                             .padding(.horizontal)
 
                         VStack(spacing: 12) {
+                            // Настройка громкости звука скачек
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "speaker.wave.2")
+                                        .foregroundColor(.accentColor)
+                                        .font(.title3)
+                                        .frame(width: 24, height: 24)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Громкость звука скачек")
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Настройка громкости фоновой музыки и звуков")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                
+                                HStack(spacing: 12) {
+                                    Image(systemName: "speaker.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                    
+                                    Slider(value: $viewModel.raceSoundVolume, in: 0...1)
+                                        .tint(.accentColor)
+                                    
+                                    Image(systemName: "speaker.wave.3.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                                .padding(.leading, 40)
+                                
+                                Text("\(Int(viewModel.raceSoundVolume * 100))%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .padding(.trailing, 16)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
+                            
                             SettingsRow(
                                 icon: "externaldrive",
                                 title: "Управление кэшем",

@@ -83,7 +83,6 @@ final class ChatListViewModel: ObservableObject {
         
         // Создаем отдельный socket adapter для глобального слушателя
         socketAdapter = SocketIOServiceAdapter(authToken: authToken)
-        socketAdapter?.connect()
         
         guard let adapter = socketAdapter else {
             print("❌ ChatListViewModel: Failed to create SocketAdapter")
@@ -93,24 +92,39 @@ final class ChatListViewModel: ObservableObject {
         chatSocketManager = ChatSocketManager(socket: adapter)
         setupSocketCallbacks()
         
-        // Ждем подключения перед присоединением к чатам
-        // Подписки будут выполнены после загрузки списка чатов
+        // Подключаемся к сокету
+        // Обработчик connect автоматически присоединит к глобальной комнате пользователя
+        adapter.connect()
+        
+        // Если сокет уже подключен, сразу присоединяемся к комнате
+        if adapter.isConnected {
+            joinUserGlobalRoom()
+        }
     }
     
     private func setupSocketCallbacks() {
         guard let manager = chatSocketManager,
-              let adapter = socketAdapter else { return }
+              let adapter = socketAdapter else {
+            print("❌ ChatListViewModel: Cannot setup socket callbacks - missing manager or adapter")
+            return
+        }
+        
+        print("💬 ChatListViewModel: Setting up socket callbacks")
         
         // Слушаем подключение socket и присоединяемся к глобальной комнате пользователя
         adapter.on(.connect) { [weak self] _ in
             guard let self = self else { return }
+            print("💬 ChatListViewModel: ===== Socket connected =====")
             print("💬 ChatListViewModel: Socket connected, joining user global room")
             Task { @MainActor in
+                // Небольшая задержка, чтобы убедиться, что сокет полностью готов
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                 self.joinUserGlobalRoom()
             }
         }
         
         // Слушаем обновления списка чатов из глобальной комнаты пользователя
+        print("💬 ChatListViewModel: Registering onChatListUpdated callback")
         manager.onChatListUpdated = { [weak self] chatId in
             guard let self = self else { return }
             print("💬 ChatListViewModel: ===== CHAT LIST UPDATED EVENT ======")
@@ -138,6 +152,8 @@ final class ChatListViewModel: ObservableObject {
                 userInfo: ["chatId": chatId]
             )
         }
+        
+        print("💬 ChatListViewModel: Socket callbacks setup completed")
     }
     
     private func joinUserGlobalRoom() {
@@ -153,19 +169,12 @@ final class ChatListViewModel: ObservableObject {
             print("⚠️ ChatListViewModel: Socket not connected yet, will join user room when connected")
             // Попробуем подключиться, если еще не подключены
             adapter.connect()
-            // Повторим попытку через небольшую задержку
-            Task {
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 секунда
-                if adapter.isConnected {
-                    await MainActor.run {
-                        self.joinUserGlobalRoom()
-                    }
-                }
-            }
+            // Обработчик connect автоматически вызовет joinUserGlobalRoom() при подключении
             return
         }
         
         // Присоединяемся к глобальной комнате пользователя для получения уведомлений о чатах
+        print("💬 ChatListViewModel: Joining user global room for user \(userId)")
         manager.joinUser(userId: userId)
         print("💬 ChatListViewModel: Joined user global room for user \(userId)")
     }

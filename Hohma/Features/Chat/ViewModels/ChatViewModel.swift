@@ -76,9 +76,11 @@ final class ChatViewModel: ObservableObject {
     }
 
     init() {
+        print("💬 ChatViewModel: init() called")
         setupSocketAdapter()
         setupAudioRecorderBinding()
         setupVideoRecorderBinding()
+        print("💬 ChatViewModel: init() completed")
     }
 
     private func setupAudioRecorderBinding() {
@@ -125,22 +127,28 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Socket Setup
 
     private func setupSocketAdapter() {
+        print("💬 ChatViewModel: setupSocketAdapter() called")
         guard let authToken = TRPCService.shared.authToken else {
             print("❌ ChatViewModel: No auth token available")
             return
         }
 
+        print("💬 ChatViewModel: Auth token available, creating SocketAdapter")
         // Используем тот же подход, что и в RaceViewModel
         socketAdapter = SocketIOServiceAdapter(authToken: authToken)
         socketAdapter?.connect()
+        print("💬 ChatViewModel: SocketAdapter created and connect() called")
 
         guard let adapter = socketAdapter else {
             print("❌ ChatViewModel: Failed to create SocketAdapter")
             return
         }
 
+        print("💬 ChatViewModel: Creating ChatSocketManager")
         chatSocketManager = ChatSocketManager(socket: adapter)
+        print("💬 ChatViewModel: ChatSocketManager created: \(chatSocketManager != nil ? "success" : "failed")")
         setupSocketCallbacks()
+        print("💬 ChatViewModel: Socket callbacks setup completed")
     }
 
     private func setupSocketCallbacks() {
@@ -264,6 +272,7 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Chat Loading
 
     func loadChat(chatId: String) {
+        print("💬 ChatViewModel: loadChat() called with chatId: \(chatId)")
         self.chatId = chatId
 
         Task {
@@ -271,14 +280,17 @@ final class ChatViewModel: ObservableObject {
             errorMessage = nil
 
             do {
+                print("💬 ChatViewModel: Loading chat data from API...")
                 let loadedChat = try await chatService.getChatById(chatId: chatId)
                 self.chat = loadedChat
                 print(
                     "💬 ChatViewModel: Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")"
                 )
+                print("💬 ChatViewModel: About to call loadMessages()")
                 loadMessages()
 
                 // Присоединяемся к комнате чата через Socket.IO
+                print("💬 ChatViewModel: About to call joinChat()")
                 joinChat()
             } catch {
                 errorMessage = error.localizedDescription
@@ -381,15 +393,26 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Socket Operations
 
     private func joinChat() {
+        print("💬 ChatViewModel: joinChat() called")
         guard let chatId = chatId,
             let userId = currentUserId,
             let manager = chatSocketManager
         else {
             print("❌ ChatViewModel: Cannot join chat - missing chatId or userId")
+            print("   - chatId: \(self.chatId ?? "nil")")
+            print("   - userId: \(currentUserId ?? "nil")")
+            print("   - manager: \(chatSocketManager != nil ? "exists" : "nil")")
             return
         }
 
+        print("💬 ChatViewModel: Socket adapter state - isConnected: \(socketAdapter?.isConnected ?? false), isConnecting: \(socketAdapter?.isConnecting ?? false)")
+        
+        // Убеждаемся, что сокет подключен перед присоединением к комнате
         manager.connectIfNeeded()
+        
+        // Вызываем joinChat - он сам проверит подключение и сохранит chatId/userId
+        // для автоматического переприсоединения при переподключении
+        print("💬 ChatViewModel: Calling manager.joinChat(chatId: \(chatId), userId: \(userId))")
         manager.joinChat(chatId: chatId, userId: userId)
     }
 

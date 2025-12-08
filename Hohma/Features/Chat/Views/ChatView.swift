@@ -134,9 +134,13 @@ struct ChatView: View {
             .presentationDetents([.height(300)])
         }
         .onAppear {
+            print("💬 ChatView: onAppear called for chatId: \(chatId)")
+            print("💬 ChatView: ViewModel exists: \(viewModel != nil)")
+            print("💬 ChatView: Calling viewModel.loadChat(chatId: \(chatId))")
             viewModel.loadChat(chatId: chatId)
             // Инициализируем фон при появлении
             chatBackgroundUrl = viewModel.chat?.backgroundUrl
+            print("💬 ChatView: loadChat() call completed")
         }
         .onChange(of: viewModel.chat?.backgroundUrl) { _, newValue in
             chatBackgroundUrl = newValue

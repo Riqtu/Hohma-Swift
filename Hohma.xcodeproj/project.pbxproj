@@ -7,15 +7,48 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		982E79882EE710AE00DE785B /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 982E79812EE710AE00DE785B /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		987FCED02E45FFF300AAB2F3 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 987FCECF2E45FFF300AAB2F3 /* Inject */; };
 		98E3942D2E59038300F2616A /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 987FCED22E460D4500AAB2F4 /* SocketIO */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		982E79862EE710AE00DE785B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98FE9B042E3FA8EC004AEED5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 982E79802EE710AE00DE785B;
+			remoteInfo = NotificationServiceExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		982E798D2EE710AE00DE785B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				982E79882EE710AE00DE785B /* NotificationServiceExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		982E79812EE710AE00DE785B /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		98FE9B0C2E3FA8EC004AEED5 /* Hohma.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hohma.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		982E798C2EE710AE00DE785B /* Exceptions for "NotificationServiceExtension" folder in "NotificationServiceExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 982E79802EE710AE00DE785B /* NotificationServiceExtension */;
+		};
 		98FE9B452E3FAA89004AEED5 /* Exceptions for "Hohma" folder in "Hohma" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -26,6 +59,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		982E79822EE710AE00DE785B /* NotificationServiceExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				982E798C2EE710AE00DE785B /* Exceptions for "NotificationServiceExtension" folder in "NotificationServiceExtension" target */,
+			);
+			path = NotificationServiceExtension;
+			sourceTree = "<group>";
+		};
 		98FE9B0E2E3FA8EC004AEED5 /* Hohma */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -37,6 +78,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		982E797E2EE710AE00DE785B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		98FE9B092E3FA8EC004AEED5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -53,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				98FE9B0E2E3FA8EC004AEED5 /* Hohma */,
+				982E79822EE710AE00DE785B /* NotificationServiceExtension */,
 				98FE9B0D2E3FA8EC004AEED5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				98FE9B0C2E3FA8EC004AEED5 /* Hohma.app */,
+				982E79812EE710AE00DE785B /* NotificationServiceExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -68,6 +118,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		982E79802EE710AE00DE785B /* NotificationServiceExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 982E79892EE710AE00DE785B /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */;
+			buildPhases = (
+				982E797D2EE710AE00DE785B /* Sources */,
+				982E797E2EE710AE00DE785B /* Frameworks */,
+				982E797F2EE710AE00DE785B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				982E79822EE710AE00DE785B /* NotificationServiceExtension */,
+			);
+			name = NotificationServiceExtension;
+			packageProductDependencies = (
+			);
+			productName = NotificationServiceExtension;
+			productReference = 982E79812EE710AE00DE785B /* NotificationServiceExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		98FE9B0B2E3FA8EC004AEED5 /* Hohma */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98FE9B182E3FA8ED004AEED5 /* Build configuration list for PBXNativeTarget "Hohma" */;
@@ -76,10 +148,12 @@
 				98FE9B082E3FA8EC004AEED5 /* Sources */,
 				98FE9B092E3FA8EC004AEED5 /* Frameworks */,
 				98FE9B0A2E3FA8EC004AEED5 /* Resources */,
+				982E798D2EE710AE00DE785B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				982E79872EE710AE00DE785B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				98FE9B0E2E3FA8EC004AEED5 /* Hohma */,
@@ -100,9 +174,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					982E79802EE710AE00DE785B = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
 					98FE9B0B2E3FA8EC004AEED5 = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -127,11 +204,19 @@
 			projectRoot = "";
 			targets = (
 				98FE9B0B2E3FA8EC004AEED5 /* Hohma */,
+				982E79802EE710AE00DE785B /* NotificationServiceExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		982E797F2EE710AE00DE785B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		98FE9B0A2E3FA8EC004AEED5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -164,6 +249,13 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		982E797D2EE710AE00DE785B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		98FE9B082E3FA8EC004AEED5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -173,7 +265,80 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		982E79872EE710AE00DE785B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 982E79802EE710AE00DE785B /* NotificationServiceExtension */;
+			targetProxy = 982E79862EE710AE00DE785B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		982E798A2EE710AE00DE785B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4D7KVU7P88;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = riqtu.Hohma.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		982E798B2EE710AE00DE785B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4D7KVU7P88;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotificationServiceExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotificationServiceExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = riqtu.Hohma.NotificationServiceExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		98FE9B162E3FA8ED004AEED5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -413,6 +578,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		982E79892EE710AE00DE785B /* Build configuration list for PBXNativeTarget "NotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				982E798A2EE710AE00DE785B /* Debug */,
+				982E798B2EE710AE00DE785B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		98FE9B072E3FA8EC004AEED5 /* Build configuration list for PBXProject "Hohma" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

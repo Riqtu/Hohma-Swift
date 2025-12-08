@@ -80,6 +80,19 @@ enum RaceTheme: String, CaseIterable, Identifiable {
             return Color.blue
         }
     }
+    
+    var backgroundMusicFileName: (String, String) {
+        switch self {
+        case .default:
+            return ("default", "mp3")
+        case .halloween:
+            return ("halloween", "mp3")
+        case .land:
+            return ("mountain", "wav")
+        case .winter:
+            return ("winter", "mp3")
+        }
+    }
 }
 
 // MARK: - Race Theme Manager

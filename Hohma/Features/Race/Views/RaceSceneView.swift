@@ -7,6 +7,11 @@ struct RaceSceneView: View {
     @StateObject private var themeManager = RaceThemeManager()
     let race: Race?
     @State private var showingJoinMovieSheet = false
+    
+    // Отслеживаем изменения темы для обновления музыки
+    private var currentTheme: RaceTheme {
+        themeManager.currentTheme
+    }
 
     init(race: Race? = nil) {
         self.race = race
@@ -120,6 +125,9 @@ struct RaceSceneView: View {
                 if let participants = race.participants {
                     AvatarCacheService.shared.preloadAvatars(for: participants)
                 }
+                
+                // Запускаем фоновую музыку для текущей темы
+                RaceAudioService.shared.playBackgroundMusic(for: themeManager.currentTheme)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .raceUpdated)) { _ in
@@ -132,6 +140,9 @@ struct RaceSceneView: View {
                 if let participants = race.participants {
                     AvatarCacheService.shared.preloadAvatars(for: participants)
                 }
+                
+                // Обновляем фоновую музыку при изменении темы
+                RaceAudioService.shared.playBackgroundMusic(for: themeManager.currentTheme)
             }
         }
         .onDisappear {
@@ -141,6 +152,9 @@ struct RaceSceneView: View {
                     AvatarCacheService.shared.clearCache(for: participant.user.id)
                 }
             }
+            
+            // Останавливаем фоновую музыку при выходе из скачки
+            RaceAudioService.shared.stopAll()
         }
         .alert("Ошибка", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -218,6 +232,12 @@ struct RaceSceneView: View {
                 }
             } else {
                 Text("Скачка не загружена")
+            }
+        }
+        .onChange(of: themeManager.currentTheme) { oldTheme, newTheme in
+            // Обновляем музыку при изменении темы
+            if oldTheme != newTheme {
+                RaceAudioService.shared.playBackgroundMusic(for: newTheme)
             }
         }
         .enableInjection()
