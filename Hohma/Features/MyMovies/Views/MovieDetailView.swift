@@ -1,6 +1,8 @@
 import SwiftUI
+import Inject
 
 struct MovieDetailView: View {
+    @ObserveInjection var inject
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: MovieDetailViewModel
     let onRemoved: () -> Void
@@ -53,6 +55,7 @@ struct MovieDetailView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+        .enableInjection()
     }
 
     private var backgroundPoster: some View {
