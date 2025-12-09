@@ -1293,22 +1293,32 @@ struct MovieCardDetail: View {
     }
 }
 
+fileprivate enum BattleMovieSelectionMode: String, CaseIterable {
+    case search = "Поиск"
+    case myMovies = "Мои фильмы"
+    case manual = "Ручной ввод"
+}
+
 struct AddMovieView: View {
     @ObserveInjection var inject
     @ObservedObject var viewModel: MovieBattleViewModel
     @Environment(\.dismiss) var dismiss
 
     @StateObject private var kinopoiskService = KinopoiskService()
+    @StateObject private var myMoviesService = MyMoviesService.shared
 
     @State private var title: String = ""
     @State private var description: String = ""
     @State private var posterUrl: String = ""
     @State private var searchResults: [KinopoiskMovie] = []
+    @State private var myMovies: [MyMovieListItem] = []
     @State private var selectedMovie: KinopoiskMovie?
+    @State private var selectedMyMovie: MovieRecord?
     @State private var isLoading: Bool = false
+    @State private var isLoadingMyMovies: Bool = false
     @State private var errorMessage: String?
     @State private var showingResults: Bool = false
-    @State private var searchMode: Bool = true  // true = поиск, false = ручной ввод
+    @State private var selectionMode: BattleMovieSelectionMode = .search
     @FocusState private var isFieldFocused: Bool
 
     @State private var searchDebouncer: Timer?
@@ -1321,20 +1331,28 @@ struct AddMovieView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Переключатель режима
-                    Picker("Режим", selection: $searchMode) {
-                        Text("Поиск").tag(true)
-                        Text("Ручной ввод").tag(false)
+                    Picker("Режим", selection: $selectionMode) {
+                        ForEach(BattleMovieSelectionMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
-                    .onChange(of: searchMode) { _, _ in
-                        if !searchMode {
+                    .onChange(of: selectionMode) { _, newMode in
+                        if newMode == .myMovies {
+                            loadMyMovies()
+                        } else if newMode == .search {
                             cancelSearch()
                             showingResults = false
+                        } else {
+                            cancelSearch()
+                            showingResults = false
+                            selectedMovie = nil
+                            selectedMyMovie = nil
                         }
                     }
 
-                    if searchMode {
+                    if selectionMode == .search {
                         // Режим поиска через Kinopoisk
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Поиск фильма")
@@ -1391,6 +1409,56 @@ struct AddMovieView: View {
 
                             if let selectedMovie = selectedMovie {
                                 SelectedMovieSummary(movie: selectedMovie)
+                                    .padding(.horizontal)
+                            }
+                        }
+                    } else if selectionMode == .myMovies {
+                        // Режим выбора из моих фильмов
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Мои фильмы")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            if isLoadingMyMovies {
+                                ProgressView("Загрузка...")
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                            } else if myMovies.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "film")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.secondary)
+                                    Text("Нет сохраненных фильмов")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    Text("Добавьте фильмы в раздел 'Мои фильмы'")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                            } else {
+                                ScrollView {
+                                    LazyVStack(spacing: 12) {
+                                        ForEach(myMovies) { item in
+                                            Button {
+                                                selectMyMovie(item.movie)
+                                            } label: {
+                                                BattleMyMovieRow(
+                                                    item: item,
+                                                    isSelected: selectedMyMovie?.id == item.movie.id
+                                                )
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                                .frame(maxHeight: 400)
+                            }
+                            
+                            if let selectedMyMovie = selectedMyMovie {
+                                SelectedMyMovieSummary(movie: selectedMyMovie)
                                     .padding(.horizontal)
                             }
                         }
@@ -1563,11 +1631,40 @@ struct AddMovieView: View {
     private func selectMovie(_ movie: KinopoiskMovie) {
         isSelectingMovie = true  // Устанавливаем флаг перед изменением title
         selectedMovie = movie
+        selectedMyMovie = nil
         title = movie.name
         description = movie.description ?? movie.shortDescription ?? ""
         posterUrl = movie.poster?.bestUrl ?? ""
         showingResults = false
         cancelSearch()
+    }
+    
+    private func loadMyMovies() {
+        guard !isLoadingMyMovies else { return }
+        isLoadingMyMovies = true
+        
+        Task {
+            do {
+                let response = try await myMoviesService.myMovies(page: 1, limit: 50)
+                await MainActor.run {
+                    myMovies = response.items
+                    isLoadingMyMovies = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Ошибка загрузки фильмов: \(error.localizedDescription)"
+                    isLoadingMyMovies = false
+                }
+            }
+        }
+    }
+    
+    private func selectMyMovie(_ movie: MovieRecord) {
+        selectedMyMovie = movie
+        selectedMovie = nil
+        title = movie.name ?? ""
+        description = movie.description ?? movie.shortDescription ?? ""
+        posterUrl = movie.posterUrl ?? movie.posterPreviewUrl ?? ""
     }
 
     private func submit() {
@@ -1575,10 +1672,20 @@ struct AddMovieView: View {
 
         // Предотвращаем повторные нажатия
         guard !isAddingMovie else { return }
+        
+        // Определяем kinopoiskId в зависимости от выбранного режима
+        let kinopoiskId: String?
+        if let myMovie = selectedMyMovie {
+            kinopoiskId = myMovie.kpId
+        } else if let searchMovie = selectedMovie {
+            kinopoiskId = String(searchMovie.id)
+        } else {
+            kinopoiskId = nil
+        }
 
         let request = AddMovieRequest(
             battleId: battleId,
-            kinopoiskId: selectedMovie != nil ? String(selectedMovie!.id) : nil,
+            kinopoiskId: kinopoiskId,
             title: title,
             description: description.isEmpty ? nil : description,
             posterUrl: posterUrl.isEmpty ? nil : posterUrl
@@ -1689,6 +1796,110 @@ private struct SelectedMovieSummary: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 if let desc = movie.shortDescription, !desc.isEmpty {
+                    Text(desc)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - My Movies Components
+
+fileprivate struct BattleMyMovieRow: View {
+    @ObserveInjection var inject
+    let item: MyMovieListItem
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let urlString = item.movie.posterPreviewUrl ?? item.movie.posterUrl,
+               let url = URL(string: urlString) {
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    SkeletonLoader()
+                }
+                .frame(width: 60, height: 90)
+                .cornerRadius(8)
+            } else {
+                ZStack {
+                    SkeletonLoader()
+                    Image(systemName: "film")
+                        .foregroundColor(.gray.opacity(0.5))
+                }
+                .frame(width: 60, height: 90)
+                .cornerRadius(8)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.movie.name ?? "Без названия")
+                    .font(.headline)
+                    .lineLimit(2)
+
+                if let year = item.movie.year {
+                    Text("\(year)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if let genre = item.movie.genres?.first?.name {
+                    Text(genre)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+}
+
+private struct SelectedMyMovieSummary: View {
+    @ObserveInjection var inject
+    let movie: MovieRecord
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let urlString = movie.posterPreviewUrl ?? movie.posterUrl,
+               let url = URL(string: urlString) {
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    SkeletonLoader()
+                }
+                .frame(width: 60, height: 90)
+                .cornerRadius(8)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(movie.name ?? "Без названия")
+                    .font(.headline)
+                if let year = movie.year {
+                    Text("\(year)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                if let desc = movie.shortDescription ?? movie.description, !desc.isEmpty {
                     Text(desc)
                         .font(.caption)
                         .foregroundColor(.secondary)

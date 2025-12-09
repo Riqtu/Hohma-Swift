@@ -12,54 +12,68 @@ struct SubscriptionManagementView: View {
     @ObserveInjection var inject
     @StateObject private var viewModel = SubscriptionViewModel()
     @State private var selectedTab = 0
+    let useNavigationStack: Bool
+
+    init(useNavigationStack: Bool = true) {
+        self.useNavigationStack = useNavigationStack
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-
-                // Переключатель вкладок
-                Picker("", selection: $selectedTab) {
-                    Text("Подписки").tag(0)
-                    Text("Подписчики").tag(1)
-                    Text("Поиск").tag(2)
+        Group {
+            if useNavigationStack {
+                NavigationStack {
+                    subscriptionContent
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding(.horizontal)
-                .padding(.top, 16)
-
-                // Контент
-                TabView(selection: $selectedTab) {
-                    // Вкладка "Подписки"
-                    FollowingListView(viewModel: viewModel)
-                        .tag(0)
-
-                    // Вкладка "Подписчики"
-                    FollowersListView(viewModel: viewModel)
-                        .tag(1)
-
-                    // Вкладка "Поиск"
-                    UserSearchView(viewModel: viewModel)
-                        .tag(2)
-                }
-                .padding(.horizontal, 20)
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            } else {
+                subscriptionContent
             }
-            .onAppear {
-                Task {
-                    await viewModel.loadFollowing()
-                    await viewModel.loadFollowers()
-                }
-            }
-            .refreshable {
-                Task {
-                    await viewModel.refreshFollowing()
-                    await viewModel.refreshFollowers()
-                }
-            }
-            .appBackground()
         }
         .navigationTitle("Подписки")
         .navigationBarTitleDisplayMode(.large)
+    }
+    
+    private var subscriptionContent: some View {
+        VStack(spacing: 0) {
+            // Переключатель вкладок
+            Picker("", selection: $selectedTab) {
+                Text("Подписки").tag(0)
+                Text("Подписчики").tag(1)
+                Text("Поиск").tag(2)
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            .padding(.top, 16)
+
+            // Контент
+            TabView(selection: $selectedTab) {
+                // Вкладка "Подписки"
+                FollowingListView(viewModel: viewModel)
+                    .tag(0)
+
+                // Вкладка "Подписчики"
+                FollowersListView(viewModel: viewModel)
+                    .tag(1)
+
+                // Вкладка "Поиск"
+                UserSearchView(viewModel: viewModel)
+                    .tag(2)
+            }
+            .padding(.horizontal, 20)
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        }
+        .onAppear {
+            Task {
+                await viewModel.loadFollowing()
+                await viewModel.loadFollowers()
+            }
+        }
+        .refreshable {
+            Task {
+                await viewModel.refreshFollowing()
+                await viewModel.refreshFollowers()
+            }
+        }
+        .appBackground()
     }
 }
 
@@ -292,7 +306,7 @@ struct SearchUserProfileRow: View {
     @State private var isLoading = false
 
     var body: some View {
-        NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
+        NavigationLink(destination: OtherUserProfileView(userId: user.id, useNavigationStack: false)) {
             HStack(spacing: 12) {
                 // Аватар
                 CachedAsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in
@@ -397,7 +411,7 @@ struct UserProfileRow: View {
     let onFollowToggle: () -> Void
 
     var body: some View {
-        NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
+        NavigationLink(destination: OtherUserProfileView(userId: user.id, useNavigationStack: false)) {
             HStack(spacing: 12) {
                 // Аватар
                 CachedAsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in

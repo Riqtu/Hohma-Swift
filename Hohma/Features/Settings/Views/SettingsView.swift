@@ -3,11 +3,13 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
+    let authViewModel: AuthViewModel?
     @ObserveInjection var inject
     @State private var showingWebView = false
     @State private var webViewURL: URL?
     @State private var webViewTitle = ""
     @State private var showingCacheSettings = false
+    @State private var showingProfile = false
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String ?? "Версия 1.3.1"
@@ -49,6 +51,18 @@ struct SettingsView: View {
                             .padding(.horizontal)
 
                         VStack(spacing: 12) {
+                            // Кнопка "Мой профиль"
+                            if authViewModel != nil {
+                                SettingsRow(
+                                    icon: "person.circle",
+                                    title: "Мой профиль",
+                                    subtitle: "Просмотр и редактирование профиля",
+                                    action: {
+                                        showingProfile = true
+                                    }
+                                )
+                            }
+                            
                             // Настройка громкости звука скачек
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -200,6 +214,13 @@ struct SettingsView: View {
         .sheet(isPresented: $showingCacheSettings) {
             CacheSettingsView()
         }
+        .sheet(isPresented: $showingProfile) {
+            if let authViewModel = authViewModel {
+                NavigationStack {
+                    ProfileView(authViewModel: authViewModel, useNavigationStack: false, showCloseButton: true)
+                }
+            }
+        }
 
         .onChange(of: showingWebView) { _, newValue in
             if !newValue {
@@ -254,5 +275,5 @@ struct SettingsRow: View {
 }
 
 #Preview {
-    SettingsView(viewModel: SettingsViewModel())
+    SettingsView(viewModel: SettingsViewModel(), authViewModel: nil)
 }

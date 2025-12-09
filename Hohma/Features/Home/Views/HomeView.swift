@@ -7,10 +7,12 @@ enum NavigationDestination: Hashable {
     case race
     case stats
     case movieBattle
+    case profile
 }
 
 struct HomeView: View {
     let user: AuthResult?
+    let authViewModel: AuthViewModel?
     @ObserveInjection var inject
     @StateObject private var videoManager = VideoPlayerManager.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -54,17 +56,34 @@ struct HomeView: View {
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
-                            HomeHeader(onStatsTap: {
-                                if isIPhone {
-                                    navigationPath.append(NavigationDestination.stats)
-                                } else {
-                                    NotificationCenter.default.post(
-                                        name: .navigationRequested,
-                                        object: nil,
-                                        userInfo: ["destination": "stats"]
-                                    )
+                            HomeHeader(
+                                user: user?.user,
+                                onStatsTap: {
+                                    if isIPhone {
+                                        navigationPath.append(NavigationDestination.stats)
+                                    } else {
+                                        NotificationCenter.default.post(
+                                            name: .navigationRequested,
+                                            object: nil,
+                                            userInfo: ["destination": "stats"]
+                                        )
+                                    }
+                                },
+                                onProfileTap: {
+                                    print("🏠 HomeView: Кнопка профиля нажата")
+                                    if isIPhone {
+                                        print("🏠 HomeView: iPhone - добавляем profile в navigationPath")
+                                        navigationPath.append(NavigationDestination.profile)
+                                    } else {
+                                        print("🏠 HomeView: iPad - отправляем уведомление о навигации к profile")
+                                        NotificationCenter.default.post(
+                                            name: .navigationRequested,
+                                            object: nil,
+                                            userInfo: ["destination": "profile"]
+                                        )
+                                    }
                                 }
-                            })
+                            )
 
                             let columns = [
                                 GridItem(.adaptive(minimum: 340), spacing: 20)
@@ -259,6 +278,8 @@ struct HomeView: View {
                             navigationPath.append(NavigationDestination.stats)
                         } else if destination == "movieBattle" {
                             navigationPath.append(NavigationDestination.movieBattle)
+                        } else if destination == "profile" {
+                            navigationPath.append(NavigationDestination.profile)
                         }
                     }
                 }
@@ -277,6 +298,16 @@ struct HomeView: View {
                 case .movieBattle:
                     MovieBattleListView()
                         .withAppBackground()
+                case .profile:
+                    if let authViewModel = authViewModel {
+                        ProfileView(authViewModel: authViewModel, useNavigationStack: false)
+                            .withAppBackground()
+                    } else {
+                        // Fallback: создаем новый AuthViewModel если не передан
+                        let fallbackAuthViewModel = AuthViewModel()
+                        ProfileView(authViewModel: fallbackAuthViewModel, useNavigationStack: false)
+                            .withAppBackground()
+                    }
                 }
             }
             .enableInjection()
@@ -293,5 +324,5 @@ struct HomeView: View {
 }
 
 #Preview {
-    HomeView(user: nil)
+    HomeView(user: nil, authViewModel: nil)
 }

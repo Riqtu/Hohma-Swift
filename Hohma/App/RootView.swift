@@ -27,7 +27,7 @@ struct RootView: View {
                                         print("🔄 RootView: Navigating to wheel list")
                                     }
                             case "profile":
-                                ProfileView(authViewModel: authViewModel)
+                                ProfileView(authViewModel: authViewModel, useNavigationStack: false)
                                     .onAppear {
                                         print("🔄 RootView: Navigating to profile")
                                     }
@@ -42,7 +42,7 @@ struct RootView: View {
                                         print("🔄 RootView: Navigating to chat")
                                     }
                             case "settings":
-                                SettingsView(viewModel: settingsViewModel)
+                                SettingsView(viewModel: settingsViewModel, authViewModel: authViewModel)
                                     .onAppear {
                                         print("🔄 RootView: Navigating to settings")
                                     }
@@ -57,7 +57,7 @@ struct RootView: View {
                                         print("🔄 RootView: Navigating to movie battle")
                                     }
                             default:
-                                HomeView(user: authViewModel.user)
+                                HomeView(user: authViewModel.user, authViewModel: authViewModel)
                                     .onAppear {
                                         print("🔄 RootView: Navigating to home")
                                     }
@@ -68,7 +68,7 @@ struct RootView: View {
                 } else {
                     TabView(selection: $selection) {
 
-                        HomeView(user: authViewModel.user).withAppBackground()
+                        HomeView(user: authViewModel.user, authViewModel: authViewModel).withAppBackground()
                             .tabItem {
                                 Label("Главная", systemImage: "house")
                             }
@@ -92,13 +92,7 @@ struct RootView: View {
                         .badge(chatListViewModel.totalUnreadCount)
                         .tag("chat")
 
-                        ProfileView(authViewModel: authViewModel)
-                            .tabItem {
-                                Label("Профиль", systemImage: "person")
-                            }
-                            .tag("profile")
-
-                        SettingsView(viewModel: settingsViewModel)
+                        SettingsView(viewModel: settingsViewModel, authViewModel: authViewModel)
                             .tabItem {
                                 Label("Настройки", systemImage: "gearshape")
                             }

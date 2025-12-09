@@ -15,38 +15,23 @@ struct OtherUserProfileView: View {
     @Environment(\.dismiss) private var dismiss
 
     let userId: String
+    let useNavigationStack: Bool
 
-    init(userId: String) {
+    init(userId: String, useNavigationStack: Bool = true) {
         self.userId = userId
+        self.useNavigationStack = useNavigationStack
         self._viewModel = StateObject(wrappedValue: OtherUserProfileViewModel(userId: userId))
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Заголовок с аватаром и информацией
-                    headerSection
-
-                    // Статистика пользователя
-                    if let user = viewModel.user {
-                        userInfoSection(user: user)
-                    }
-
-                    // Кнопка подписки/отписки
-                    subscriptionButtonSection
-
-                    // Список колес пользователя (если есть)
-                    if !viewModel.userWheels.isEmpty {
-                        userWheelsSection
-                    }
-
-                    Spacer()
+        Group {
+            if useNavigationStack {
+                NavigationStack {
+                    profileContent
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+            } else {
+                profileContent
             }
-            .appBackground()
         }
         .navigationTitle("Профиль")
         .navigationBarTitleDisplayMode(.large)
@@ -54,16 +39,43 @@ struct OtherUserProfileView: View {
             await viewModel.loadUserProfile()
             await subscriptionViewModel.checkFollowingStatus(userId: userId)
         }
+        .overlay(
+            notificationOverlay
+        )
+        .enableInjection()
+    }
+    
+    private var profileContent: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Заголовок с аватаром и информацией
+                headerSection
+
+                // Статистика пользователя
+                if let user = viewModel.user {
+                    userInfoSection(user: user)
+                }
+
+                // Кнопка подписки/отписки
+                subscriptionButtonSection
+
+                // Список колес пользователя (если есть)
+                if !viewModel.userWheels.isEmpty {
+                    userWheelsSection
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .appBackground()
         .onAppear {
             Task {
                 await viewModel.loadUserProfile()
                 await subscriptionViewModel.checkFollowingStatus(userId: userId)
             }
         }
-        .overlay(
-            notificationOverlay
-        )
-        .enableInjection()
     }
 
     // MARK: - Notification Overlay

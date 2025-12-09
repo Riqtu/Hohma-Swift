@@ -10,17 +10,28 @@ import Inject
 import SwiftUI
 import UIKit
 
+fileprivate enum MovieSelectionMode: String, CaseIterable {
+    case search = "Поиск"
+    case myMovies = "Мои фильмы"
+    case manual = "Ручной ввод"
+}
+
 struct AddSectorFormView: View {
     @ObserveInjection var inject
     @Environment(\.dismiss) private var dismiss
     @StateObject private var kinopoiskService = KinopoiskService()
+    @StateObject private var myMoviesService = MyMoviesService.shared
 
     @State private var movieTitle = ""
 
     @State private var searchResults: [KinopoiskMovie] = []
+    @State private var myMovies: [MyMovieListItem] = []
     @State private var isLoading = false
+    @State private var isLoadingMyMovies = false
     @State private var selectedMovie: KinopoiskMovie?
+    @State private var selectedMyMovie: MovieRecord?
     @State private var showingSearchResults = false
+    @State private var selectionMode: MovieSelectionMode = .search
     @State private var errorMessage: String?
 
     // Добавляем дебаунсинг для поиска
@@ -44,6 +55,24 @@ struct AddSectorFormView: View {
                 Text("Добавить фильм")
                     .font(.title2)
                     .fontWeight(.bold)
+                
+                // Переключатель режима
+                Picker("Режим", selection: $selectionMode) {
+                    ForEach(MovieSelectionMode.allCases.filter { $0 != .manual }, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: selectionMode) { _, newMode in
+                    if newMode == .myMovies {
+                        loadMyMovies()
+                    } else {
+                        cancelSearch()
+                        showingSearchResults = false
+                        selectedMovie = nil
+                        selectedMyMovie = nil
+                    }
+                }
 
                 // Поле поиска фильма
                 VStack(alignment: .leading, spacing: 8) {
@@ -71,75 +100,128 @@ struct AddSectorFormView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
 
-                    Text("Введите название фильма для поиска или просто название для добавления")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    if selectionMode == .search {
+                        Text("Введите название фильма для поиска или просто название для добавления")
+                            .font(.caption)
+                            .foregroundColor(.gray)
 
-                    TextField("Например: Титаник или любой фильм", text: $movieTitle)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .padding()
-                        .background(.thickMaterial)
-                        .cornerRadius(12)
-                        .keyboardType(.default)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.words)
-                        .focused($isTextFieldFocused)
-                        .submitLabel(.done)
-                        .onReceive(
-                            NotificationCenter.default.publisher(
-                                for: UIResponder.keyboardDidShowNotification)
-                        ) { _ in
-                            // Клавиатура показалась - убеждаемся, что TextField в фокусе
-                            if !isTextFieldFocused {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTextFieldFocused = true
+                        TextField("Например: Титаник или любой фильм", text: $movieTitle)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding()
+                            .background(.thickMaterial)
+                            .cornerRadius(12)
+                            .keyboardType(.default)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.words)
+                            .focused($isTextFieldFocused)
+                            .submitLabel(.done)
+                            .onReceive(
+                                NotificationCenter.default.publisher(
+                                    for: UIResponder.keyboardDidShowNotification)
+                            ) { _ in
+                                // Клавиатура показалась - убеждаемся, что TextField в фокусе
+                                if !isTextFieldFocused {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        isTextFieldFocused = true
+                                    }
                                 }
                             }
-                        }
-                        .onChange(of: movieTitle) { _, newValue in
-                            debouncedSearch(query: newValue)
-                        }
+                            .onChange(of: movieTitle) { _, newValue in
+                                debouncedSearch(query: newValue)
+                            }
 
-                    if isLoading {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("Поиск фильмов...")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                        if isLoading {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Поиск фильмов...")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    } else if selectionMode == .myMovies {
+                        if isLoadingMyMovies {
+                            ProgressView("Загрузка...")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else if myMovies.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "film")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.secondary)
+                                Text("Нет сохраненных фильмов")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                Text("Добавьте фильмы в раздел 'Мои фильмы'")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
                         }
                     }
                 }
 
                 // Результаты поиска
-                if showingSearchResults && !searchResults.isEmpty {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(searchResults, id: \.id) { movie in
-                                MovieSearchResultRow(
-                                    movie: movie,
-                                    accentColor: accentColor,
-                                    onSelect: { selectedMovie in
-                                        self.selectedMovie = selectedMovie
-                                        self.movieTitle = selectedMovie.name
-                                        self.showingSearchResults = false
-                                        // Отменяем поиск при выборе фильма
-                                        cancelSearch()
-                                    }
-                                )
+                if selectionMode == .search {
+                    if showingSearchResults && !searchResults.isEmpty {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(searchResults, id: \.id) { movie in
+                                    MovieSearchResultRow(
+                                        movie: movie,
+                                        accentColor: accentColor,
+                                        onSelect: { selectedMovie in
+                                            self.selectedMovie = selectedMovie
+                                            self.selectedMyMovie = nil
+                                            self.movieTitle = selectedMovie.name
+                                            self.showingSearchResults = false
+                                            // Отменяем поиск при выборе фильма
+                                            cancelSearch()
+                                        }
+                                    )
+                                }
                             }
                         }
+                        .frame(maxHeight: 300)
                     }
-                    .frame(maxHeight: 300)
-                }
 
-                // Выбранный фильм
-                if let selectedMovie = selectedMovie {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Выбранный фильм")
-                            .font(.headline)
+                    // Выбранный фильм
+                    if let selectedMovie = selectedMovie {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Выбранный фильм")
+                                .font(.headline)
 
-                        SelectedMovieCard(movie: selectedMovie, accentColor: accentColor)
+                            SelectedMovieCard(movie: selectedMovie, accentColor: accentColor)
+                        }
+                    }
+                } else if selectionMode == .myMovies {
+                    if !myMovies.isEmpty {
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(myMovies) { item in
+                                    WheelMyMovieRow(
+                                        item: item,
+                                        accentColor: accentColor,
+                                        isSelected: selectedMyMovie?.id == item.movie.id,
+                                        onSelect: {
+                                            selectMyMovie(item.movie)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 300)
+                    }
+                    
+                    // Выбранный фильм
+                    if let selectedMyMovie = selectedMyMovie {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Выбранный фильм")
+                                .font(.headline)
+
+                            SelectedMyMovieCard(movie: selectedMyMovie, accentColor: accentColor)
+                        }
                     }
                 }
 
@@ -311,10 +393,61 @@ struct AddSectorFormView: View {
         }
     }
 
+    private func loadMyMovies() {
+        guard !isLoadingMyMovies else { return }
+        isLoadingMyMovies = true
+        
+        Task {
+            do {
+                let response = try await myMoviesService.myMovies(page: 1, limit: 50)
+                await MainActor.run {
+                    myMovies = response.items
+                    isLoadingMyMovies = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Ошибка загрузки фильмов: \(error.localizedDescription)"
+                    isLoadingMyMovies = false
+                }
+            }
+        }
+    }
+    
+    private func selectMyMovie(_ movie: MovieRecord) {
+        selectedMyMovie = movie
+        selectedMovie = nil
+        movieTitle = movie.name ?? ""
+    }
+    
     private func addSector() {
         guard let currentUser = currentUser else { return }
 
-        let trimmedTitle = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTitle: String
+        let description: String?
+        let posterUrl: String?
+        let genre: String?
+        let year: String?
+        
+        if let myMovie = selectedMyMovie {
+            trimmedTitle = myMovie.name ?? ""
+            description = myMovie.description ?? myMovie.shortDescription
+            posterUrl = myMovie.posterUrl ?? myMovie.posterPreviewUrl
+            genre = myMovie.genres?.first?.name
+            year = myMovie.year.map { String($0) }
+        } else if let searchMovie = selectedMovie {
+            trimmedTitle = searchMovie.name
+            description = searchMovie.description
+            posterUrl = searchMovie.poster?.bestUrl
+            genre = searchMovie.genres?.first?.name
+            year = String(searchMovie.year)
+        } else {
+            trimmedTitle = movieTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            description = nil
+            posterUrl = nil
+            genre = nil
+            year = nil
+        }
+        
         guard !trimmedTitle.isEmpty else { return }
 
         // Создаем случайный цвет для сектора
@@ -327,18 +460,18 @@ struct AddSectorFormView: View {
         // Создаем сектор
         let sector = Sector(
             id: UUID().uuidString,  // Временный ID, будет заменен сервером
-            label: selectedMovie?.name ?? trimmedTitle,
+            label: trimmedTitle,
             color: randomColor,
             name: currentUser.firstName ?? currentUser.username ?? "Unknown",
             eliminated: false,
             winner: false,
-            description: selectedMovie?.description,
-            pattern: selectedMovie?.poster?.bestUrl,  // Добавляем постер в pattern
+            description: description,
+            pattern: posterUrl,  // Добавляем постер в pattern
             patternPosition: PatternPositionJSON(x: 0, y: 0, z: 0),
-            poster: selectedMovie?.poster?.bestUrl,
-            genre: selectedMovie?.genres?.first?.name,
+            poster: posterUrl,
+            genre: genre,
             rating: nil,
-            year: selectedMovie != nil ? String(selectedMovie!.year) : nil,
+            year: year,
             labelColor: nil,
             labelHidden: false,
             wheelId: wheelId,
@@ -482,6 +615,153 @@ struct SelectedMovieCard: View {
                 }
 
                 if let description = movie.description {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(3)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(accentColorUI, lineWidth: 2)
+        )
+    }
+}
+
+// MARK: - My Movies Components
+
+struct WheelMyMovieRow: View {
+    @ObserveInjection var inject
+    let item: MyMovieListItem
+    let accentColor: String
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    private var accentColorUI: Color {
+        Color(hex: accentColor)
+    }
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                if let urlString = item.movie.posterPreviewUrl ?? item.movie.posterUrl,
+                   let url = URL(string: urlString) {
+                    CachedAsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Rectangle().fill(Color.gray.opacity(0.3))
+                    }
+                    .frame(width: 60, height: 90)
+                    .cornerRadius(8)
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 60, height: 90)
+                        .cornerRadius(8)
+                        .overlay(
+                            Image(systemName: "film")
+                                .foregroundColor(.gray)
+                        )
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.movie.name ?? "Без названия")
+                        .font(.headline)
+                        .lineLimit(2)
+                        .foregroundColor(.primary)
+
+                    if let year = item.movie.year {
+                        Text("\(year)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let genre = item.movie.genres?.first?.name {
+                        Text(genre)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                }
+            }
+            .padding(12)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct SelectedMyMovieCard: View {
+    let movie: MovieRecord
+    let accentColor: String
+
+    private var accentColorUI: Color {
+        Color(hex: accentColor)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Постер фильма
+            if let posterUrl = movie.posterUrl ?? movie.posterPreviewUrl,
+                let url = URL(string: posterUrl)
+            {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                }
+                .frame(width: 80, height: 120)
+                .cornerRadius(12)
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 80, height: 120)
+                    .cornerRadius(12)
+                    .overlay(
+                        Image(systemName: "film")
+                            .foregroundColor(.gray)
+                            .font(.title2)
+                    )
+            }
+
+            // Информация о фильме
+            VStack(alignment: .leading, spacing: 8) {
+                Text(movie.name ?? "Без названия")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                if let year = movie.year {
+                    Text("\(year)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                if let genre = movie.genres?.first?.name {
+                    Text(genre)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if let description = movie.shortDescription ?? movie.description {
                     Text(description)
                         .font(.caption)
                         .foregroundColor(.gray)

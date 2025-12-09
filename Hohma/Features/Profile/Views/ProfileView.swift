@@ -6,40 +6,37 @@ struct ProfileView: View {
     @StateObject private var viewModel: ProfileViewModel
     @StateObject private var subscriptionViewModel = SubscriptionViewModel()
     @State private var showEditProfile = false
+    @Environment(\.dismiss) private var dismiss
+    let useNavigationStack: Bool
+    let showCloseButton: Bool
 
-    init(authViewModel: AuthViewModel) {
+    init(authViewModel: AuthViewModel, useNavigationStack: Bool = true, showCloseButton: Bool = false) {
         self._viewModel = StateObject(wrappedValue: ProfileViewModel(authViewModel: authViewModel))
+        self.useNavigationStack = useNavigationStack
+        self.showCloseButton = showCloseButton
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Заголовок
-                    headerSection
-
-                    // Информация о пользователе
-                    if let user = viewModel.user {
-                        userInfoSection(user: user)
-                    }
-                    // Подписки
-                    subscriptionsSection
-
-                    // Кнопка редактирования
-                    editButtonSection
-
-                    Spacer()
-                    // Кнопки действий
-                    actionButtonsSection
+        Group {
+            if useNavigationStack {
+                NavigationStack {
+                    profileContent
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+            } else {
+                profileContent
             }
-            .appBackground()
-
         }
         .navigationTitle("Профиль")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if showCloseButton {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Закрыть") {
+                        dismiss()
+                    }
+                }
+            }
+        }
         .refreshable {
             Task {
                 await refreshData()
@@ -60,6 +57,32 @@ struct ProfileView: View {
             notificationOverlay
         )
         .enableInjection()
+    }
+    
+    private var profileContent: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Заголовок
+                headerSection
+
+                // Информация о пользователе
+                if let user = viewModel.user {
+                    userInfoSection(user: user)
+                }
+                // Подписки
+                subscriptionsSection
+
+                // Кнопка редактирования
+                editButtonSection
+
+                Spacer()
+                // Кнопки действий
+                actionButtonsSection
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .appBackground()
     }
 
     // MARK: - Notification Overlay
@@ -226,7 +249,7 @@ struct ProfileView: View {
                 )
             }
 
-            NavigationLink(destination: SubscriptionManagementView()) {
+            NavigationLink(destination: SubscriptionManagementView(useNavigationStack: false)) {
                 HStack {
                     Image(systemName: "person.2.fill")
                         .foregroundColor(.accentColor)
