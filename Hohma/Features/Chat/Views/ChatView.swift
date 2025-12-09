@@ -208,7 +208,14 @@ private struct ChatMessagesScrollView: View {
                                 .frame(maxWidth: .infinity)
                         }
 
-                        ForEach(messages) { message in
+                        ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                            let previous = index > 0 ? messages[index - 1] : nil
+                            let next = index + 1 < messages.count ? messages[index + 1] : nil
+                            let isGroupedWithPrev = isGrouped(message, previous)
+                            let isGroupedWithNext = isGrouped(message, next)
+                            let showAvatar = !isGroupedWithNext // аватар только на последнем сообщении группы
+                            let showName = !isGroupedWithPrev // имя только на первом сообщении группы
+
                             MessageBubbleView(
                                 message: message,
                                 isCurrentUser: message.senderId == currentUserId,
@@ -233,9 +240,14 @@ private struct ChatMessagesScrollView: View {
                                     } else {
                                         return nil
                                     }
-                                }
+                                },
+                                showAvatar: showAvatar,
+                                showSenderName: showName,
+                                isGroupedWithPrev: isGroupedWithPrev,
+                                isGroupedWithNext: isGroupedWithNext
                             )
                             .id(message.id)
+                            .padding(.top, isGroupedWithPrev ? 2 : 10)
                             .onAppear {
                                 // Принудительная загрузка медиа при появлении в viewport
                                 // Это помогает загружать изображения при скролле
@@ -392,6 +404,35 @@ private struct ChatMessagesScrollView: View {
         if shouldStickToBottom || isOwnMessage {
             scrollToBottom(proxy: proxy, animated: didPerformInitialScroll)
         }
+    }
+
+    private func isGrouped(_ current: ChatMessage, _ other: ChatMessage?) -> Bool {
+        guard let other else { return false }
+        guard current.senderId == other.senderId else { return false }
+        guard let currentDate = parseISODate(current.createdAt),
+              let otherDate = parseISODate(other.createdAt)
+        else { return false }
+        return abs(currentDate.timeIntervalSince(otherDate)) <= 120 // 2 минуты
+    }
+
+    private func parseISODate(_ string: String) -> Date? {
+        if let cached = isoFormatter.date(from: string) {
+            return cached
+        }
+        // Fallback без миллисекунд
+        return isoFormatterNoFraction.date(from: string)
+    }
+
+    private var isoFormatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }
+
+    private var isoFormatterNoFraction: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
     }
 }
 

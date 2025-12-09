@@ -18,6 +18,10 @@ struct MessageBubbleView: View {
     let onReply: () -> Void  // Callback для свайпа вправо
     let onReaction: (String) -> Void  // Callback для добавления/удаления реакции
     let contextMenuBuilder: () -> AnyView?
+    let showAvatar: Bool
+    let showSenderName: Bool
+    let isGroupedWithPrev: Bool
+    let isGroupedWithNext: Bool
 
     @State private var dragOffset: CGSize = .zero
     @State private var isDragging: Bool = false
@@ -62,44 +66,49 @@ struct MessageBubbleView: View {
     private var regularMessageView: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if !isCurrentUser {
-                // Avatar for other users (слева)
-                AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
+                if showAvatar {
+                    // Avatar for other users (слева)
+                    AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
+                        switch phase {
+                        case .empty:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        @unknown default:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
                     }
-                }
-                .frame(width: 30, height: 30)
-                .clipShape(Circle())
-                .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
-                .onAppear {
-                    // Принудительная загрузка при появлении в viewport
-                    if let avatarUrl = message.sender?.avatarUrl, !avatarUrl.isEmpty {
-                        // Предзагрузка в кэш для улучшения производительности
-                        Task {
-                            if let url = URL(string: avatarUrl) {
-                                let request = URLRequest(
-                                    url: url, cachePolicy: .returnCacheDataElseLoad)
-                                _ = try? await URLSession.shared.data(for: request)
+                    .frame(width: 30, height: 30)
+                    .clipShape(Circle())
+                    .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
+                    .onAppear {
+                        // Принудительная загрузка при появлении в viewport
+                        if let avatarUrl = message.sender?.avatarUrl, !avatarUrl.isEmpty {
+                            // Предзагрузка в кэш для улучшения производительности
+                            Task {
+                                if let url = URL(string: avatarUrl) {
+                                    let request = URLRequest(
+                                        url: url, cachePolicy: .returnCacheDataElseLoad)
+                                    _ = try? await URLSession.shared.data(for: request)
+                                }
                             }
                         }
                     }
+                } else {
+                    // Резервируем место под аватарку, чтобы выравнивание не прыгало
+                    Spacer().frame(width: 30, height: 30)
                 }
             }
 
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 4) {
-                if !isCurrentUser {
+                if !isCurrentUser, showSenderName {
                     Text(message.sender?.displayName ?? "Пользователь")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -288,39 +297,43 @@ struct MessageBubbleView: View {
                     : (isCurrentUser ? .trailing : .leading))
 
             if isCurrentUser {
-                // Avatar for current user (справа)
-                AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.secondary)
+                if showAvatar {
+                    // Avatar for current user (справа)
+                    AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
+                        switch phase {
+                        case .empty:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        @unknown default:
+                            Image(systemName: "person.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
                     }
-                }
-                .frame(width: 30, height: 30)
-                .clipShape(Circle())
-                .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
-                .onAppear {
-                    // Принудительная загрузка при появлении в viewport
-                    if let avatarUrl = message.sender?.avatarUrl, !avatarUrl.isEmpty {
-                        // Предзагрузка в кэш для улучшения производительности
-                        Task {
-                            if let url = URL(string: avatarUrl) {
-                                let request = URLRequest(
-                                    url: url, cachePolicy: .returnCacheDataElseLoad)
-                                _ = try? await URLSession.shared.data(for: request)
+                    .frame(width: 30, height: 30)
+                    .clipShape(Circle())
+                    .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
+                    .onAppear {
+                        // Принудительная загрузка при появлении в viewport
+                        if let avatarUrl = message.sender?.avatarUrl, !avatarUrl.isEmpty {
+                            // Предзагрузка в кэш для улучшения производительности
+                            Task {
+                                if let url = URL(string: avatarUrl) {
+                                    let request = URLRequest(
+                                        url: url, cachePolicy: .returnCacheDataElseLoad)
+                                    _ = try? await URLSession.shared.data(for: request)
+                                }
                             }
                         }
                     }
+                } else {
+                    Spacer().frame(width: 30, height: 30)
                 }
             }
         }
@@ -952,7 +965,11 @@ private struct ContextMenuWrapper: ViewModifier {
                 replyingToMessage: nil,
                 onReply: {},
                 onReaction: { _ in },
-                contextMenuBuilder: { nil }
+                contextMenuBuilder: { nil },
+                showAvatar: true,
+                showSenderName: true,
+                isGroupedWithPrev: false,
+                isGroupedWithNext: false
             )
         }
 
@@ -970,7 +987,11 @@ private struct ContextMenuWrapper: ViewModifier {
                             Label("Удалить", systemImage: "trash")
                         }
                     )
-                }
+                },
+                showAvatar: true,
+                showSenderName: true,
+                isGroupedWithPrev: false,
+                isGroupedWithNext: false
             )
         }
     }
