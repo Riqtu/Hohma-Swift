@@ -15,6 +15,7 @@ struct CardView: View {
     @State private var isPressed: Bool = false
     @State private var isHovered: Bool = false
     @State private var isVideoVisible: Bool = true
+    @Environment(\.scenePhase) private var scenePhase
 
     let title: String
     let description: String
@@ -77,17 +78,25 @@ struct CardView: View {
         .onAppear {
             isVideoVisible = true
             setupVideoIfNeeded()
-            // Принудительно запускаем видео если оно готово
-            if let player = player ?? videoPlayer {
-                if player.currentItem?.status == .readyToPlay {
-                    if player.timeControlStatus != .playing {
-                        player.play()
-                    }
-                }
-            }
+            resumeVideoPlayback()
         }
-        .onDisappear {
-            isVideoVisible = false
+        // НЕ паузим при onDisappear - карточки должны играть пока видны
+        // Управление через scenePhase для lifecycle приложения
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                // При возврате в приложение возобновляем видео
+                isVideoVisible = true
+                // Используем async для гарантии что выполнится на следующем run loop
+                DispatchQueue.main.async {
+                    resumeVideoPlayback()
+                }
+            case .inactive, .background:
+                // При уходе в фон останавливаем видео
+                pauseVideoPlayback()
+            @unknown default:
+                break
+            }
         }
         .enableInjection()
     }
@@ -101,6 +110,35 @@ struct CardView: View {
         // Если есть имя видео, загружаем его
         if let videoName = videoName, !videoName.isEmpty {
             videoPlayer = videoManager.player(resourceName: videoName)
+        }
+    }
+
+    private func resumeVideoPlayback() {
+        guard let player = player ?? videoPlayer else { return }
+        
+        // Проверяем состояние плеера перед запуском
+        let status = player.currentItem?.status ?? .unknown
+        let timeControlStatus = player.timeControlStatus
+        
+        // Запускаем только если не играет и не ждет
+        if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+            if status == .readyToPlay {
+                // Готово - запускаем сразу
+                player.play()
+            } else {
+                // Еще не готово - вызываем play(), чтобы запустилось когда будет готово
+                // AVPlayer автоматически начнет воспроизведение при готовности
+                player.play()
+            }
+        }
+    }
+    
+    private func pauseVideoPlayback() {
+        guard let player = player ?? videoPlayer else { return }
+        
+        // Паузим только если действительно играет
+        if player.timeControlStatus == .playing {
+            player.pause()
         }
     }
 }

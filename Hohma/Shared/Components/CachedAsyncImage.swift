@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import Inject
 
 // Используем отдельное имя для системного AsyncImage, чтобы избежать рекурсии
 private typealias SystemAsyncImage = SwiftUI.AsyncImage
 
 /// AsyncImage с кешированием через ImageCacheService
 struct CachedAsyncImage<Content: View, Placeholder: View>: View {
+    @ObserveInjection var inject
     let url: URL?
     let content: (Image) -> Content
     let placeholder: () -> Placeholder
@@ -73,6 +75,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                 }
             }
         }
+        .enableInjection()
     }
     
     private func loadImage() {

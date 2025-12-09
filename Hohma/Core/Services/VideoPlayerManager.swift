@@ -48,7 +48,9 @@ final class VideoPlayerManager: ObservableObject {
                             self.isReady = true
                             self.isLoading = false
                             // Автоматически запускаем воспроизведение когда готово
-                            if self.player.timeControlStatus != .playing {
+                            // Проверяем что не играет и не ждет, чтобы избежать конфликтов
+                            let timeControlStatus = self.player.timeControlStatus
+                            if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
                                 self.player.play()
                             }
                         case .failed:
@@ -277,11 +279,14 @@ final class VideoPlayerManager: ObservableObject {
     func resumeAllPlayers() {
         for (_, cachedPlayer) in cache {
             let player = cachedPlayer.player
-            // Запускаем видео если оно готово и не играет
-            if player.currentItem?.status == .readyToPlay {
-                if player.timeControlStatus != .playing {
-                    player.play()
-                }
+            let timeControlStatus = player.timeControlStatus
+            
+            // Запускаем только если не играет и не ждет
+            // Это предотвращает конфликты и множественные вызовы play()
+            if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                // Вызываем play() независимо от статуса - AVPlayer сам решит когда начать
+                // Если readyToPlay - начнется сразу, если еще загружается - начнется когда будет готово
+                player.play()
             }
         }
     }

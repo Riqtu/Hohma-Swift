@@ -65,16 +65,19 @@ class VideoPlayerView: UIView {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if item.status == .readyToPlay && self.isVisible {
-                    if player.timeControlStatus != .playing {
+                    let timeControlStatus = player.timeControlStatus
+                    // Запускаем только если не играет и не ждет
+                    if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
                         player.play()
                     }
                 }
             }
         }
 
-        // Если уже готов, запускаем сразу
-        if player.currentItem?.status == .readyToPlay && isVisible {
-            if player.timeControlStatus != .playing {
+        // Если уже готов и видим, запускаем сразу
+        if let item = player.currentItem, item.status == .readyToPlay && isVisible {
+            let timeControlStatus = player.timeControlStatus
+            if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
                 player.play()
             }
         }
@@ -90,14 +93,26 @@ class VideoPlayerView: UIView {
         guard let player = playerLayer.player else { return }
 
         if visible {
-            // Запускаем видео если оно готово
-            if player.currentItem?.status == .readyToPlay {
-                if player.timeControlStatus != .playing {
+            // Запускаем видео если оно готово и не играет
+            let status = player.currentItem?.status ?? .unknown
+            let timeControlStatus = player.timeControlStatus
+            
+            if status == .readyToPlay {
+                // Готово - запускаем только если не играет и не ждет
+                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                    player.play()
+                }
+            } else if status == .unknown {
+                // Еще загружается - вызываем play() чтобы запустилось когда будет готово
+                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
                     player.play()
                 }
             }
         } else {
-            player.pause()
+            // Паузим только если действительно играет
+            if player.timeControlStatus == .playing {
+                player.pause()
+            }
         }
     }
 }
@@ -138,8 +153,12 @@ struct VideoBackgroundView: UIViewRepresentable {
 
         // Если view видим и видео готово, но не играет - запускаем
         if isVisible {
-            if let playerItem = player.currentItem, playerItem.status == .readyToPlay {
-                if player.timeControlStatus != .playing {
+            let status = player.currentItem?.status ?? .unknown
+            let timeControlStatus = player.timeControlStatus
+            
+            if status == .readyToPlay {
+                // Готово - запускаем только если не играет и не ждет
+                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
                     player.play()
                 }
             }

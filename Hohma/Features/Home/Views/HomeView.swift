@@ -224,6 +224,20 @@ struct HomeView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
+                    // При возврате в приложение явно перезапускаем все видео,
+                    // включая фон, чтобы избежать состояния «пауз после бэкграунда»
+                    if backgroundPlayer == nil {
+                        setupBackgroundPlayer()
+                    }
+                    if let player = backgroundPlayer {
+                        if player.currentItem?.status == .readyToPlay {
+                            player.play()
+                        } else {
+                            // Запускаем, даже если item ещё загружается: плеер сам включится,
+                            // когда станет готов (см. VideoPlayerManager)
+                            player.play()
+                        }
+                    }
                     videoManager.resumeAllPlayers()
                 case .inactive, .background:
                     videoManager.pauseAllPlayers()
