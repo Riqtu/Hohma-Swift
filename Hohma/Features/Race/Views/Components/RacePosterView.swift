@@ -8,6 +8,7 @@ final class MoviePosterCacheService: ObservableObject {
     private var cache: [String: Image] = [:]
     private var loadingStates: [String: Bool] = [:]
     private let queue = DispatchQueue(label: "race.poster.cache", attributes: .concurrent)
+    @Published private(set) var version: Int = 0
 
     private init() {}
 
@@ -19,12 +20,20 @@ final class MoviePosterCacheService: ObservableObject {
         queue.async(flags: .barrier) {
             self.cache[url] = image
             self.loadingStates[url] = false
+            DispatchQueue.main.async {
+                self.version &+= 1
+            }
         }
     }
 
     func setLoading(_ isLoading: Bool, for url: String) {
         queue.async(flags: .barrier) {
             self.loadingStates[url] = isLoading
+            if !isLoading {
+                DispatchQueue.main.async {
+                    self.version &+= 1
+                }
+            }
         }
     }
 
@@ -83,6 +92,9 @@ struct RacePosterView: View {
         }
         .onAppear {
             checkCache()
+        }
+        .onReceive(cacheService.$version) { _ in
+            refreshFromCache()
         }
         .enableInjection()
     }
@@ -173,6 +185,18 @@ struct RacePosterView: View {
             cachedImage = cached
         } else if !posterUrl.isEmpty {
             loadPoster()
+        }
+    }
+
+    private func refreshFromCache() {
+        if let cached = cacheService.cachedImage(for: posterUrl) {
+            cachedImage = cached
+            isLoading = false
+        } else {
+            // Если загрузка закончилась, но изображения нет, попробуем запустить загрузку
+            if !cacheService.isLoading(posterUrl) && !posterUrl.isEmpty {
+                loadPoster()
+            }
         }
     }
 }
