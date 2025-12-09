@@ -12,9 +12,13 @@ import UIKit
 class CacheManagerService: ObservableObject {
     static let shared = CacheManagerService()
     
+    /// Размеры именно кеша (URLCache, hohma_cache и временные файлы, которые считаем кешем)
     @Published var urlCacheSize: Int64 = 0
     @Published var diskCacheSize: Int64 = 0
     @Published var memoryCacheSize: Int64 = 0
+    
+    /// Размер пользовательских данных (Documents) — не считаем кэшем, считаем отдельно
+    @Published var documentsSize: Int64 = 0
     
     private let userDefaults = UserDefaults.standard
     private let maxURLCacheMemoryKey = "maxURLCacheMemory"
@@ -71,6 +75,13 @@ class CacheManagerService: ObservableObject {
         setupURLCache()
         // НЕ обновляем размеры кэша при изменении лимита - размер не меняется
     }
+
+    // Быстро сбрасываем метрики, чтобы UI сразу видел "пусто" после очистки
+    private func resetCacheMetrics() {
+        urlCacheSize = 0
+        diskCacheSize = 0
+        memoryCacheSize = 0
+    }
     
     // MARK: - Cache Size Calculation
     
@@ -81,7 +92,7 @@ class CacheManagerService: ObservableObject {
     }
     
     private func calculateCacheSizes() async {
-        // Размер дискового кэша (реальный размер занятого места)
+        // Размер дискового кэша (реальный размер занятого места) — считаем только кешевые директории
         diskCacheSize = await calculateDiskCacheSize()
         
         // Размер кэша в памяти (реальный размер, не лимит)
@@ -92,7 +103,10 @@ class CacheManagerService: ObservableObject {
         // Размер URL кэша = только реальный размер дискового кэша
         urlCacheSize = diskCacheSize
         
-        // Проверяем, не превышен ли лимит дискового кэша
+        // Размер пользовательских данных (Documents) считаем отдельно
+        documentsSize = await calculateDocumentsSize()
+        
+        // Проверяем, не превышен ли лимит дискового кэша (без учёта Documents)
         let diskLimit = Int64(getDiskLimit())
         if diskCacheSize > diskLimit {
             print("⚠️ CacheManager: Размер кэша (\(diskCacheSize / 1024 / 1024) MB) превышает лимит (\(diskLimit / 1024 / 1024) MB)")
@@ -133,16 +147,7 @@ class CacheManagerService: ObservableObject {
                 }
             }
             
-            // 4. Проверяем директорию Documents (может быть там медиа)
-            if let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let documentsSize = await self.calculateDirectorySize(at: documentsDir)
-                if documentsSize > 0 {
-                    print("📦 CacheManager: Размер Documents: \(documentsSize / 1024 / 1024) MB")
-                }
-                totalSize += documentsSize
-            }
-            
-            // 5. Проверяем временную директорию (может быть там временные файлы)
+        // 4. Проверяем временную директорию (может быть там временные файлы)
             // ВАЖНО: Временная директория может содержать системные файлы iOS
             // Мы считаем только файлы, которые могут быть связаны с нашим приложением
             let tempDir = fileManager.temporaryDirectory
@@ -152,8 +157,69 @@ class CacheManagerService: ObservableObject {
             }
             totalSize += tempSize
             
-            print("📦 CacheManager: Общий размер кэша: \(totalSize / 1024 / 1024) MB")
+            print("📦 CacheManager: Общий размер кэша (без Documents): \(totalSize / 1024 / 1024) MB")
             return totalSize
+        }.value
+    }
+
+    private func calculateDocumentsSize() async -> Int64 {
+        return await Task.detached(priority: .utility) {
+            let fileManager = FileManager.default
+            
+            guard let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                return Int64(0)
+            }
+            
+            let size = await self.calculateDirectorySize(at: documentsDir)
+            if size > 0 {
+                print("📦 CacheManager: Размер пользовательских данных (Documents): \(size / 1024 / 1024) MB")
+            }
+            return size
+        }.value
+    }
+
+    /// Удаляет старые записанные медиа (video_/voice_) из Documents, чтобы не копились
+    func clearLegacyRecordedMediaInDocuments() async {
+        await Task.detached(priority: .utility) {
+            let fileManager = FileManager.default
+            guard let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+            
+            var deletedCount = 0
+            var deletedSize: Int64 = 0
+            
+            if let contents = try? fileManager.contentsOfDirectory(
+                at: documentsDir,
+                includingPropertiesForKeys: [.fileSizeKey, .isDirectoryKey],
+                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+            ) {
+                for url in contents {
+                    var isDirectory: ObjCBool = false
+                    guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+                        continue
+                    }
+                    
+                    let name = url.lastPathComponent.lowercased()
+                    let isLegacyMedia = (name.hasPrefix("video_") && name.hasSuffix(".mp4"))
+                        || (name.hasPrefix("voice_") && name.hasSuffix(".m4a"))
+                    
+                    if isLegacyMedia {
+                        if let resourceValues = try? url.resourceValues(forKeys: [.fileSizeKey]),
+                           let fileSize = resourceValues.fileSize {
+                            deletedSize += Int64(fileSize)
+                        }
+                        do {
+                            try fileManager.removeItem(at: url)
+                            deletedCount += 1
+                        } catch {
+                            print("❌ CacheManager: Ошибка при удалении старого медиа \(name): \(error)")
+                        }
+                    }
+                }
+            }
+            
+            if deletedCount > 0 {
+                print("📦 CacheManager: Удалены старые медиа из Documents: \(deletedCount) файлов, освобождено \(deletedSize / 1024 / 1024) MB")
+            }
         }.value
     }
     
@@ -255,19 +321,20 @@ class CacheManagerService: ObservableObject {
     // MARK: - Cache Management
     
     func clearURLCache() {
-        // Очищаем URLCache через API
-        URLCache.shared.removeAllCachedResponses()
-        
-        // Также удаляем файлы кэша вручную для гарантии
         Task { @MainActor in
+            resetCacheMetrics()
+            // Очищаем URLCache через API
+            URLCache.shared.removeAllCachedResponses()
+            // Удаляем файловые директории кэша
             await deleteCacheFiles()
-            // Небольшая задержка перед обновлением размеров, чтобы файлы успели удалиться
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
+            // Восстанавливаем URLCache с текущими лимитами, чтобы избежать грязных путей
+            setupURLCache()
+            // Даем файловой системе применить изменения
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             // Обновляем размеры после очистки
             updateCacheSizes()
+            print("📦 CacheManager: URL кэш очищен и размеры обновлены")
         }
-        
-        print("📦 CacheManager: URL кэш очищен")
     }
     
     private func deleteCacheFiles() async {
@@ -325,22 +392,25 @@ class CacheManagerService: ObservableObject {
     }
     
     func clearAllCaches() {
-        // Очищаем все кэши
-        URLCache.shared.removeAllCachedResponses()
-        clearAvatarCache()
-        clearVideoThumbnailCache()
-        
-        // Также удаляем файлы кэша и временные файлы
         Task { @MainActor in
+            resetCacheMetrics()
+            // Очищаем все кэши
+            URLCache.shared.removeAllCachedResponses()
+            clearAvatarCache()
+            clearVideoThumbnailCache()
+            
+            // Удаляем файловые кэши и временные файлы
             await deleteCacheFiles()
             await clearTemporaryFiles()
+            await clearLegacyRecordedMediaInDocuments()
+            // Восстанавливаем URLCache с текущими лимитами
+            setupURLCache()
             // Небольшая задержка перед обновлением размеров
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             // Обновляем размеры после очистки
             updateCacheSizes()
+            print("📦 CacheManager: Все кэши очищены и размеры обновлены")
         }
-        
-        print("📦 CacheManager: Все кэши очищены")
     }
     
     func clearTemporaryFiles() async {

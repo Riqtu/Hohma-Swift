@@ -140,7 +140,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 if let avatarUrl = stats.user.avatarUrl, let url = URL(string: avatarUrl) {
-                    AsyncImage(url: url) { image in
+                    CachedAsyncImage(url: url) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -303,7 +303,7 @@ struct LeaderboardRowView: View {
 
             // Avatar
             if let avatarUrl = entry.user.avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { image in
+                CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

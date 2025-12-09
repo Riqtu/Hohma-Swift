@@ -207,10 +207,9 @@ class VideoRecorderService: NSObject, ObservableObject {
             }
         }
 
-        // Создаем временный файл для записи
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[
-            0]
-        let videoFilename = documentsPath.appendingPathComponent("video_\(UUID().uuidString).mp4")
+        // Создаем временный файл для записи в Caches (не в Documents, чтобы не копить пользовательские данные)
+        let cachesPath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let videoFilename = cachesPath.appendingPathComponent("video_\(UUID().uuidString).mp4")
         recordingURL = videoFilename
         recordingSegments = [videoFilename]  // Инициализируем список сегментов
         segmentStartTime = 0

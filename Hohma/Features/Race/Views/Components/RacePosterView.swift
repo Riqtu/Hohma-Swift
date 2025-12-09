@@ -101,28 +101,21 @@ struct RacePosterView: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 )
         } else {
-            AsyncImage(url: URL(string: posterUrl)) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .onAppear {
-                            cacheService.cache(image: image, for: posterUrl)
-                            cachedImage = image
-                        }
-                case .failure, .empty:
-                    Rectangle()
-                        .fill(Color.white.opacity(0.2))
-                        .overlay(
-                            Image(systemName: "film")
-                                .foregroundColor(.white)
-                                .font(.title2)
-                        )
-                @unknown default:
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                }
+            CachedAsyncImage(url: URL(string: posterUrl)) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .onAppear {
+                        cacheService.cache(image: image, for: posterUrl)
+                        cachedImage = image
+                    }
+            } placeholder: {
+                Rectangle()
+                    .fill(Color.white.opacity(0.2))
+                    .overlay(
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    )
             }
             .onAppear {
                 loadPoster()
@@ -145,23 +138,29 @@ struct RacePosterView: View {
         isLoading = true
         cacheService.setLoading(true, for: posterUrl)
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let url = URL(string: posterUrl),
-                let data = try? Data(contentsOf: url),
-                let uiImage = UIImage(data: data)
-            else {
-                DispatchQueue.main.async {
+        Task {
+            guard let url = URL(string: posterUrl) else {
+                await MainActor.run {
                     self.isLoading = false
                     self.cacheService.setLoading(false, for: self.posterUrl)
                 }
                 return
             }
-
-            let image = Image(uiImage: uiImage)
-            DispatchQueue.main.async {
-                self.cacheService.cache(image: image, for: self.posterUrl)
-                self.cachedImage = image
-                self.isLoading = false
+            
+            // Используем ImageCacheService для загрузки с кешированием
+            if let uiImage = try? await ImageCacheService.shared.loadImage(from: url) {
+                let image = Image(uiImage: uiImage)
+                await MainActor.run {
+                    self.cacheService.cache(image: image, for: self.posterUrl)
+                    self.cachedImage = image
+                    self.isLoading = false
+                    self.cacheService.setLoading(false, for: self.posterUrl)
+                }
+            } else {
+                await MainActor.run {
+                    self.isLoading = false
+                    self.cacheService.setLoading(false, for: self.posterUrl)
+                }
             }
         }
     }

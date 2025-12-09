@@ -616,47 +616,32 @@ struct AttachmentView: View {
                 } else {
                     switch messageType {
                     case .image:
-                        // Изображение с возможностью просмотра
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                                    .frame(
-                                        width: isCompact ? 150 : 200, height: isCompact ? 150 : 200)
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(
-                                        width: isCompact ? nil : 250, height: isCompact ? 150 : 300
-                                    )
-                                    .frame(
-                                        maxWidth: isCompact ? .infinity : 280,  // Ограничиваем максимальную ширину
-                                        maxHeight: isCompact ? 150 : 300
-                                    )
-                                    .clipped()
-                                    .cornerRadius(isCompact ? 8 : 12)
-                                    .allowsHitTesting(!isCompact)  // В компактном режиме отключаем обработку нажатий
-                                    .onTapGesture {
-                                        if !isCompact {
-                                            showFullScreen = true
-                                        }
+                        // Изображение с возможностью просмотра (с кешированием)
+                        CachedAsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(
+                                    width: isCompact ? nil : 250, height: isCompact ? 150 : 300
+                                )
+                                .frame(
+                                    maxWidth: isCompact ? .infinity : 280,  // Ограничиваем максимальную ширину
+                                    maxHeight: isCompact ? 150 : 300
+                                )
+                                .clipped()
+                                .cornerRadius(isCompact ? 8 : 12)
+                                .allowsHitTesting(!isCompact)  // В компактном режиме отключаем обработку нажатий
+                                .onTapGesture {
+                                    if !isCompact {
+                                        showFullScreen = true
                                     }
-                            case .failure:
-                                Image(systemName: "photo")
-                                    .frame(
-                                        width: isCompact ? 150 : 200, height: isCompact ? 150 : 200
-                                    )
-                                    .foregroundColor(.secondary)
-                            @unknown default:
-                                EmptyView()
-                            }
+                                }
+                        } placeholder: {
+                            ProgressView()
+                                .frame(
+                                    width: isCompact ? 150 : 200, height: isCompact ? 150 : 200)
                         }
                         .id(url.absoluteString)
-                        .onAppear {
-                            // Принудительная загрузка при появлении в viewport
-                            preloadImage(url: url)
-                        }
                         .sheet(isPresented: $showFullScreen) {
                             FullScreenImageView(url: url)
                         }
@@ -694,8 +679,7 @@ struct AttachmentView: View {
     private func preloadImage(url: URL) {
         // Предзагрузка изображения в кэш для улучшения производительности
         Task {
-            let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
-            _ = try? await URLSession.shared.data(for: request)
+            _ = try? await ImageCacheService.shared.loadImage(from: url)
         }
     }
 }
@@ -711,33 +695,25 @@ struct FullScreenImageView: View {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .tint(.white)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .scaleEffect(scale)
-                            .gesture(
-                                MagnificationGesture()
-                                    .onChanged { value in
-                                        scale = value
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .scaleEffect(scale)
+                        .gesture(
+                            MagnificationGesture()
+                                .onChanged { value in
+                                    scale = value
+                                }
+                                .onEnded { _ in
+                                    withAnimation {
+                                        scale = max(1.0, min(scale, 3.0))
                                     }
-                                    .onEnded { _ in
-                                        withAnimation {
-                                            scale = max(1.0, min(scale, 3.0))
-                                        }
-                                    }
-                            )
-                    case .failure:
-                        Image(systemName: "photo")
-                            .foregroundColor(.white)
-                    @unknown default:
-                        EmptyView()
-                    }
+                                }
+                        )
+                } placeholder: {
+                    ProgressView()
+                        .tint(.white)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)

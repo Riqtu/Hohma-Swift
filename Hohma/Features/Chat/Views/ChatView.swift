@@ -26,22 +26,15 @@ struct ChatView: View {
             // Фон чата - используем GeometryReader для ограничения размера
             if let backgroundUrl = chatBackgroundUrl {
                 GeometryReader { geometry in
-                    AsyncImage(url: URL(string: backgroundUrl)) { phase in
-                        switch phase {
-                        case .empty:
-                            Color.clear
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .opacity(0.1)
-                                .frame(width: geometry.size.width, height: geometry.size.height)
-                                .clipped()
-                        case .failure:
-                            Color.clear
-                        @unknown default:
-                            Color.clear
-                        }
+                    CachedAsyncImage(url: URL(string: backgroundUrl)) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .opacity(0.1)
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .clipped()
+                    } placeholder: {
+                        Color.clear
                     }
                 }
                 .allowsHitTesting(false)  // Фон не должен перехватывать нажатия
@@ -441,7 +434,7 @@ extension ChatView {
     private var headerView: some View {
         HStack {
             // Avatar
-            AsyncImage(url: URL(string: viewModel.displayAvatarUrl ?? "")) { image in
+            CachedAsyncImage(url: URL(string: viewModel.displayAvatarUrl ?? "")) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)

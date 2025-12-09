@@ -14,6 +14,7 @@ struct CacheSettingsView: View {
     @State private var showingClearAllAlert = false
     @State private var showingClearURLCacheAlert = false
     @State private var showingClearAvatarAlert = false
+    @State private var showingClearImageCacheAlert = false
     @State private var memoryLimitMB: Double = 50
     @State private var diskLimitMB: Double = 200
     @State private var isClearing = false
@@ -71,6 +72,14 @@ struct CacheSettingsView: View {
                 }
             } message: {
                 Text("Это действие удалит кэш сетевых запросов. Изображения и другие данные будут загружены заново при следующем использовании.")
+            }
+            .alert("Очистить кэш изображений?", isPresented: $showingClearImageCacheAlert) {
+                Button("Отмена", role: .cancel) {}
+                Button("Очистить", role: .destructive) {
+                    clearImageCache()
+                }
+            } message: {
+                Text("Это действие удалит кэш всех изображений (постеры, стикеры, фото в чатах). Изображения будут загружены заново при следующем просмотре.")
             }
             .alert("Очистить кэш аватарок?", isPresented: $showingClearAvatarAlert) {
                 Button("Отмена", role: .cancel) {}
@@ -229,6 +238,15 @@ struct CacheSettingsView: View {
             }
             
             Button(role: .destructive) {
+                showingClearImageCacheAlert = true
+            } label: {
+                HStack {
+                    Image(systemName: "photo")
+                    Text("Очистить кэш изображений")
+                }
+            }
+            
+            Button(role: .destructive) {
                 showingClearAvatarAlert = true
             } label: {
                 HStack {
@@ -272,12 +290,27 @@ struct CacheSettingsView: View {
         isClearing = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             cacheManager.clearURLCache()
+            // Очищаем также кеш изображений в памяти
+            ImageCacheService.shared.clearMemoryCache()
             // Увеличиваем задержку для полной очистки и обновления размеров
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 isClearing = false
                 successMessage = "URL кэш успешно очищен"
                 showSuccessMessage = true
                 // Принудительно обновляем размеры
+                cacheManager.updateCacheSizes()
+            }
+        }
+    }
+    
+    private func clearImageCache() {
+        isClearing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            ImageCacheService.shared.clearAllCache()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isClearing = false
+                successMessage = "Кэш изображений успешно очищен"
+                showSuccessMessage = true
                 cacheManager.updateCacheSizes()
             }
         }
@@ -316,6 +349,8 @@ struct CacheSettingsView: View {
         isClearing = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             cacheManager.clearAllCaches()
+            // Очищаем также кеш изображений
+            ImageCacheService.shared.clearAllCache()
             // Увеличиваем задержку для полной очистки всех кэшей
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 isClearing = false

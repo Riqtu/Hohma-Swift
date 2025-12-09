@@ -31,8 +31,8 @@ struct AnimatedStickerView: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
             } else {
-                // Для статических стикеров используем AsyncImage
-                AsyncImage(url: url) { image in
+                // Для статических стикеров используем CachedAsyncImage с кешированием
+                CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -199,7 +199,9 @@ private struct AnimatedStickerImageView: UIViewRepresentable {
     
     private func loadAnimatedImage(into imageView: UIImageView) async {
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            // Используем URLRequest с cachePolicy для кеширования
+            let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
+            let (data, _) = try await URLSession.shared.data(for: request)
             
             // Пробуем загрузить через ImageIO для поддержки GIF и WebP
             guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {

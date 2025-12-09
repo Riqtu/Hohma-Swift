@@ -192,7 +192,7 @@ private struct WinnerArtworkView: View {
                     value: isAnimating)
                 .padding(.bottom, 8)
             } else {
-                AsyncImage(url: URL(string: posterUrl ?? "")) { image in
+                CachedAsyncImage(url: URL(string: posterUrl ?? "")) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

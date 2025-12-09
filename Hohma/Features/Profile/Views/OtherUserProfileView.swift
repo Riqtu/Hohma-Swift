@@ -98,26 +98,15 @@ struct OtherUserProfileView: View {
     private var headerSection: some View {
         VStack(spacing: 16) {
             if let user = viewModel.user {
-                AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(.accentColor)
-                            .frame(width: 100, height: 100)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(.accentColor)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .resizable()
-                            .foregroundColor(.accentColor)
-                    }
+                CachedAsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .foregroundColor(.accentColor)
+                        .frame(width: 100, height: 100)
                 }
                 .frame(width: 100, height: 100)
                 .clipShape(Circle())

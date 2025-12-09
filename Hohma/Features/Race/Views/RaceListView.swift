@@ -325,7 +325,7 @@ struct RaceCard: View {
             }
 
             HStack {
-                AsyncImage(url: URL(string: race.creator.avatarUrl ?? "")) { image in
+                CachedAsyncImage(url: URL(string: race.creator.avatarUrl ?? "")) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

@@ -293,34 +293,17 @@ struct ChatCellView: View {
             // Avatar
             Group {
                 if let url = avatarURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            Image(
-                                systemName: chat.type == .private
-                                    ? "person.circle.fill" : "person.2.circle.fill"
-                            )
+                    CachedAsyncImage(url: url) { image in
+                        image
                             .resizable()
-                            .foregroundColor(.secondary)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        case .failure:
-                            Image(
-                                systemName: chat.type == .private
-                                    ? "person.circle.fill" : "person.2.circle.fill"
-                            )
-                            .resizable()
-                            .foregroundColor(.secondary)
-                        @unknown default:
-                            Image(
-                                systemName: chat.type == .private
-                                    ? "person.circle.fill" : "person.2.circle.fill"
-                            )
-                            .resizable()
-                            .foregroundColor(.secondary)
-                        }
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(
+                            systemName: chat.type == .private
+                                ? "person.circle.fill" : "person.2.circle.fill"
+                        )
+                        .resizable()
+                        .foregroundColor(.secondary)
                     }
                 } else {
                     Image(

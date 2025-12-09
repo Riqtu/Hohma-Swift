@@ -130,9 +130,9 @@ class AudioRecorderService: NSObject, ObservableObject {
             return nil
         }
         
-        // Создаем временный файл для записи
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let audioFilename = documentsPath.appendingPathComponent("voice_\(UUID().uuidString).m4a")
+        // Создаем временный файл для записи в Caches (не в Documents)
+        let cachesPath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let audioFilename = cachesPath.appendingPathComponent("voice_\(UUID().uuidString).m4a")
         recordingURL = audioFilename
         
         let settings: [String: Any] = [

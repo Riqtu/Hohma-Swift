@@ -207,7 +207,7 @@ private struct MovieSearchRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let url = movie.poster?.bestUrl.flatMap(URL.init) {
-                AsyncImage(url: url) { image in
+                CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -266,7 +266,7 @@ private struct SelectedMovieSummary: View {
     var body: some View {
         HStack(spacing: 12) {
             if let url = movie.poster?.bestUrl.flatMap(URL.init) {
-                AsyncImage(url: url) { image in
+                CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

@@ -219,7 +219,7 @@ struct ParticipantDiceRow: View {
                 showTitle: false
             )
         } else {
-            AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
+            CachedAsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)

@@ -32,60 +32,44 @@ struct WheelCardComponent: View {
     }
 
     private var backgroundImage: some View {
-        AsyncImage(
-            url: URL(string: wheel.theme?.backgroundImageURL ?? ""),
-            transaction: Transaction(animation: .easeInOut(duration: 0.5))
-        ) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .frame(width: 200, height: 160)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .opacity(isImageLoaded ? 1.0 : 0.0)
-                    .onAppear {
-                        isImageLoaded = true
-                    }
-            case .failure:
-                // Показываем ошибку загрузки
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.red.opacity(0.3))
-                    .frame(width: 200, height: 160)
-                    .overlay(
-                        Text("Ошибка загрузки")
-                            .foregroundColor(.white)
-                            .font(.caption)
-                    )
-            default:
-                // Placeholder пока загружается
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: 200, height: 160)
-                    .overlay(
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    )
-            }
+        CachedAsyncImage(
+            url: URL(string: wheel.theme?.backgroundImageURL ?? "")
+        ) { image in
+            image
+                .resizable()
+                .frame(width: 200, height: 160)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .opacity(isImageLoaded ? 1.0 : 0.0)
+                .onAppear {
+                    isImageLoaded = true
+                }
+        } placeholder: {
+            // Placeholder пока загружается
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 200, height: 160)
+                .overlay(
+                    ProgressView()
+                        .scaleEffect(0.8)
+                )
         }
     }
 
     private var avatarView: some View {
         Group {
             if let avatarUrl = wheel.user?.avatarUrl {
-                AsyncImage(url: avatarUrl) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                            .opacity(isImageLoaded ? 1.0 : 0.0)
-                            .animation(.easeInOut(duration: 0.3), value: isImageLoaded)
-                            .onAppear {
-                                isImageLoaded = true
-                            }
-                    } else {
-                        defaultAvatar
-                    }
+                CachedAsyncImage(url: avatarUrl) { image in
+                    image
+                        .resizable()
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                        .opacity(isImageLoaded ? 1.0 : 0.0)
+                        .animation(.easeInOut(duration: 0.3), value: isImageLoaded)
+                        .onAppear {
+                            isImageLoaded = true
+                        }
+                } placeholder: {
+                    defaultAvatar
                 }
             } else {
                 defaultAvatar

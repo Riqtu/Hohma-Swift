@@ -285,28 +285,21 @@ struct MovieBattleCard: View {
                 if battle.status == .finished, let posterUrl = winnerPosterUrl, !posterUrl.isEmpty,
                     let url = URL(string: posterUrl)
                 {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .opacity(0.2)
-                                .blur(radius: 2)
-                                .transition(.opacity.animation(.easeInOut(duration: 0.3)))
-                        case .empty:
-                            // Анимация загрузки
-                            SkeletonLoader(
-                                baseColor: .gray.opacity(0.2),
-                                shimmerColor: .white.opacity(0.3),
-                                duration: 1.5
-                            )
-                            .opacity(0.3)
-                        case .failure:
-                            Color.clear
-                        @unknown default:
-                            Color.clear
-                        }
+                    CachedAsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .opacity(0.2)
+                            .blur(radius: 2)
+                            .transition(.opacity.animation(.easeInOut(duration: 0.3)))
+                    } placeholder: {
+                        // Анимация загрузки
+                        SkeletonLoader(
+                            baseColor: .gray.opacity(0.2),
+                            shimmerColor: .white.opacity(0.3),
+                            duration: 1.5
+                        )
+                        .opacity(0.3)
                     }
                     .clipped()
                 } else {
@@ -416,21 +409,12 @@ struct WinnerMovieRow: View {
                 isGenerated
                 ? (movie.generatedPosterUrl ?? movie.originalPosterUrl) : movie.originalPosterUrl
             if let posterUrl = posterUrl, !posterUrl.isEmpty, let url = URL(string: posterUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .empty:
-                        SkeletonLoader()
-                    case .failure:
-                        Image(systemName: "film")
-                            .foregroundColor(.gray)
-                    @unknown default:
-                        Image(systemName: "film")
-                            .foregroundColor(.gray)
-                    }
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    SkeletonLoader()
                 }
                 .aspectRatio(2 / 3, contentMode: .fit)
                 .frame(width: 40, height: 60)

@@ -360,7 +360,7 @@ struct ParticipantRow: View {
     var body: some View {
         HStack {
             if let poster = participant.moviePosterUrl, let url = URL(string: poster) {
-                AsyncImage(url: url) { image in
+                CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -370,7 +370,7 @@ struct ParticipantRow: View {
                 .frame(width: 32, height: 48)
                 .cornerRadius(6)
             } else {
-                AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
+                CachedAsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

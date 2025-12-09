@@ -295,25 +295,14 @@ struct SearchUserProfileRow: View {
         NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
             HStack(spacing: 12) {
                 // Аватар
-                AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    }
+                CachedAsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
                 }
                 .frame(width: 50, height: 50)
                 .clipShape(Circle())
@@ -411,25 +400,14 @@ struct UserProfileRow: View {
         NavigationLink(destination: OtherUserProfileView(userId: user.id)) {
             HStack(spacing: 12) {
                 // Аватар
-                AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in
-                    switch phase {
-                    case .empty:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    @unknown default:
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                    }
+                CachedAsyncImage(url: URL(string: user.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
                 }
                 .frame(width: 50, height: 50)
                 .clipShape(Circle())

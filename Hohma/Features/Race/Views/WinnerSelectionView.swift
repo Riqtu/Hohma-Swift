@@ -160,7 +160,7 @@ struct ParticipantCard: View {
     var body: some View {
         HStack(spacing: 12) {
             // Аватар
-            AsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
+            CachedAsyncImage(url: URL(string: participant.user.avatarUrl ?? "")) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
