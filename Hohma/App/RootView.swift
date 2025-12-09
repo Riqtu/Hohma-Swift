@@ -75,6 +75,14 @@ struct RootView: View {
                             .tag("home")
 
                         NavigationStack {
+                            MyMoviesListView()
+                        }
+                        .tabItem {
+                            Label("Мои фильмы", systemImage: "film")
+                        }
+                        .tag("myMovies")
+
+                        NavigationStack {
                             ChatListView(viewModel: chatListViewModel)
                                 .withAppBackground()
                         }
