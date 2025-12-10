@@ -52,4 +52,7 @@ extension View {
 // MARK: - NotificationCenter Extensions
 extension Notification.Name {
     static let raceUpdated = Notification.Name("raceUpdated")
+    static let shareRace = Notification.Name("shareRace")
+    static let shareMovieBattle = Notification.Name("shareMovieBattle")
+    static let shareWheel = Notification.Name("shareWheel")
 }

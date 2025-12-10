@@ -440,10 +440,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
         guard let battle = battle,
             let currentUserId = trpcService.currentUser?.id
         else { return false }
-        // Можно удалять только свои батлы и только в статусах CREATED, COLLECTING или CANCELLED
+        // Можно удалять только свои батлы на любом этапе (любой статус)
         return battle.creator.id == currentUserId
-            && (battle.status == .created || battle.status == .collecting
-                || battle.status == .cancelled)
     }
 
     var canVote: Bool {

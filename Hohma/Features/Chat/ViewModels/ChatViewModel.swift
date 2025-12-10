@@ -510,7 +510,10 @@ final class ChatViewModel: ObservableObject {
                         content: "Видеосообщение",
                         messageType: .file,
                         attachments: [videoURL],
-                        replyToId: savedReplyingToMessage?.id
+                        replyToId: savedReplyingToMessage?.id,
+                        battleId: nil,
+                        raceId: nil,
+                        wheelId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -561,7 +564,10 @@ final class ChatViewModel: ObservableObject {
                             ? (regularAttachments.count > 1 ? "Альбом" : "Фото") : content,
                         messageType: messageType,
                         attachments: attachmentURLs,
-                        replyToId: savedReplyingToMessage?.id
+                        replyToId: savedReplyingToMessage?.id,
+                        battleId: nil,
+                        raceId: nil,
+                        wheelId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -616,7 +622,10 @@ final class ChatViewModel: ObservableObject {
                         content: content,
                         messageType: .text,
                         attachments: nil,
-                        replyToId: savedReplyingToMessage?.id
+                        replyToId: savedReplyingToMessage?.id,
+                        battleId: nil,
+                        raceId: nil,
+                        wheelId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -716,7 +725,10 @@ final class ChatViewModel: ObservableObject {
                     content: "",
                     messageType: .sticker,
                     attachments: [stickerUrl],
-                    replyToId: savedReplyingToMessage?.id
+                    replyToId: savedReplyingToMessage?.id,
+                    battleId: nil,
+                    raceId: nil,
+                    wheelId: nil
                 )
 
                 let sentMessage = try await chatService.sendMessage(request)

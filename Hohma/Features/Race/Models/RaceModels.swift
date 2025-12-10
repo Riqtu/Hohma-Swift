@@ -498,6 +498,20 @@ enum RaceStatus: String, Codable, CaseIterable {
     }
 }
 
+enum RaceFilterType: String, Codable, CaseIterable {
+    case my = "my"
+    case following = "following"
+    case all = "all"
+    
+    var displayName: String {
+        switch self {
+        case .my: return "Мои"
+        case .following: return "Подписки"
+        case .all: return "Все"
+        }
+    }
+}
+
 // MARK: - Race Position Models
 struct RacePosition: Codable, Identifiable {
     let id: String

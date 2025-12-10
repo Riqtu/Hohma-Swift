@@ -8,9 +8,23 @@ struct RaceListView: View {
     @State private var raceToJoin: Race?
     @State private var raceToOpen: Race?
     @State private var raceToShowInfo: Race?
+    @State private var raceToShare: Race?
 
     var body: some View {
         VStack(spacing: 0) {
+            // Сегментированный контрол для фильтрации
+            Picker("Фильтр", selection: $viewModel.selectedFilter) {
+                Text("Все").tag(RaceFilterType.all)
+                Text("Мои").tag(RaceFilterType.my)
+                Text("Подписки").tag(RaceFilterType.following)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .onChange(of: viewModel.selectedFilter) { oldValue, newValue in
+                viewModel.loadRaces()
+            }
+            
             // Header with filters
             headerView
 
@@ -90,6 +104,16 @@ struct RaceListView: View {
             }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .sheet(item: $raceToShare) { race in
+            ShareRaceToChatView(race: race) {
+                raceToShare = nil
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .shareRace)) { notification in
+            if let race = notification.userInfo?["race"] as? Race {
+                raceToShare = race
+            }
         }
         .enableInjection()
     }
@@ -376,6 +400,17 @@ struct RaceCard: View {
         .onTapGesture {
             onOpen()
         }
+        .contextMenu {
+            Button {
+                NotificationCenter.default.post(
+                    name: .shareRace,
+                    object: nil,
+                    userInfo: ["race": race]
+                )
+            } label: {
+                Label("Поделиться в чате", systemImage: "arrow.up.right.square")
+            }
+        }
     }
 }
 
@@ -396,21 +431,7 @@ struct RaceStatusBadge: View {
 }
 
 // MARK: - Extensions
-extension String {
-    var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-
-        if let date = formatter.date(from: self) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateStyle = .short
-            displayFormatter.timeStyle = .short
-            return displayFormatter.string(from: date)
-        }
-
-        return self
-    }
-}
+// formattedDate extension уже определен в другом месте
 
 extension RaceStatus {
     var color: Color {

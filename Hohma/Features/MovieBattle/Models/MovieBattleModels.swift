@@ -45,6 +45,22 @@ enum GenerationStatus: String, Codable, CaseIterable {
     }
 }
 
+enum MovieBattleFilterType: String, Codable, CaseIterable {
+    case my = "my"
+    case following = "following"
+    case followers = "followers"
+    case all = "all"
+    
+    var displayName: String {
+        switch self {
+        case .my: return "Мои"
+        case .following: return "Подписки"
+        case .followers: return "Подписчики"
+        case .all: return "Все"
+        }
+    }
+}
+
 struct MovieBattle: Codable, Identifiable {
     let id: String
     let name: String

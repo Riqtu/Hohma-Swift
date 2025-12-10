@@ -14,7 +14,7 @@ struct ChatListView: View {
     @ObservedObject var viewModel: ChatListViewModel
     @State private var chatToDelete: Chat? = nil
     @State private var navigationPath = NavigationPath()
-    
+
     // Инициализатор для использования с shared viewModel или создания нового
     init(viewModel: ChatListViewModel? = nil) {
         self._viewModel = ObservedObject(wrappedValue: viewModel ?? ChatListViewModel())
@@ -55,7 +55,7 @@ struct ChatListView: View {
                         print("💬 ChatListView: ChatView disappeared, refreshing chat list")
                         // Используем небольшую задержку, чтобы убедиться, что навигация завершена
                         Task {
-                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                            try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
                             await viewModel.refreshChatsAsync()
                         }
                     }
@@ -118,7 +118,7 @@ struct ChatListView: View {
             if newValue < oldValue {
                 print("💬 ChatListView: Navigation path changed (returned from chat), refreshing")
                 Task {
-                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды для завершения анимации
+                    try? await Task.sleep(nanoseconds: 200_000_000)  // 0.2 секунды для завершения анимации
                     await viewModel.refreshChatsAsync()
                 }
             }
@@ -193,7 +193,9 @@ struct ChatListView: View {
             ForEach(viewModel.chats, id: \.id) { chat in
                 NavigationLink(value: chat) {
                     ChatCellView(chat: chat)
-                        .id("chat-\(chat.id)-\(chat.unreadCountValue)-\(chat.lastMessageAt ?? "")-\(chat.updatedAt)")  // Принудительное обновление при изменении
+                        .id(
+                            "chat-\(chat.id)-\(chat.unreadCountValue)-\(chat.lastMessageAt ?? "")-\(chat.updatedAt)"
+                        )  // Принудительное обновление при изменении
                 }
                 .contentShape(Rectangle())
                 .listRowBackground(Color.clear)
@@ -282,12 +284,13 @@ struct ChatCellView: View {
             return nil
         }
         // Добавляем timestamp для принудительного обновления кеша
-        let urlWithTimestamp = avatarUrl.contains("?") 
-            ? "\(avatarUrl)&t=\(chat.updatedAt.hashValue)" 
+        let urlWithTimestamp =
+            avatarUrl.contains("?")
+            ? "\(avatarUrl)&t=\(chat.updatedAt.hashValue)"
             : "\(avatarUrl)?t=\(chat.updatedAt.hashValue)"
         return URL(string: urlWithTimestamp)
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Avatar
@@ -387,6 +390,12 @@ struct ChatCellView: View {
             return (nil, message.content)
         case .text:
             return (nil, message.content)
+        case .movieBattle:
+            return ("film.fill", message.battle?.name ?? "Батл фильмов")
+        case .race:
+            return ("flag.checkered", message.race?.name ?? "Скачка")
+        case .wheel:
+            return ("circle.dotted", message.wheel?.name ?? "Колесо")
         }
     }
 

@@ -100,7 +100,7 @@ struct CreateWheelFormView: View {
                                         GridItem(.adaptive(minimum: 150, maximum: 200))
                                     ], spacing: 16
                                 ) {
-                                    ForEach(viewModel.themes) { theme in
+                                    ForEach(viewModel.themes, id: \.id) { theme in
                                         ThemeCardView(
                                             theme: theme,
                                             isSelected: viewModel.selectedThemeId == theme.id
@@ -111,6 +111,7 @@ struct CreateWheelFormView: View {
                                             impactFeedback.impactOccurred()
                                             viewModel.selectedThemeId = theme.id
                                         }
+                                        .id(theme.id) // Стабильный ID для предотвращения пересоздания view
                                     }
                                 }
                                 .padding(.horizontal, 4)
@@ -200,12 +201,17 @@ struct ThemeCardView: View {
     let theme: WheelTheme
     let isSelected: Bool
     let onTap: () -> Void
+    
+    // Стабильный URL для предотвращения пересоздания изображения
+    private var imageURL: URL? {
+        URL(string: theme.backgroundImageURL)
+    }
 
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 12) {
                 // Превью темы
-                AsyncImage(url: URL(string: theme.backgroundImageURL)) { image in
+                CachedAsyncImage(url: imageURL) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)

@@ -37,8 +37,11 @@ struct WheelCardComponent: View {
         ) { image in
             image
                 .resizable()
-                .frame(width: 200, height: 160)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: 160)
+                .clipped()
+                .cornerRadius(16)
                 .opacity(isImageLoaded ? 1.0 : 0.0)
                 .onAppear {
                     isImageLoaded = true
@@ -47,7 +50,8 @@ struct WheelCardComponent: View {
             // Placeholder пока загружается
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.gray.opacity(0.3))
-                .frame(width: 200, height: 160)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 160)
                 .overlay(
                     ProgressView()
                         .scaleEffect(0.8)
@@ -163,7 +167,7 @@ struct WheelCardComponent: View {
                         }
                     }
                     .padding(16)
-                    .frame(width: 200, height: 160)
+                    .frame(maxWidth: .infinity, minHeight: 160)
                     .background(.ultraThickMaterial.opacity(0.9))
                     .cornerRadius(16)
                     .overlay(
@@ -204,9 +208,13 @@ struct WheelCardComponent: View {
                     }
 
                     Button {
-                        ShareService.shared.shareWheel(wheel: wheel)
+                        NotificationCenter.default.post(
+                            name: .shareWheel,
+                            object: nil,
+                            userInfo: ["wheel": wheel]
+                        )
                     } label: {
-                        Label("Поделиться", systemImage: "square.and.arrow.up")
+                        Label("Поделиться в чате", systemImage: "arrow.up.right.square")
                     }
 
                     if wheel.userId == TRPCService.shared.currentUser?.id {
@@ -221,6 +229,8 @@ struct WheelCardComponent: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 160)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
             .alert("Удалить колесо?", isPresented: $showingDeleteAlert) {
                 Button("Отмена", role: .cancel) {}
                 Button("Удалить", role: .destructive) {

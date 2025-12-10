@@ -16,9 +16,23 @@ struct MovieBattleListView: View {
     @State private var battleToOpen: MovieBattle?
     @State private var battleToDelete: MovieBattle?
     @State private var showingDeleteAlert = false
+    @State private var battleToShare: MovieBattle?
 
     var body: some View {
         VStack(spacing: 0) {
+            // Сегментированный контрол для фильтрации
+            Picker("Фильтр", selection: $viewModel.selectedFilter) {
+                Text("Все").tag(MovieBattleFilterType.all)
+                Text("Мои").tag(MovieBattleFilterType.my)
+                Text("Подписки").tag(MovieBattleFilterType.following)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .onChange(of: viewModel.selectedFilter) { oldValue, newValue in
+                viewModel.loadBattles()
+            }
+
             if viewModel.isLoading && viewModel.battles.isEmpty {
                 VStack(spacing: 16) {
                     ProgressView()
@@ -35,7 +49,7 @@ struct MovieBattleListView: View {
                     Text("Нет активных игр")
                         .font(.title2)
                         .foregroundColor(.secondary)
-                    Text("Создайте новую игру или присоединитесь к существующей")
+                    Text(emptyStateMessage)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -51,7 +65,10 @@ struct MovieBattleListView: View {
                                 battleToOpen = battle
                             },
                             onDelete: nil,
-                            canDelete: false
+                            canDelete: false,
+                            onShare: {
+                                battleToShare = battle
+                            }
                         )
                         .contentShape(Rectangle())
                         .listRowBackground(Color.clear)
@@ -124,8 +141,28 @@ struct MovieBattleListView: View {
         } message: {
             Text("Вы уверены, что хотите удалить эту игру? Это действие нельзя отменить.")
         }
+        .sheet(item: $battleToShare) { battle in
+            ShareBattleToChatView(battle: battle) {
+                battleToShare = nil
+            }
+        }
         .onAppear {
             viewModel.loadBattles()
+        }
+    }
+
+    // Сообщение для пустого состояния в зависимости от фильтра
+    private var emptyStateMessage: String {
+        switch viewModel.selectedFilter {
+        case .my:
+            return "У вас пока нет созданных игр"
+        case .following:
+            return "Нет игр от пользователей, на которых вы подписаны"
+        case .all:
+            return "Создайте новую игру или присоединитесь к существующей"
+        case .followers:
+            // Устаревший фильтр, не должен использоваться
+            return "Нет активных игр"
         }
     }
 }
@@ -138,15 +175,17 @@ struct MovieBattleCard: View {
     let onOpen: () -> Void
     let onDelete: (() -> Void)?
     let canDelete: Bool
+    let onShare: (() -> Void)?
 
     init(
         battle: MovieBattle, onOpen: @escaping () -> Void, onDelete: (() -> Void)? = nil,
-        canDelete: Bool = false
+        canDelete: Bool = false, onShare: (() -> Void)? = nil
     ) {
         self.battle = battle
         self.onOpen = onOpen
         self.onDelete = onDelete
         self.canDelete = canDelete
+        self.onShare = onShare
     }
 
     var body: some View {
@@ -313,6 +352,21 @@ struct MovieBattleCard: View {
         .contentShape(Rectangle())
         .onTapGesture {
             onOpen()
+        }
+        .contextMenu {
+            Button(action: {
+                onOpen()
+            }) {
+                Label("Открыть", systemImage: "arrow.right.circle")
+            }
+
+            if let onShare = onShare {
+                Button(action: {
+                    onShare()
+                }) {
+                    Label("Поделиться в чате", systemImage: "paperplane")
+                }
+            }
         }
     }
 
@@ -554,6 +608,7 @@ class MovieBattleListViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var battles: [MovieBattle] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var selectedFilter: MovieBattleFilterType = .all  // По умолчанию "все"
 
     private let service = MovieBattleService.shared
 
@@ -565,9 +620,14 @@ class MovieBattleListViewModel: ObservableObject, TRPCServiceProtocol {
 
         Task {
             do {
+                // Передаем выбранный фильтр (nil на бэкенде также означает "все")
+                let filterType: MovieBattleFilterType? =
+                    selectedFilter == .all ? nil : selectedFilter
+
                 let loadedBattles = try await service.getBattles(
                     status: nil,
                     isPrivate: nil,
+                    filterType: filterType,
                     limit: 50,
                     offset: 0,
                     includeMovies: true
@@ -693,9 +753,7 @@ class MovieBattleListViewModel: ObservableObject, TRPCServiceProtocol {
 
     func canDeleteBattle(_ battle: MovieBattle) -> Bool {
         guard let currentUserId = trpcService.currentUser?.id else { return false }
-        // Можно удалять только свои батлы и только в статусах CREATED, COLLECTING или CANCELLED
+        // Можно удалять только свои батлы на любом этапе (любой статус)
         return battle.creator.id == currentUserId
-            && (battle.status == .created || battle.status == .collecting
-                || battle.status == .cancelled)
     }
 }

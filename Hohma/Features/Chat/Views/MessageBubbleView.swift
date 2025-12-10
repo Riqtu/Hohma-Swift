@@ -129,6 +129,21 @@ struct MessageBubbleView: View {
                     let isAnimated = isAnimatedSticker(url: url)
                     StickerView(url: url, isAnimated: isAnimated, isCurrentUser: isCurrentUser)
                 }
+                
+                // Батл фильмов
+                if message.messageType == .movieBattle, let battle = message.battle {
+                    MovieBattleMessageCard(battle: battle, isCurrentUser: isCurrentUser)
+                }
+                
+                // Скачка
+                if message.messageType == .race, let race = message.race {
+                    RaceMessageCard(race: race, isCurrentUser: isCurrentUser)
+                }
+                
+                // Колесо
+                if message.messageType == .wheel, let wheel = message.wheel {
+                    WheelMessageCard(wheel: wheel, isCurrentUser: isCurrentUser)
+                }
 
                 // Вложения (изображения или файлы)
                 if !message.attachments.isEmpty && message.messageType != .sticker {

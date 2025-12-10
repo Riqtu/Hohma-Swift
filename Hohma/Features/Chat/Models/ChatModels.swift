@@ -203,11 +203,17 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     let attachments: [String]
     let status: MessageStatus
     let replyToId: String?
+    let battleId: String?
+    let raceId: String?
+    let wheelId: String?
     let createdAt: String
     let updatedAt: String
     let deletedAt: String?
     let sender: UserProfile?
     let reactions: [MessageReaction]?
+    let battle: MovieBattle?
+    let race: Race?
+    let wheel: WheelWithRelations?
     // replyTo не включаем, чтобы избежать рекурсии в value type - используем только replyToId для связи
 
     enum CodingKeys: String, CodingKey {
@@ -219,11 +225,17 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         case attachments
         case status
         case replyToId
+        case battleId
+        case raceId
+        case wheelId
         case createdAt
         case updatedAt
         case deletedAt
         case sender
         case reactions
+        case battle
+        case race
+        case wheel
         // replyTo исключен из CodingKeys, чтобы избежать рекурсии
     }
 
@@ -236,11 +248,17 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         attachments: [String] = [],
         status: MessageStatus,
         replyToId: String? = nil,
+        battleId: String? = nil,
+        raceId: String? = nil,
+        wheelId: String? = nil,
         createdAt: String,
         updatedAt: String,
         deletedAt: String? = nil,
         sender: UserProfile? = nil,
-        reactions: [MessageReaction]? = nil
+        reactions: [MessageReaction]? = nil,
+        battle: MovieBattle? = nil,
+        race: Race? = nil,
+        wheel: WheelWithRelations? = nil
     ) {
         self.id = id
         self.chatId = chatId
@@ -250,11 +268,17 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         self.attachments = attachments
         self.status = status
         self.replyToId = replyToId
+        self.battleId = battleId
+        self.raceId = raceId
+        self.wheelId = wheelId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
         self.sender = sender
         self.reactions = reactions
+        self.battle = battle
+        self.race = race
+        self.wheel = wheel
     }
 
     init(from decoder: Decoder) throws {
@@ -268,11 +292,17 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         attachments = try container.decodeIfPresent([String].self, forKey: .attachments) ?? []
         status = try container.decode(MessageStatus.self, forKey: .status)
         replyToId = try container.decodeIfPresent(String.self, forKey: .replyToId)
+        battleId = try container.decodeIfPresent(String.self, forKey: .battleId)
+        raceId = try container.decodeIfPresent(String.self, forKey: .raceId)
+        wheelId = try container.decodeIfPresent(String.self, forKey: .wheelId)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         sender = try container.decodeIfPresent(UserProfile.self, forKey: .sender)
         reactions = try container.decodeIfPresent([MessageReaction].self, forKey: .reactions)
+        battle = try container.decodeIfPresent(MovieBattle.self, forKey: .battle)
+        race = try container.decodeIfPresent(Race.self, forKey: .race)
+        wheel = try container.decodeIfPresent(WheelWithRelations.self, forKey: .wheel)
     }
 }
 
@@ -295,6 +325,9 @@ enum MessageType: String, Codable, CaseIterable {
     case file = "FILE"
     case sticker = "STICKER"
     case system = "SYSTEM"
+    case movieBattle = "MOVIE_BATTLE"
+    case race = "RACE"
+    case wheel = "WHEEL"
 }
 
 // MARK: - Chat Attachment (для выбранных файлов перед отправкой)
@@ -380,6 +413,9 @@ struct SendMessageRequest: Codable {
     let messageType: MessageType
     let attachments: [String]?
     let replyToId: String?
+    let battleId: String?
+    let raceId: String?
+    let wheelId: String?
 
     var dictionary: [String: Any] {
         var dict: [String: Any] = [
@@ -389,6 +425,9 @@ struct SendMessageRequest: Codable {
         ]
         if let attachments = attachments { dict["attachments"] = attachments }
         if let replyToId = replyToId { dict["replyToId"] = replyToId }
+        if let battleId = battleId { dict["battleId"] = battleId }
+        if let raceId = raceId { dict["raceId"] = raceId }
+        if let wheelId = wheelId { dict["wheelId"] = wheelId }
         return dict
     }
 }

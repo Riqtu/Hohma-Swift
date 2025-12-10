@@ -5,8 +5,8 @@
 //  Обертка над AsyncImage с использованием ImageCacheService
 //
 
-import SwiftUI
 import Inject
+import SwiftUI
 
 // Используем отдельное имя для системного AsyncImage, чтобы избежать рекурсии
 private typealias SystemAsyncImage = SwiftUI.AsyncImage
@@ -18,12 +18,12 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let content: (Image) -> Content
     let placeholder: () -> Placeholder
     let phaseContent: ((AsyncImagePhase) -> Content)?
-    
+
     @StateObject private var cacheService = ImageCacheService.shared
     @State private var cachedImage: Image?
     @State private var isLoading = false
     @State private var phase: AsyncImagePhase = .empty
-    
+
     init(
         url: URL?,
         scale: CGFloat = 1.0,
@@ -35,7 +35,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         self.placeholder = placeholder
         self.phaseContent = nil
     }
-    
+
     var body: some View {
         Group {
             if let phaseContent = phaseContent {
@@ -77,18 +77,18 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         .enableInjection()
     }
-    
+
     private func loadImage() {
         guard let url = url, cachedImage == nil, !isLoading else { return }
-        
+
         // Проверяем кеш
         if let uiImage = cacheService.getCachedImage(from: url) {
             cachedImage = Image(uiImage: uiImage)
             return
         }
-        
+
         isLoading = true
-        
+
         // Загружаем через ImageCacheService
         Task {
             if let uiImage = try? await cacheService.loadImage(from: url) {
@@ -103,21 +103,21 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             }
         }
     }
-    
+
     private func loadPhaseImage() {
         guard let url = url else {
             phase = .empty
             return
         }
-        
+
         // Быстрый ответ из кеша
         if let uiImage = cacheService.getCachedImage(from: url) {
             phase = .success(Image(uiImage: uiImage))
             return
         }
-        
+
         phase = .empty
-        
+
         Task {
             do {
                 if let uiImage = try await cacheService.loadImage(from: url) {
@@ -140,7 +140,8 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
 // MARK: - Convenience Initializers
 
-extension CachedAsyncImage where Content == Image, Placeholder == ProgressView<EmptyView, EmptyView> {
+extension CachedAsyncImage
+where Content == Image, Placeholder == ProgressView<EmptyView, EmptyView> {
     /// Упрощенный инициализатор с дефолтными параметрами
     init(url: URL?) {
         self.url = url
@@ -182,5 +183,3 @@ extension CachedAsyncImage where Placeholder == ProgressView<EmptyView, EmptyVie
 
 // Заменяем стандартный AsyncImage на кешируемый по всему приложению
 typealias AsyncImage = CachedAsyncImage
-
-

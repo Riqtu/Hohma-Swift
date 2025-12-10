@@ -41,8 +41,10 @@ final class ChatListViewModel: ObservableObject {
         #endif
     }
 
-    init() {
-        loadChats()
+    init(autoLoad: Bool = true) {
+        if autoLoad {
+            loadChats()
+        }
         setupGlobalSocketListener()
         setupNotificationObservers()
     }
@@ -180,7 +182,13 @@ final class ChatListViewModel: ObservableObject {
     }
 
     func loadChats() {
-        Task {
+        // Предотвращаем множественные одновременные загрузки
+        guard !isLoading else {
+            print("💬 ChatListViewModel: loadChats() already in progress, skipping")
+            return
+        }
+        
+        Task { @MainActor in
             isLoading = true
             errorMessage = nil
 
@@ -194,19 +202,17 @@ final class ChatListViewModel: ObservableObject {
                 for chat in loadedChats {
                     print("💬 ChatListViewModel: Chat \(chat.id) - unreadCount: \(chat.unreadCountValue)")
                 }
-                await MainActor.run {
-                    self.chats = loadedChats
-                    // Присоединяемся к глобальной комнате пользователя после загрузки
-                    self.joinUserGlobalRoom()
-                    // Обновляем badge на иконке приложения после загрузки
-                    self.updateApplicationIconBadge()
-                }
+                self.chats = loadedChats
+                // Присоединяемся к глобальной комнате пользователя после загрузки
+                self.joinUserGlobalRoom()
+                // Обновляем badge на иконке приложения после загрузки
+                self.updateApplicationIconBadge()
+                isLoading = false
             } catch {
                 errorMessage = error.localizedDescription
                 print("❌ ChatListViewModel: Failed to load chats: \(error)")
+                isLoading = false
             }
-
-            isLoading = false
         }
     }
 

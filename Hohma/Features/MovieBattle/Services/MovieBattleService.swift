@@ -43,6 +43,7 @@ class MovieBattleService: ObservableObject, TRPCServiceProtocol {
         status: MovieBattleStatus? = nil,
         isPrivate: Bool? = nil,
         creatorId: String? = nil,
+        filterType: MovieBattleFilterType? = nil,
         limit: Int = 20,
         offset: Int = 0,
         includeMovies: Bool = true
@@ -60,6 +61,9 @@ class MovieBattleService: ObservableObject, TRPCServiceProtocol {
         }
         if let creatorId = creatorId {
             input["creatorId"] = creatorId
+        }
+        if let filterType = filterType {
+            input["filterType"] = filterType.rawValue
         }
         return try await trpcService.executeGET(
             endpoint: "movieBattle.getBattles",

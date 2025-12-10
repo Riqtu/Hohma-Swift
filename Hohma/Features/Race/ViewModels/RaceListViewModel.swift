@@ -15,6 +15,7 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
     @Published var selectedStatus: RaceStatus?
     @Published var selectedRoad: Road?
     @Published var showPrivateRaces = false
+    @Published var selectedFilter: RaceFilterType = .all // По умолчанию "все"
 
     init() {
         loadRaces()
@@ -184,6 +185,7 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
         selectedStatus = nil
         selectedRoad = nil
         showPrivateRaces = false
+        selectedFilter = .all
         loadRaces()
     }
 
@@ -204,17 +206,21 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
         if showPrivateRaces {
             filters["isPrivate"] = true
         }
+        
+        // Добавляем фильтр по типу (мои, подписки, все)
+        let filterType: RaceFilterType? = selectedFilter == .all ? nil : selectedFilter
+        if let filterType = filterType {
+            filters["filterType"] = filterType.rawValue
+        }
 
         return filters
     }
 
     // MARK: - Computed Properties
     var filteredRaces: [Race] {
+        // Фильтрация по статусу и дороге теперь на бэкенде
+        // Оставляем только локальную фильтрацию для showPrivateRaces (если нужно)
         var filtered = races
-
-        if !showPrivateRaces {
-            filtered = filtered.filter { !$0.isPrivate }
-        }
 
         if let status = selectedStatus {
             filtered = filtered.filter { $0.status == status }
