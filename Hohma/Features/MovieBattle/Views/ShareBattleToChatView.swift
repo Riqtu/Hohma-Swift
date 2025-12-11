@@ -88,6 +88,7 @@ struct ShareBattleToChatView: View {
             }
             .appBackground()
         }
+        .enableInjection()
     }
 
     private func sendBattleToChat(chatId: String) {

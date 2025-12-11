@@ -120,6 +120,7 @@ struct WheelMessageCard: View {
             }
             .navigationViewStyle(StackNavigationViewStyle())
         }
+        .enableInjection()
     }
     
     private var creatorName: String {

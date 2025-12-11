@@ -87,6 +87,7 @@ struct ShareRaceToChatView: View {
                 chatListViewModel.loadChats()
             }
         }
+        .enableInjection()
     }
 
     private func sendRaceToChat(chatId: String) {

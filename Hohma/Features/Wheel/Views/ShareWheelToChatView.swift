@@ -86,6 +86,7 @@ struct ShareWheelToChatView: View {
                 chatListViewModel.loadChats()
             }
         }
+        .enableInjection()
     }
     
     private func sendWheelToChat(chatId: String) {

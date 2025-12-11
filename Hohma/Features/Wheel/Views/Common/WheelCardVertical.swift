@@ -97,5 +97,6 @@ struct WheelCardVertical: View {
         } message: {
             Text("Это действие нельзя отменить")
         }
+        .enableInjection()
     }
 }
