@@ -64,7 +64,7 @@ final class MovieDetailViewModel: ObservableObject {
         ratingUpdateTimer?.invalidate()
         
         // Debounce: отправляем запрос на сервер через 0.3 секунды после последнего изменения
-        ratingUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+        ratingUpdateTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.ratingUpdateInterval, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             // Отменяем предыдущий запрос, если он еще выполняется
             self.updateTask?.cancel()

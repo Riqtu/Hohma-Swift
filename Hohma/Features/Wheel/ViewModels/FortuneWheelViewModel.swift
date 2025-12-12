@@ -190,14 +190,14 @@ class FortuneWheelViewModel: ObservableObject {
 
     private func startSocketHealthMonitoring() {
         // Проверяем здоровье сокета каждые 30 секунд
-        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: AppConstants.wheelUpdateInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.checkSocketHealth()
             }
         }
 
         // Обновляем данные колеса каждые 60 секунд для поддержания актуальности
-        Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: AppConstants.wheelStateUpdateInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.refreshWheelDataSilently()
             }

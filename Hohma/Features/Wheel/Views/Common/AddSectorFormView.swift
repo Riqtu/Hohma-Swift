@@ -345,7 +345,7 @@ struct AddSectorFormView: View {
         }
 
         // Создаем новый таймер с задержкой 500ms
-        searchDebouncer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+        searchDebouncer = Timer.scheduledTimer(withTimeInterval: AppConstants.searchDebounceInterval, repeats: false) { _ in
             performSearch(query: query)
         }
     }

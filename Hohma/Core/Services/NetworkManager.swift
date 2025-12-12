@@ -19,8 +19,8 @@ final class NetworkManager {
     // MARK: - Initialization
     private init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30.0
-        config.timeoutIntervalForResource = 60.0
+        config.timeoutIntervalForRequest = AppConstants.networkRequestTimeout
+        config.timeoutIntervalForResource = AppConstants.networkResourceTimeout
         config.waitsForConnectivity = true
 
         self.session = URLSession(configuration: config)

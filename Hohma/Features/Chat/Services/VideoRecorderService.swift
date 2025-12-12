@@ -226,7 +226,9 @@ class VideoRecorderService: NSObject, ObservableObject {
         recordingDuration = 0
 
         // Таймер для отслеживания длительности
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {
+        recordingTimer = Timer.scheduledTimer(
+            withTimeInterval: AppConstants.recordingUpdateInterval, repeats: true
+        ) {
             [weak self] _ in
             guard let self = self else { return }
             self.recordingDuration += 0.1
@@ -356,7 +358,8 @@ class VideoRecorderService: NSObject, ObservableObject {
                     try? FileManager.default.removeItem(at: exportURL)
                     completion(mergedData)
                 } catch {
-                    AppLogger.shared.error("Export failed: \(error.localizedDescription)", category: .general)
+                    AppLogger.shared.error(
+                        "Export failed: \(error.localizedDescription)", category: .general)
                     completion(nil)
                 }
             } else {
@@ -376,7 +379,8 @@ class VideoRecorderService: NSObject, ObservableObject {
                             try? FileManager.default.removeItem(at: finalExportURL)
                             completion(mergedData)
                         } catch {
-                            AppLogger.shared.error("Failed to read merged video: \(error)", category: .general)
+                            AppLogger.shared.error(
+                                "Failed to read merged video: \(error)", category: .general)
                             completion(nil)
                         }
                     } else {
@@ -471,7 +475,8 @@ class VideoRecorderService: NSObject, ObservableObject {
             !isWaitingForSegmentCompletion,
             let currentURL = recordingURL
         else {
-            AppLogger.shared.warning("Cannot switch camera - recording not ready", category: .general)
+            AppLogger.shared.warning(
+                "Cannot switch camera - recording not ready", category: .general)
             return
         }
 
@@ -604,7 +609,9 @@ class VideoRecorderService: NSObject, ObservableObject {
         isWaitingForSegmentCompletion = false
 
         // Восстанавливаем таймер
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {
+        recordingTimer = Timer.scheduledTimer(
+            withTimeInterval: AppConstants.recordingUpdateInterval, repeats: true
+        ) {
             [weak self] _ in
             guard let self = self else { return }
             // Обновляем длительность: время начала сегмента + прошедшее время
@@ -612,23 +619,23 @@ class VideoRecorderService: NSObject, ObservableObject {
                 self.segmentStartTime + (self.recordingDuration - self.segmentStartTime)
         }
     }
-    
+
     deinit {
         // Освобождаем таймер при уничтожении объекта
         recordingTimer?.invalidate()
-        
+
         // Останавливаем запись, если она активна
         if isRecording {
             videoOutput?.stopRecording()
         }
-        
+
         // Останавливаем capture session
         if let session = captureSession, session.isRunning {
             DispatchQueue.global(qos: .userInitiated).async {
                 session.stopRunning()
             }
         }
-        
+
         // Удаляем временные файлы
         if let url = recordingURL {
             try? FileManager.default.removeItem(at: url)
@@ -690,7 +697,8 @@ extension VideoRecorderService: AVCaptureFileOutputRecordingDelegate {
                     try? FileManager.default.removeItem(at: outputFileURL)
                     self.recordingSegments.removeAll()
                 } catch {
-                    AppLogger.shared.error("Failed to read video data: \(error)", category: .general)
+                    AppLogger.shared.error(
+                        "Failed to read video data: \(error)", category: .general)
                     self.stopRecordingCompletion?(nil)
                 }
 

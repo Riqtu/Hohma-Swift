@@ -37,7 +37,7 @@ final class KeychainService {
         try save(data: data, forKey: Key.authResult.rawValue)
 
         // Миграция: удаляем старые данные из UserDefaults
-        UserDefaults.standard.removeObject(forKey: "authResult")
+        UserDefaults.standard.removeObject(forKey: AppConstants.userDefaultsAuthResultKey)
     }
 
     /// Загружает AuthResult из Keychain
@@ -76,7 +76,7 @@ final class KeychainService {
         try save(data: data, forKey: Key.deviceToken.rawValue)
 
         // Миграция: удаляем старые данные из UserDefaults
-        UserDefaults.standard.removeObject(forKey: "deviceToken")
+        UserDefaults.standard.removeObject(forKey: AppConstants.userDefaultsDeviceTokenKey)
     }
 
     /// Загружает device token из Keychain
@@ -157,7 +157,7 @@ final class KeychainService {
 
     /// Мигрирует AuthResult из UserDefaults в Keychain (одноразовая операция)
     private func migrateFromUserDefaults() -> AuthResult? {
-        guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),
+        guard let authResultData = UserDefaults.standard.data(forKey: AppConstants.userDefaultsAuthResultKey),
             let authResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
         else {
             return nil
@@ -179,7 +179,7 @@ final class KeychainService {
 
     /// Мигрирует device token из UserDefaults в Keychain (одноразовая операция)
     private func migrateDeviceTokenFromUserDefaults() -> String? {
-        guard let token = UserDefaults.standard.string(forKey: "deviceToken") else {
+        guard let token = UserDefaults.standard.string(forKey: AppConstants.userDefaultsDeviceTokenKey) else {
             return nil
         }
 

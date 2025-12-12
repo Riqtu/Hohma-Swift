@@ -81,11 +81,11 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 10  // Уменьшаем количество попыток
     private var lastReconnectTime: Date?
-    private let minReconnectInterval: TimeInterval = 2.0  // Уменьшаем минимальный интервал
+    private let minReconnectInterval: TimeInterval = AppConstants.minReconnectInterval
     private var connectionTimeoutTimer: Timer?
     private var lastPongTime: Date?
-    private let heartbeatInterval: TimeInterval = 25.0  // Синхронизируем с сервером (pingInterval)
-    private let connectionTimeout: TimeInterval = 60.0  // Таймаут соединения (pingTimeout)
+    private let heartbeatInterval: TimeInterval = AppConstants.heartbeatInterval
+    private let connectionTimeout: TimeInterval = AppConstants.connectionTimeout
     private var isManualDisconnect = false  // Флаг для различения ручного отключения
 
     // MARK: - Published Properties
@@ -128,7 +128,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         }
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 30.0
+        request.timeoutInterval = AppConstants.networkRequestTimeout
 
         // Добавляем заголовки для Socket.IO
         request.setValue("websocket", forHTTPHeaderField: "Upgrade")
@@ -160,8 +160,8 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         // Запускаем heartbeat
         startHeartbeat()
 
-        // Проверяем состояние подключения через 5 секунд
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+        // Проверяем состояние подключения
+        DispatchQueue.main.asyncAfter(deadline: .now() + AppConstants.connectionCheckInterval) { [weak self] in
             guard let self = self else { return }
             if self.isConnected == false && !self.isManualDisconnect {
                 AppLogger.shared.warning(
@@ -276,7 +276,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
                 }
 
                 // Пытаемся переподключиться с экспоненциальной задержкой
-                let delay = min(30.0, pow(2.0, Double(self.reconnectAttempts)))  // Уменьшаем максимум до 30 сек
+                let delay = min(AppConstants.maxReconnectDelay, pow(2.0, Double(self.reconnectAttempts)))
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     // Проверяем, прошло ли достаточно времени с последней попытки

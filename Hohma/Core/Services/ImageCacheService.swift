@@ -46,8 +46,8 @@ final class ImageCacheService: ObservableObject {
         let configuration = URLSessionConfiguration.default
         configuration.urlCache = URLCache.shared
         configuration.requestCachePolicy = .returnCacheDataElseLoad
-        configuration.timeoutIntervalForRequest = 30.0
-        configuration.timeoutIntervalForResource = 60.0
+        configuration.timeoutIntervalForRequest = AppConstants.networkRequestTimeout
+        configuration.timeoutIntervalForResource = AppConstants.networkResourceTimeout
         
         urlSession = URLSession(configuration: configuration)
         

@@ -78,4 +78,60 @@ class DeepLinkService: ObservableObject {
         clearPendingDeepLink()
         return wheelId
     }
+    
+    // MARK: - URL Parsing
+    
+    /// Унифицированный метод для извлечения wheelId из URL
+    /// Используется в RootView и AppDelegate для обработки deep links
+    static func extractWheelId(from url: URL) -> String? {
+        AppLogger.shared.debug("Extracting wheel ID from URL: \(url)", category: .general)
+        AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL path: \(url.path)", category: .general)
+        AppLogger.shared.debug("URL pathComponents: \(url.pathComponents)", category: .general)
+
+        let pathComponents = url.pathComponents
+        AppLogger.shared.debug("Path components: \(pathComponents)", category: .general)
+
+        // Для custom URL scheme: riqtu.Hohma://fortune-wheel/{wheelId}
+        // host = "fortune-wheel", path = "/{wheelId}"
+        if let host = url.host, host == "fortune-wheel" && pathComponents.count >= 2 {
+            let wheelId = pathComponents[1]  // pathComponents[0] = "/", pathComponents[1] = wheelId
+            AppLogger.shared.debug("Extracted wheel ID from custom scheme: \(wheelId)", category: .general)
+            return wheelId
+        }
+
+        // Дополнительная проверка для случая, когда wheelId находится в path без host
+        // Например: riqtu.Hohma:///fortune-wheel/{wheelId} или riqtu.Hohma:///{wheelId}
+        if pathComponents.count >= 2 {
+            // Проверяем, есть ли "fortune-wheel" в path
+            if let fortuneWheelIndex = pathComponents.firstIndex(of: "fortune-wheel"),
+                fortuneWheelIndex + 1 < pathComponents.count
+            {
+                let wheelId = pathComponents[fortuneWheelIndex + 1]
+                AppLogger.shared.debug("Extracted wheel ID from path with fortune-wheel: \(wheelId)", category: .general)
+                return wheelId
+            }
+
+            // Если нет "fortune-wheel", но есть ID в path (например, riqtu.Hohma:///{wheelId})
+            if pathComponents.count == 2 && pathComponents[0] == "/" {
+                let wheelId = pathComponents[1]
+                AppLogger.shared.debug("Extracted wheel ID from simple path: \(wheelId)", category: .general)
+                return wheelId
+            }
+        }
+
+        // Для Universal Links: https://hohma.su/fortune-wheel/{wheelId}
+        // Ищем индекс "fortune-wheel" в пути
+        if let fortuneWheelIndex = pathComponents.firstIndex(of: "fortune-wheel"),
+            fortuneWheelIndex + 1 < pathComponents.count
+        {
+            let wheelId = pathComponents[fortuneWheelIndex + 1]
+            AppLogger.shared.debug("Extracted wheel ID from universal link: \(wheelId)", category: .general)
+            return wheelId
+        }
+
+        AppLogger.shared.debug("Failed to extract wheel ID", category: .general)
+        return nil
+    }
 }

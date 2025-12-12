@@ -118,7 +118,7 @@ struct NetworkRequestConfig {
     let cachePolicy: URLRequest.CachePolicy
 
     static let `default` = NetworkRequestConfig(
-        timeout: 30.0,
+        timeout: AppConstants.networkRequestTimeout,
         retryCount: 3,
         retryDelay: 1.0,
         cachePolicy: .useProtocolCachePolicy

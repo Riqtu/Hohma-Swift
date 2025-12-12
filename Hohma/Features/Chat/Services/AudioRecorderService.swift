@@ -156,7 +156,7 @@ class AudioRecorderService: NSObject, ObservableObject {
             recordingDuration = 0
             
             // Таймер для отслеживания длительности
-            recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            recordingTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.recordingUpdateInterval, repeats: true) { [weak self] _ in
                 guard let self = self else { return }
                 self.recordingDuration += 0.1
             }

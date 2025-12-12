@@ -873,7 +873,7 @@ final class ChatViewModel: ObservableObject {
 
         // Автоматически останавливаем индикатор через 3 секунды
         typingTimer?.invalidate()
-        typingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+        typingTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.typingIndicatorTimeout, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.stopTyping()
             }

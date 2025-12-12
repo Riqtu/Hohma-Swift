@@ -14,7 +14,7 @@ class SettingsViewModel: ObservableObject {
 
     private let userDefaults = UserDefaults.standard
     private let themeKey = "app_theme"
-    private let raceSoundVolumeKey = "race_sound_volume"
+    private let raceSoundVolumeKey = AppConstants.userDefaultsRaceSoundVolumeKey
 
     init() {
         loadThemeSettings()
@@ -24,7 +24,8 @@ class SettingsViewModel: ObservableObject {
         // Применяем сохраненную громкость
         RaceAudioService.shared.updateVolume(raceSoundVolume)
         print(
-            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue), громкость: \(raceSoundVolume)")
+            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue), громкость: \(raceSoundVolume)"
+        )
     }
 
     func setTheme(_ theme: AppTheme) {
@@ -55,7 +56,7 @@ class SettingsViewModel: ObservableObject {
         userDefaults.set(themeSettings.currentTheme.rawValue, forKey: themeKey)
         userDefaults.synchronize()  // Принудительно сохраняем изменения
     }
-    
+
     private func loadRaceSoundVolume() {
         if userDefaults.object(forKey: raceSoundVolumeKey) != nil {
             raceSoundVolume = userDefaults.double(forKey: raceSoundVolumeKey)
@@ -64,7 +65,7 @@ class SettingsViewModel: ObservableObject {
             raceSoundVolume = 0.5
         }
     }
-    
+
     private func saveRaceSoundVolume() {
         userDefaults.set(raceSoundVolume, forKey: raceSoundVolumeKey)
         userDefaults.synchronize()
@@ -83,14 +84,16 @@ class SettingsViewModel: ObservableObject {
         // Убеждаемся, что изменения применились
         DispatchQueue.main.async {
             self.objectWillChange.send()
-            AppLogger.shared.debug("🎨 SettingsViewModel: UI обновлен для темы: \(theme.rawValue)", category: .ui)
+            AppLogger.shared.debug(
+                "🎨 SettingsViewModel: UI обновлен для темы: \(theme.rawValue)", category: .ui)
         }
     }
 
     private func setColorScheme(_ colorScheme: ColorScheme?) {
         let colorSchemeString =
             colorScheme == nil ? "system" : (colorScheme == .dark ? "dark" : "light")
-        AppLogger.shared.debug("🎨 SettingsViewModel: Установка ColorScheme: \(colorSchemeString)", category: .ui)
+        AppLogger.shared.debug(
+            "🎨 SettingsViewModel: Установка ColorScheme: \(colorSchemeString)", category: .ui)
 
         // Применяем тему к приложению
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
