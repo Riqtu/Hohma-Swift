@@ -293,7 +293,7 @@ final class ChatViewModel: ObservableObject {
                 AppLogger.shared.debug("About to call joinChat()", category: .general)
                 joinChat()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load chat", error: error, category: .general)
             }
 
@@ -326,7 +326,7 @@ final class ChatViewModel: ObservableObject {
                 // Отмечаем как прочитанное
                 markAsRead()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load messages", error: error, category: .general)
             }
 
@@ -382,7 +382,7 @@ final class ChatViewModel: ObservableObject {
                 // Обновляем Set для быстрой проверки дубликатов
                 self.messageIds = seenIds
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load more messages", error: error, category: .general)
             }
 
@@ -661,8 +661,7 @@ final class ChatViewModel: ObservableObject {
                 // Останавливаем индикатор печати
                 stopTyping()
             } catch {
-                errorMessage = error.localizedDescription
-                AppLogger.shared.error("Failed to send message", error: error, category: .general)
+                errorMessage = ErrorHandler.shared.handle(error, context: "sendMessage", category: .general)
 
                 // Удаляем временное сообщение при ошибке
                 if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
@@ -754,7 +753,7 @@ final class ChatViewModel: ObservableObject {
                     userInfo: ["chatId": chatId]
                 )
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to send sticker", error: error, category: .general)
 
                 // Удаляем временное сообщение при ошибке
@@ -835,7 +834,7 @@ final class ChatViewModel: ObservableObject {
                 messages.removeAll { $0.id == messageId }
                 messageIds.remove(messageId)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
             }
         }
     }
@@ -1145,7 +1144,7 @@ final class ChatViewModel: ObservableObject {
                 // Обновляем сообщение локально
                 refreshMessage(messageId: messageId)
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to handle reaction", error: error, category: .general)
             }
         }

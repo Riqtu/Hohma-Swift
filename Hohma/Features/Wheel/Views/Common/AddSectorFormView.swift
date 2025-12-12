@@ -386,7 +386,7 @@ struct AddSectorFormView: View {
                 if Task.isCancelled { return }
 
                 await MainActor.run {
-                    errorMessage = "Ошибка поиска: \(error.localizedDescription)"
+                    errorMessage = ErrorHandler.shared.handle(error, context: "searchMovies", category: .general)
                     isLoading = false
                 }
             }
@@ -406,7 +406,7 @@ struct AddSectorFormView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "Ошибка загрузки фильмов: \(error.localizedDescription)"
+                    errorMessage = ErrorHandler.shared.handle(error, context: "loadMyMovies", category: .general)
                     isLoadingMyMovies = false
                 }
             }

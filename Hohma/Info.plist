@@ -47,6 +47,8 @@
 	</array>
 	<key>WS_URL</key>
 	<string>https://api.riqtu.ru</string>
+	<key>SUPPORT_EMAIL</key>
+	<string>xxx-zet@mail.ru</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:hohma.su</string>

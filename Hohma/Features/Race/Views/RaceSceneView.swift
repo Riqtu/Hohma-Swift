@@ -415,7 +415,13 @@ struct RaceSceneView: View {
             }
             """.data(using: .utf8)!
 
-        return try! JSONDecoder().decode(RaceParticipant.self, from: jsonData)
+        do {
+            return try JSONDecoder().decode(RaceParticipant.self, from: jsonData)
+        } catch {
+            // В Preview используем fatalError, так как это только для разработки
+            // В production коде это не должно использоваться
+            fatalError("Failed to decode RaceParticipant in Preview: \(error.localizedDescription)")
+        }
     }
 }
 

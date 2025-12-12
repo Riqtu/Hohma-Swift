@@ -608,8 +608,16 @@ class RaceDiceRollViewModel: ObservableObject {
         }
         """.data(using: .utf8)!
 
-    let participant1 = try! JSONDecoder().decode(RaceParticipant.self, from: participant1JSON)
-    let participant2 = try! JSONDecoder().decode(RaceParticipant.self, from: participant2JSON)
+    let participant1: RaceParticipant
+    let participant2: RaceParticipant
+    
+    do {
+        participant1 = try JSONDecoder().decode(RaceParticipant.self, from: participant1JSON)
+        participant2 = try JSONDecoder().decode(RaceParticipant.self, from: participant2JSON)
+    } catch {
+        // В Preview используем fatalError, так как это только для разработки
+        fatalError("Failed to decode RaceParticipant in Preview: \(error.localizedDescription)")
+    }
 
     return RaceDiceRollView(
         participants: [participant1, participant2],

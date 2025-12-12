@@ -55,7 +55,7 @@ class WheelListViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                     if showLoading {
                         isLoading = false
                     }

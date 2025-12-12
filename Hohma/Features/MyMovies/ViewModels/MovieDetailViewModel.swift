@@ -33,7 +33,7 @@ final class MovieDetailViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                     isLoading = false
                 }
             }
@@ -152,7 +152,7 @@ final class MovieDetailViewModel: ObservableObject {
                     if let previous = previousMovie {
                         movie = previous
                     }
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                     isUpdating = false
                 }
             }
@@ -170,7 +170,7 @@ final class MovieDetailViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                     isUpdating = false
                 }
             }

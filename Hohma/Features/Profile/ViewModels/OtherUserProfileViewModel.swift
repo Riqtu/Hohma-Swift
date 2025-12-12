@@ -36,7 +36,7 @@ class OtherUserProfileViewModel: ObservableObject {
             self.userWheels = wheels
 
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
         }
     }
 

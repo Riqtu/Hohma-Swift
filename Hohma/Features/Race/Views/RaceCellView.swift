@@ -450,7 +450,13 @@ struct RaceCellView: View {
         }
         """.data(using: .utf8)!
 
-    let participant = try! JSONDecoder().decode(RaceParticipant.self, from: jsonData)
+    let participant: RaceParticipant
+    do {
+        participant = try JSONDecoder().decode(RaceParticipant.self, from: jsonData)
+    } catch {
+        // В Preview используем fatalError, так как это только для разработки
+        fatalError("Failed to decode RaceParticipant in Preview: \(error.localizedDescription)")
+    }
 
     return RaceCellView(
         cellData: cellData,

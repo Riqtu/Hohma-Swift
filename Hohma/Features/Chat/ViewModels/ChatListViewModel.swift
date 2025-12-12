@@ -209,7 +209,7 @@ final class ChatListViewModel: ObservableObject {
                 self.updateApplicationIconBadge()
                 isLoading = false
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load chats", error: error, category: .general)
                 isLoading = false
             }
@@ -285,7 +285,7 @@ final class ChatListViewModel: ObservableObject {
                 try await chatService.leaveChat(chatId: chatId)
                 chats.removeAll { $0.id == chatId }
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
             }
         }
     }

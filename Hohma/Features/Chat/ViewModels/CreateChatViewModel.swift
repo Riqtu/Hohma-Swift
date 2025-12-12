@@ -27,7 +27,7 @@ final class CreateChatViewModel: ObservableObject {
                 let results = try await profileService.searchUsers(query: query, limit: 20)
                 self.searchResults = results
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to search users: \(error)", category: .ui)
             }
 

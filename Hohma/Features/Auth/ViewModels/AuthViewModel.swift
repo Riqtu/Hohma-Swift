@@ -145,7 +145,7 @@ final class AuthViewModel: ObservableObject {
             self.user = authResult
             self.isAuthenticated = true
         case .failure(let error):
-            self.errorMessage = error.localizedDescription
+            self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
         }
     }
 }

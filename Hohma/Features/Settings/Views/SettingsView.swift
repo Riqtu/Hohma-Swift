@@ -15,6 +15,10 @@ struct SettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String ?? "Версия 1.3.1"
     }
 
+    private var supportEmail: String {
+        Bundle.main.object(forInfoDictionaryKey: "SUPPORT_EMAIL") as? String ?? "xxx-zet@mail.ru"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -62,7 +66,7 @@ struct SettingsView: View {
                                     }
                                 )
                             }
-                            
+
                             // Настройка громкости звука скачек
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -70,35 +74,35 @@ struct SettingsView: View {
                                         .foregroundColor(.accentColor)
                                         .font(.title3)
                                         .frame(width: 24, height: 24)
-                                    
+
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Громкость звука скачек")
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
-                                        
+
                                         Text("Настройка громкости фоновой музыки и звуков")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
-                                    
+
                                     Spacer()
                                 }
-                                
+
                                 HStack(spacing: 12) {
                                     Image(systemName: "speaker.fill")
                                         .foregroundColor(.secondary)
                                         .font(.caption)
-                                    
+
                                     Slider(value: $viewModel.raceSoundVolume, in: 0...1)
                                         .tint(.accentColor)
-                                    
+
                                     Image(systemName: "speaker.wave.3.fill")
                                         .foregroundColor(.secondary)
                                         .font(.caption)
                                 }
                                 .padding(.leading, 40)
-                                
+
                                 Text("\(Int(viewModel.raceSoundVolume * 100))%")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -110,7 +114,7 @@ struct SettingsView: View {
                             .background(.ultraThinMaterial)
                             .cornerRadius(12)
                             .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
-                            
+
                             SettingsRow(
                                 icon: "externaldrive",
                                 title: "Управление кэшем",
@@ -119,7 +123,7 @@ struct SettingsView: View {
                                     showingCacheSettings = true
                                 }
                             )
-                            
+
                             SettingsRow(
                                 icon: "info.circle",
                                 title: "О приложении",
@@ -138,7 +142,7 @@ struct SettingsView: View {
                                 title: "Помощь",
                                 subtitle: "Связаться с поддержкой",
                                 action: {
-                                    if let url = URL(string: "mailto:xxx-zet@mail.ru") {
+                                    if let url = URL(string: "mailto:\(supportEmail)") {
                                         UIApplication.shared.open(url)
                                     }
                                 }
@@ -217,7 +221,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showingProfile) {
             if let authViewModel = authViewModel {
                 NavigationStack {
-                    ProfileView(authViewModel: authViewModel, useNavigationStack: false, showCloseButton: true)
+                    ProfileView(
+                        authViewModel: authViewModel, useNavigationStack: false,
+                        showCloseButton: true)
                 }
             }
         }

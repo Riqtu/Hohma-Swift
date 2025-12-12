@@ -40,7 +40,7 @@ final class MyMoviesListViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                     isLoading = false
                 }
             }
@@ -56,7 +56,7 @@ final class MyMoviesListViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = error.localizedDescription
+                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 }
             }
         }

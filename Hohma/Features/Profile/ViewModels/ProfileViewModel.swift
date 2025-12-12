@@ -40,7 +40,7 @@ final class ProfileViewModel: ObservableObject {
                 self.avatarUrl = profile.avatarUrl?.absoluteString ?? ""
 
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
             }
 
             isLoading = false
@@ -85,7 +85,7 @@ final class ProfileViewModel: ObservableObject {
                 }
 
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
             }
 
             isUpdating = false
@@ -106,7 +106,7 @@ final class ProfileViewModel: ObservableObject {
                 // После успешного удаления аккаунта выполняем выход
                 authViewModel.logout()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
             }
 
             isDeleting = false

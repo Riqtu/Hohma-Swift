@@ -35,7 +35,7 @@ final class StatsViewModel: ObservableObject {
                 )
                 self.leaderboard = response.leaderboard
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Ошибка загрузки лидерборда: \(error)", category: .ui)
             }
 
@@ -56,7 +56,7 @@ final class StatsViewModel: ObservableObject {
                 )
                 self.userStats = stats
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
                 AppLogger.shared.error("Ошибка загрузки статистики пользователя: \(error)", category: .ui)
             }
 

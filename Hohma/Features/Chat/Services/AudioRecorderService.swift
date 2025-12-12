@@ -232,6 +232,22 @@ class AudioRecorderService: NSObject, ObservableObject {
         
         AppLogger.shared.error("Recording cancelled", category: .general)
     }
+    
+    deinit {
+        // Освобождаем таймеры при уничтожении объекта
+        recordingTimer?.invalidate()
+        audioLevelTimer?.invalidate()
+        
+        // Останавливаем запись, если она активна
+        if isRecording {
+            audioRecorder?.stop()
+        }
+        
+        // Удаляем временный файл
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
 }
 
 // MARK: - AVAudioRecorderDelegate

@@ -612,6 +612,31 @@ class VideoRecorderService: NSObject, ObservableObject {
                 self.segmentStartTime + (self.recordingDuration - self.segmentStartTime)
         }
     }
+    
+    deinit {
+        // Освобождаем таймер при уничтожении объекта
+        recordingTimer?.invalidate()
+        
+        // Останавливаем запись, если она активна
+        if isRecording {
+            videoOutput?.stopRecording()
+        }
+        
+        // Останавливаем capture session
+        if let session = captureSession, session.isRunning {
+            DispatchQueue.global(qos: .userInitiated).async {
+                session.stopRunning()
+            }
+        }
+        
+        // Удаляем временные файлы
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        for segmentURL in recordingSegments {
+            try? FileManager.default.removeItem(at: segmentURL)
+        }
+    }
 }
 
 // MARK: - AVCaptureFileOutputRecordingDelegate
