@@ -52,7 +52,7 @@ struct ChatListView: View {
                     .onDisappear {
                         // Обновляем список чатов при возврате из чата
                         // чтобы обновить счетчик непрочитанных сообщений
-                        print("💬 ChatListView: ChatView disappeared, refreshing chat list")
+                        AppLogger.shared.debug("ChatView disappeared, refreshing chat list", category: .ui)
                         // Используем небольшую задержку, чтобы убедиться, что навигация завершена
                         Task {
                             try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
@@ -96,7 +96,7 @@ struct ChatListView: View {
                 destination == "chat",
                 let chatId = notification.userInfo?["chatId"] as? String
             {
-                print("💬 ChatListView: Navigation requested to chat \(chatId)")
+                AppLogger.shared.debug("Navigation requested to chat \(chatId)", category: .ui)
 
                 // Ищем чат в загруженных чатах
                 if let chat = viewModel.chats.first(where: { $0.id == chatId }) {
@@ -110,13 +110,13 @@ struct ChatListView: View {
             }
         }
         .onAppear {
-            print("💬 ChatListView: onAppear - loading chats")
+            AppLogger.shared.debug("onAppear - loading chats", category: .ui)
             viewModel.loadChats()
         }
         .onChange(of: navigationPath.count) { oldValue, newValue in
             // Обновляем список чатов при изменении навигации (возврат из чата)
             if newValue < oldValue {
-                print("💬 ChatListView: Navigation path changed (returned from chat), refreshing")
+                AppLogger.shared.debug("Navigation path changed (returned from chat), refreshing", category: .ui)
                 Task {
                     try? await Task.sleep(nanoseconds: 200_000_000)  // 0.2 секунды для завершения анимации
                     await viewModel.refreshChatsAsync()
@@ -133,9 +133,9 @@ struct ChatListView: View {
             // Обновляем список чатов при получении уведомления об обновлении
             // Это происходит при отметке сообщений как прочитанных или при получении новых сообщений
             let chatId = notification.userInfo?["chatId"] as? String ?? "unknown"
-            print("💬 ChatListView: Received .chatListUpdated notification for chat \(chatId)")
-            print("💬 ChatListView: Current chats count: \(viewModel.chats.count)")
-            print("💬 ChatListView: Calling refreshChats()...")
+            AppLogger.shared.debug("Received .chatListUpdated notification for chat \(chatId)", category: .ui)
+            AppLogger.shared.debug("Current chats count: \(viewModel.chats.count)", category: .ui)
+            AppLogger.shared.debug("Calling refreshChats()...", category: .ui)
             viewModel.refreshChats()
         }
     }
@@ -152,7 +152,7 @@ struct ChatListView: View {
                 navigationPath.append(chat)
             }
         } catch {
-            print("❌ ChatListView: Failed to load chat by ID: \(error)")
+            AppLogger.shared.error("Failed to load chat by ID: \(error)", category: .ui)
         }
     }
 
@@ -218,7 +218,7 @@ struct ChatListView: View {
         .background(Color.clear)
         .listStyle(.plain)
         .refreshable {
-            print("🔄 ChatListView: Pull-to-refresh triggered")
+            AppLogger.shared.debug("Pull-to-refresh triggered", category: .ui)
             await viewModel.refreshChatsAsync()
         }
     }
@@ -273,7 +273,7 @@ struct ChatCellView: View {
     private var unreadCount: Int {
         let count = chat.unreadCountValue
         if count > 0 {
-            print("💬 ChatCellView: Chat \(chat.id) has \(count) unread messages")
+            AppLogger.shared.debug("Chat \(chat.id) has \(count) unread messages", category: .ui)
         }
         return count
     }

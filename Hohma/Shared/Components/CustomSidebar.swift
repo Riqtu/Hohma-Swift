@@ -49,7 +49,7 @@ struct CustomSidebar: View {
                     icon: "house",
                     isSelected: selection == "home"
                 ) {
-                    print("🔄 CustomSidebar: Switching to home")
+                    AppLogger.shared.debug("Switching to home", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil, userInfo: ["destination": "home"])
@@ -64,7 +64,7 @@ struct CustomSidebar: View {
                     icon: "theatermasks.circle",
                     isSelected: selection == "wheelList"
                 ) {
-                    print("🔄 CustomSidebar: Switching to wheel list")
+                    AppLogger.shared.debug("Switching to wheel list", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -80,7 +80,7 @@ struct CustomSidebar: View {
                     icon: "trophy",
                     isSelected: selection == "race"
                 ) {
-                    print("🔄 CustomSidebar: Switching to race")
+                    AppLogger.shared.debug("Switching to race", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -96,7 +96,7 @@ struct CustomSidebar: View {
                     icon: "film",
                     isSelected: selection == "movieBattle"
                 ) {
-                    print("🔄 CustomSidebar: Switching to movie battle")
+                    AppLogger.shared.debug("Switching to movie battle", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -112,7 +112,7 @@ struct CustomSidebar: View {
                     icon: "chart.bar.fill",
                     isSelected: selection == "stats"
                 ) {
-                    print("🔄 CustomSidebar: Switching to stats")
+                    AppLogger.shared.debug("Switching to stats", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -128,7 +128,7 @@ struct CustomSidebar: View {
                     icon: "message",
                     isSelected: selection == "chat"
                 ) {
-                    print("🔄 CustomSidebar: Switching to chat")
+                    AppLogger.shared.debug("Switching to chat", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -144,7 +144,7 @@ struct CustomSidebar: View {
                     icon: "person",
                     isSelected: selection == "profile"
                 ) {
-                    print("🔄 CustomSidebar: Switching to profile")
+                    AppLogger.shared.debug("Switching to profile", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,
@@ -169,7 +169,7 @@ struct CustomSidebar: View {
                     icon: "gearshape",
                     isSelected: selection == "settings"
                 ) {
-                    print("🔄 CustomSidebar: Switching to settings")
+                    AppLogger.shared.debug("Switching to settings", category: .ui)
                     // Отправляем уведомление о навигации
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil,

@@ -41,11 +41,13 @@ struct HorizontalScrollViewReader<Content: View>: View {
                     Color.clear
                         .frame(width: 200)  // Увеличиваем ширину для более раннего срабатывания
                         .onAppear {
-                            print(
-                                "🔄 HorizontalScrollViewReader: onAppear - hasMoreData=\(hasMoreData), isLoadingMore=\(isLoadingMore)"
+                            AppLogger.shared.debug(
+                                "onAppear - hasMoreData=\(hasMoreData), isLoadingMore=\(isLoadingMore)",
+                                category: .ui
                             )
                             if hasMoreData && !isLoadingMore {
-                                print("🔄 HorizontalScrollViewReader: onAppear - запускаем загрузку")
+                                AppLogger.shared.debug(
+                                    "onAppear - запускаем загрузку", category: .ui)
                                 Task {
                                     await onLoadMore()
                                 }

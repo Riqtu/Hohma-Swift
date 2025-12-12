@@ -114,13 +114,13 @@ struct WheelListView: View {
                 }
             }
             .onAppear {
-                print("🔗 WheelListView: ===== VIEW APPEARED =====")
+                AppLogger.shared.debug("===== VIEW APPEARED =====", category: .ui)
                 viewModel.loadWheels()
 
                 // Проверяем, есть ли pending deep link
-                print("🔗 WheelListView: Checking for pending deep link...")
+                AppLogger.shared.debug("Checking for pending deep link...", category: .ui)
                 checkAndHandleDeepLink()
-                print("🔗 WheelListView: ===== VIEW APPEAR COMPLETE =====")
+                AppLogger.shared.debug("===== VIEW APPEAR COMPLETE =====", category: .ui)
             }
             .onReceive(deepLinkService.$pendingWheelId) { wheelId in
                 // Обрабатываем deep link когда он становится доступным
@@ -150,7 +150,7 @@ struct WheelListView: View {
             )
         )
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { notification in
-            print("🔄 WheelListView: Received wheel data update notification")
+            AppLogger.shared.debug("Received wheel data update notification", category: .ui)
             // ИСПРАВЛЕНИЕ: Умное обновление данных без потери позиции в списке
             // Получаем ID обновленного колеса из уведомления, если оно есть
             if let wheelId = notification.userInfo?["wheelId"] as? String {
@@ -166,24 +166,24 @@ struct WheelListView: View {
         .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
             notification in
             // Обрабатываем уведомления о навигации к колесу
-            print("🔗 WheelListView: Received navigationRequested notification")
-            print("🔗 WheelListView: Notification userInfo: \(notification.userInfo ?? [:])")
+            AppLogger.shared.debug("Received navigationRequested notification", category: .ui)
+            AppLogger.shared.debug("Notification userInfo: \(notification.userInfo ?? [:])", category: .ui)
             print(
                 "🔗 WheelListView: Current view state - showingGame: \(showingGame), selectedWheel: \(selectedWheel?.id ?? "nil")"
             )
 
             if let destination = notification.userInfo?["destination"] as? String {
-                print("🔗 WheelListView: Destination: \(destination)")
+                AppLogger.shared.debug("Destination: \(destination)", category: .ui)
                 if destination == "wheel",
                     let wheelId = notification.userInfo?["wheelId"] as? String
                 {
-                    print("🔗 WheelListView: Navigation requested to wheel: \(wheelId)")
+                    AppLogger.shared.debug("Navigation requested to wheel: \(wheelId)", category: .ui)
                     handleDeepLinkWheel(wheelId: wheelId)
                 } else {
-                    print("🔗 WheelListView: Not a wheel navigation or no wheelId")
+                    AppLogger.shared.debug("Not a wheel navigation or no wheelId", category: .ui)
                 }
             } else {
-                print("🔗 WheelListView: No destination in notification")
+                AppLogger.shared.debug("No destination in notification", category: .ui)
             }
         }
         .fullScreenCover(isPresented: $showingCreateForm) {
@@ -205,33 +205,33 @@ struct WheelListView: View {
     // MARK: - Deep Link Handling
 
     private func checkAndHandleDeepLink() {
-        print("🔗 WheelListView: ===== CHECKING PENDING DEEP LINK =====")
+        AppLogger.shared.debug("===== CHECKING PENDING DEEP LINK =====", category: .ui)
         if let wheelId = deepLinkService.getPendingWheelId() {
-            print("🔗 WheelListView: ✅ Found pending wheel ID: \(wheelId)")
+            AppLogger.shared.info("Found pending wheel ID: \(wheelId)", category: .ui)
             handleDeepLinkWheel(wheelId: wheelId)
         } else {
-            print("🔗 WheelListView: ❌ No pending wheel ID found")
+            AppLogger.shared.error("No pending wheel ID found", category: .ui)
         }
-        print("🔗 WheelListView: ===== PENDING DEEP LINK CHECK COMPLETE =====")
+        AppLogger.shared.debug("===== PENDING DEEP LINK CHECK COMPLETE =====", category: .ui)
     }
 
     private func handleDeepLinkWheel(wheelId: String) {
-        print("🔗 WheelListView: Handling deep link to wheel: \(wheelId)")
+        AppLogger.shared.debug("Handling deep link to wheel: \(wheelId)", category: .ui)
 
         // Ищем колесо в загруженных данных
         let allWheels = viewModel.wheels
-        print("🔗 WheelListView: Total wheels loaded: \(allWheels.count)")
-        print("🔗 WheelListView: All wheels IDs: \(allWheels.map { $0.id })")
+        AppLogger.shared.debug("Total wheels loaded: \(allWheels.count)", category: .ui)
+        AppLogger.shared.debug("All wheels IDs: \(allWheels.map { $0.id })", category: .ui)
 
         if let wheel = allWheels.first(where: { $0.id == wheelId }) {
             // Если колесо найдено, открываем его
-            print("🔗 WheelListView: Found wheel for deep link: \(wheel.name)")
+            AppLogger.shared.debug("Found wheel for deep link: \(wheel.name)", category: .ui)
             selectedWheel = wheel
             showingGame = true
-            print("🔗 WheelListView: Set selectedWheel and showingGame = true")
+            AppLogger.shared.debug("Set selectedWheel and showingGame = true", category: .ui)
         } else {
             // Если колесо не найдено, пытаемся загрузить его по ID
-            print("🔗 WheelListView: Wheel not found in loaded data, trying to load by ID")
+            AppLogger.shared.debug("Wheel not found in loaded data, trying to load by ID", category: .ui)
             Task {
                 await loadWheelById(wheelId: wheelId)
             }
@@ -239,7 +239,7 @@ struct WheelListView: View {
     }
 
     private func loadWheelById(wheelId: String) async {
-        print("🔗 WheelListView: Loading wheel by ID: \(wheelId)")
+        AppLogger.shared.debug("Loading wheel by ID: \(wheelId)", category: .ui)
 
         // Здесь нужно добавить метод для загрузки колеса по ID
         // Пока что просто обновляем список колес
@@ -251,9 +251,9 @@ struct WheelListView: View {
             if let wheel = allWheels.first(where: { $0.id == wheelId }) {
                 self.selectedWheel = wheel
                 self.showingGame = true
-                print("🔗 WheelListView: Found wheel after refresh: \(wheel.name)")
+                AppLogger.shared.debug("Found wheel after refresh: \(wheel.name)", category: .ui)
             } else {
-                print("🔗 WheelListView: Wheel not found after refresh: \(wheelId)")
+                AppLogger.shared.debug("Wheel not found after refresh: \(wheelId)", category: .ui)
             }
         }
     }
@@ -289,7 +289,7 @@ struct NavigationModifier: ViewModifier {
                                     }
                                 }
                                 .onAppear {
-                                    print("🎮 WheelListView: Открыта игра для колеса: \(wheel.name)")
+                                    AppLogger.shared.debug("Открыта игра для колеса: \(wheel.name)", category: .ui)
                                 }
                         }
                     }
@@ -303,7 +303,7 @@ struct NavigationModifier: ViewModifier {
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar(.hidden, for: .tabBar)
                             .onAppear {
-                                print("🎮 WheelListView: Открыта игра для колеса: \(wheel.name)")
+                                AppLogger.shared.debug("Открыта игра для колеса: \(wheel.name)", category: .ui)
                             }
                     }
                 }

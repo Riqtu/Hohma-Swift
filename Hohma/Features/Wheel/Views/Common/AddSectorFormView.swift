@@ -298,7 +298,7 @@ struct AddSectorFormView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     if !isTextFieldFocused {
                         // Если клавиатура все еще не открылась, показываем дополнительную подсказку
-                        print("⚠️ Клавиатура не открылась автоматически на iPad")
+                        AppLogger.shared.warning("Клавиатура не открылась автоматически на iPad", category: .ui)
 
                         // Попытка принудительного фокуса
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

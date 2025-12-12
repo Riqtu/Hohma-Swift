@@ -35,10 +35,10 @@ struct UsersPanelView: View {
                     )
             }
             .onAppear {
-                print("👥 UsersPanelView: Appeared with \(viewModel.roomUsers.count) users")
+                AppLogger.shared.debug("👥 UsersPanelView: Appeared with \(viewModel.roomUsers.count) users", category: .ui)
             }
             .onChange(of: viewModel.roomUsers.count) { _, newCount in
-                print("👥 UsersPanelView: Users count changed to \(newCount)")
+                AppLogger.shared.debug("👥 UsersPanelView: Users count changed to \(newCount)", category: .ui)
             }
 
             if viewModel.roomUsers.isEmpty {

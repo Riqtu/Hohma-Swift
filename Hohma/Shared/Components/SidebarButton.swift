@@ -17,7 +17,7 @@ struct SidebarButton: View {
 
     var body: some View {
         Button(action: {
-            print("🔄 SidebarButton: Button tapped - \(title)")
+            AppLogger.shared.debug("Button tapped - \(title)", category: .ui)
             action()
         }) {
             HStack(spacing: 12) {

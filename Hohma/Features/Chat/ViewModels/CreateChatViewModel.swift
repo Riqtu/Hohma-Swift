@@ -28,7 +28,7 @@ final class CreateChatViewModel: ObservableObject {
                 self.searchResults = results
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ CreateChatViewModel: Failed to search users: \(error)")
+                AppLogger.shared.error("Failed to search users: \(error)", category: .ui)
             }
 
             isSearching = false
@@ -58,7 +58,7 @@ final class CreateChatViewModel: ObservableObject {
             self.createdChat = chat
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ CreateChatViewModel: Failed to create chat: \(error)")
+            AppLogger.shared.error("Failed to create chat: \(error)", category: .ui)
         }
 
         isCreating = false

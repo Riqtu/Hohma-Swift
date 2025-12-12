@@ -161,7 +161,7 @@ private class StickerPickerViewModel: ObservableObject {
                     selectPack(firstPack.id)
                 }
             } catch {
-                print("❌ Failed to load sticker packs: \(error)")
+                AppLogger.shared.error("Failed to load sticker packs: \(error)", category: .ui)
             }
             isLoading = false
         }
@@ -179,7 +179,7 @@ private class StickerPickerViewModel: ObservableObject {
                 let loadedStickers = try await stickerService.getPackStickers(packId: packId)
                 stickers = loadedStickers
             } catch {
-                print("❌ Failed to load stickers: \(error)")
+                AppLogger.shared.error("Failed to load stickers: \(error)", category: .ui)
                 stickers = []
             }
             isLoading = false
@@ -189,6 +189,6 @@ private class StickerPickerViewModel: ObservableObject {
 
 #Preview {
     StickerPickerView { stickerUrl in
-        print("Selected sticker: \(stickerUrl)")
+        AppLogger.shared.debug("Selected sticker: \(stickerUrl)", category: .ui)
     }
 }

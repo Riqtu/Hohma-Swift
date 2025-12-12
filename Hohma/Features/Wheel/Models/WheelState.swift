@@ -79,23 +79,23 @@ class WheelState: ObservableObject {
 
     // MARK: - Sector Management
     func setSectors(_ newSectors: [Sector]) {
-        print("🔄 WheelState: Setting \(newSectors.count) sectors from server")
+        AppLogger.shared.debug("Setting \(newSectors.count) sectors from server", category: .general)
         sectors = newSectors.filter { !$0.eliminated }
         losers = newSectors.filter { $0.eliminated }
     }
 
     func addSector(_ sector: Sector) {
-        print("➕ WheelState: Adding sector \(sector.label) from server")
-        print("➕ WheelState: Current sectors count: \(sectors.count)")
+        AppLogger.shared.debug("➕ WheelState: Adding sector \(sector.label) from server", category: .general)
+        AppLogger.shared.debug("➕ WheelState: Current sectors count: \(sectors.count)", category: .general)
         sectors.append(sector)
-        print("➕ WheelState: New sectors count: \(sectors.count)")
+        AppLogger.shared.debug("➕ WheelState: New sectors count: \(sectors.count)", category: .general)
 
         // Уведомляем об обновлении секторов
         NotificationCenter.default.post(name: .sectorsUpdated, object: sectors)
     }
 
     func updateSector(_ sector: Sector) {
-        print("✏️ WheelState: Updating sector \(sector.label) from server")
+        AppLogger.shared.debug("✏️ WheelState: Updating sector \(sector.label) from server", category: .general)
         if !sector.eliminated {
             sectors = sectors.filter { $0.id != sector.id }
             losers = losers.filter { $0.id != sector.id }
@@ -108,13 +108,13 @@ class WheelState: ObservableObject {
     }
 
     func removeSector(id: String) {
-        print("🗑️ WheelState: Removing sector \(id) from server")
+        AppLogger.shared.debug("🗑️ WheelState: Removing sector \(id) from server", category: .general)
         sectors = sectors.filter { $0.id != id }
         losers = losers.filter { $0.id != id }
     }
 
     func reorderSectors(by newOrder: [Sector]) {
-        print("🔄 WheelState: Reordering sectors by new order")
+        AppLogger.shared.debug("Reordering sectors by new order", category: .general)
 
         // Создаем словарь для быстрого поиска секторов по ID
         let sectorMap = Dictionary(uniqueKeysWithValues: sectors.map { ($0.id, $0) })
@@ -127,12 +127,12 @@ class WheelState: ObservableObject {
         // Обновляем массив секторов
         sectors = reorderedSectors
 
-        print("✅ WheelState: Reordered \(sectors.count) sectors")
+        AppLogger.shared.info("Reordered \(sectors.count) sectors", category: .general)
     }
 
     func emitSectorRemovalEvent(sectorId: String) {
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("📤 WheelState: Emitting sector:removed event")
+            AppLogger.shared.debug("Emitting sector:removed event", category: .general)
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
             socket.emitToRoom(.sectorRemoved, roomId: roomId ?? "", data: sectorId)
         } else {
@@ -144,7 +144,7 @@ class WheelState: ObservableObject {
 
     func resetAuthorization() {
         isAuthorized = true
-        print("✅ WheelState: Authorization flag reset to true")
+        AppLogger.shared.info("Authorization flag reset to true", category: .general)
     }
 
     func isSocketAuthorized() -> Bool {
@@ -154,7 +154,7 @@ class WheelState: ObservableObject {
     // MARK: - Wheel Actions
     func spinWheel() {
         guard !spinning && sectors.count > 1 else {
-            print("⚠️ WheelState: Cannot spin - spinning: \(spinning), sectors: \(sectors.count)")
+            AppLogger.shared.warning("Cannot spin - spinning: \(spinning), sectors: \(sectors.count)", category: .general)
             return
         }
 
@@ -195,7 +195,7 @@ class WheelState: ObservableObject {
 
         spinning = true
         rotation = newRotation
-        print("🔄 WheelState: Started spinning - rotation: \(rotation)")
+        AppLogger.shared.debug("Started spinning - rotation: \(rotation)", category: .general)
 
         handleSpinResult(winningIndex: winningIndex, rotation: newRotation, speed: speed)
 
@@ -226,7 +226,7 @@ class WheelState: ObservableObject {
 
     // MARK: - Force Stop
     func forceStopSpinning() {
-        print("🛑 WheelState: Force stopping wheel spinning")
+        AppLogger.shared.debug("🛑 WheelState: Force stopping wheel spinning", category: .general)
         spinning = false
     }
 
@@ -290,7 +290,7 @@ class WheelState: ObservableObject {
             }
 
             // Оставляем колесо на той позиции, где оно остановилось
-            print("🔄 WheelState: Wheel stopped at rotation: \(self.rotation)")
+            AppLogger.shared.debug("Wheel stopped at rotation: \(self.rotation)", category: .general)
 
             // Останавливаем вращение немедленно
             self.spinning = false
@@ -369,56 +369,56 @@ class WheelState: ObservableObject {
     }
 
     private func emitSpinEvent(_ spinData: [String: Any]) {
-        print("🔍 WheelState: Debug info for spin event:")
-        print("   - socket exists: \(socket != nil)")
-        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
-        print("   - isAuthorized: \(isAuthorized)")
-        print("   - roomId: \(roomId ?? "nil")")
+        AppLogger.shared.debug("Debug info for spin event:", category: .general)
+        AppLogger.shared.debug("- socket exists: \(socket != nil)", category: .general)
+        AppLogger.shared.debug("- socket.isConnected: \(socket?.isConnected ?? false)", category: .general)
+        AppLogger.shared.debug("- isAuthorized: \(isAuthorized)", category: .general)
+        AppLogger.shared.debug("- roomId: \(roomId ?? "nil")", category: .general)
 
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("📤 WheelState: Emitting wheel:spin event")
+            AppLogger.shared.debug("Emitting wheel:spin event", category: .general)
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
             socket.emitToRoom(.wheelSpin, roomId: roomId ?? "", data: spinData)
         } else {
-            print("⚠️ WheelState: Cannot emit spin event - socket not connected")
+            AppLogger.shared.warning("Cannot emit spin event - socket not connected", category: .general)
         }
     }
 
     private func emitShuffleEvent(_ shuffleData: [String: Any]) {
-        print("🔍 WheelState: Debug info for shuffle event:")
-        print("   - socket exists: \(socket != nil)")
-        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
-        print("   - isAuthorized: \(isAuthorized)")
-        print("   - roomId: \(roomId ?? "nil")")
+        AppLogger.shared.debug("Debug info for shuffle event:", category: .general)
+        AppLogger.shared.debug("- socket exists: \(socket != nil)", category: .general)
+        AppLogger.shared.debug("- socket.isConnected: \(socket?.isConnected ?? false)", category: .general)
+        AppLogger.shared.debug("- isAuthorized: \(isAuthorized)", category: .general)
+        AppLogger.shared.debug("- roomId: \(roomId ?? "nil")", category: .general)
 
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("📤 WheelState: Emitting sectors:shuffle event")
+            AppLogger.shared.debug("Emitting sectors:shuffle event", category: .general)
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
             socket.emitToRoom(.sectorsShuffle, roomId: roomId ?? "", data: shuffleData)
         } else {
-            print("⚠️ WheelState: Cannot emit shuffle event - socket not connected")
+            AppLogger.shared.warning("Cannot emit shuffle event - socket not connected", category: .general)
         }
     }
 
     // MARK: - Socket Integration (упрощенная версия)
     func setupSocket(_ socket: SocketIOServiceV2, roomId: String) {
-        print("🔧 WheelState: Setting up socket...")
-        print("   - roomId: \(roomId)")
-        print("   - clientId: \(socket.clientId)")
+        AppLogger.shared.debug("🔧 WheelState: Setting up socket...", category: .general)
+        AppLogger.shared.debug("- roomId: \(roomId)", category: .general)
+        AppLogger.shared.debug("- clientId: \(socket.clientId)", category: .general)
 
         self.socket = socket
         self.roomId = roomId
         self.clientId = socket.clientId
 
         setupSocketEventHandlers()
-        print("✅ WheelState: Socket setup completed")
+        AppLogger.shared.info("Socket setup completed", category: .general)
     }
 
     func joinRoom(_ roomId: String, userId: AuthUser?) {
-        print("🔌 WheelState: Attempting to join room \(roomId)")
-        print("   - socket exists: \(socket != nil)")
-        print("   - socket.isConnected: \(socket?.isConnected ?? false)")
-        print("   - isAuthorized: \(isAuthorized)")
+        AppLogger.shared.debug("Attempting to join room \(roomId)", category: .general)
+        AppLogger.shared.debug("- socket exists: \(socket != nil)", category: .general)
+        AppLogger.shared.debug("- socket.isConnected: \(socket?.isConnected ?? false)", category: .general)
+        AppLogger.shared.debug("- isAuthorized: \(isAuthorized)", category: .general)
 
         var userData: [String: Any] = [:]
         if let user = userId {
@@ -442,7 +442,7 @@ class WheelState: ObservableObject {
         if let socket = socket, socket.isConnected {
             // Сбрасываем флаг авторизации при попытке подключения к комнате
             isAuthorized = true
-            print("🔌 WheelState: Joining room \(roomId)")
+            AppLogger.shared.debug("Joining room \(roomId)", category: .general)
             socket.emit(.joinRoom, data: joinData)
 
             // Request sectors after joining room
@@ -450,7 +450,7 @@ class WheelState: ObservableObject {
                 self.requestSectors()
             }
         } else {
-            print("⚠️ WheelState: Cannot join room - socket not connected")
+            AppLogger.shared.warning("Cannot join room - socket not connected", category: .general)
         }
     }
 
@@ -461,16 +461,16 @@ class WheelState: ObservableObject {
             if let socket = socket, socket.isConnected, isAuthorized {
                 socket.emit(.leaveRoom, data: leaveData)
             } else {
-                print("⚠️ WheelState: Cannot leave room - socket not connected or not authorized")
+                AppLogger.shared.warning("Cannot leave room - socket not connected or not authorized", category: .general)
             }
         }
     }
 
     func requestSectors() {
-        print("📋 WheelState: Requesting sectors from server")
+        AppLogger.shared.debug("📋 WheelState: Requesting sectors from server", category: .general)
 
         guard let roomId = roomId else {
-            print("⚠️ WheelState: Cannot request sectors - no roomId")
+            AppLogger.shared.warning("Cannot request sectors - no roomId", category: .general)
             return
         }
 
@@ -478,14 +478,14 @@ class WheelState: ObservableObject {
             do {
                 let updatedSectors = try await FortuneWheelService.shared.getSectorsByWheelId(
                     roomId)
-                print("✅ WheelState: Received \(updatedSectors.count) sectors from server")
+                AppLogger.shared.info("Received \(updatedSectors.count) sectors from server", category: .general)
 
                 DispatchQueue.main.async {
                     self.setSectors(updatedSectors)
-                    print("✅ WheelState: Updated sectors from server")
+                    AppLogger.shared.info("Updated sectors from server", category: .general)
                 }
             } catch {
-                print("❌ WheelState: Failed to fetch sectors from server: \(error)")
+                AppLogger.shared.error("Failed to fetch sectors from server: \(error)", category: .general)
             }
         }
     }
@@ -495,7 +495,7 @@ class WheelState: ObservableObject {
             let speed = spinData["speed"] as? Double,
             let winningIndex = spinData["winningIndex"] as? Int
         else {
-            print("❌ WheelState: Invalid spin data received from server")
+            AppLogger.shared.error("Invalid spin data received from server", category: .general)
             return
         }
 
@@ -516,13 +516,13 @@ class WheelState: ObservableObject {
         guard let senderClientId = senderClientId,
             let sectorsData = data["sectors"] as? [[String: Any]]
         else {
-            print("❌ WheelState: Invalid shuffle data received")
+            AppLogger.shared.error("Invalid shuffle data received", category: .general)
             return
         }
 
         // Only update if the event came from another client
         if senderClientId != clientId {
-            print("🔄 WheelState: Received shuffle data from server: \(sectorsData.count) sectors")
+            AppLogger.shared.debug("Received shuffle data from server: \(sectorsData.count) sectors", category: .general)
 
             do {
                 let decoder = JSONDecoder()
@@ -547,32 +547,32 @@ class WheelState: ObservableObject {
                     }
                 }
             } catch {
-                print("❌ WheelState: Failed to decode shuffle sectors: \(error)")
+                AppLogger.shared.error("Failed to decode shuffle sectors: \(error)", category: .general)
             }
         } else {
-            print("🔄 WheelState: Ignoring shuffle event from self")
+            AppLogger.shared.debug("Ignoring shuffle event from self", category: .general)
         }
     }
 
     private func setupSocketEventHandlers() {
-        print("🔧 WheelState: Setting up socket event handlers")
+        AppLogger.shared.debug("🔧 WheelState: Setting up socket event handlers", category: .general)
         guard let socket = socket else {
-            print("❌ WheelState: Cannot setup handlers - socket is nil")
+            AppLogger.shared.error("Cannot setup handlers - socket is nil", category: .general)
             return
         }
-        print("✅ WheelState: Socket event handlers setup completed")
+        AppLogger.shared.info("Socket event handlers setup completed", category: .general)
 
         // Handle connect event
         socket.on(.connect) { [weak self] data in
-            print("🔌 WheelState: Socket connected, ready to join room")
+            AppLogger.shared.debug("Socket connected, ready to join room", category: .general)
             // Сбрасываем флаг авторизации при успешном подключении
             self?.isAuthorized = true
-            print("✅ WheelState: Authorization flag reset to true")
+            AppLogger.shared.info("Authorization flag reset to true", category: .general)
         }
 
         // Handle wheel spin from server
         socket.on(.wheelSpin) { [weak self] data in
-            print("🔄 WheelState: Received wheelSpin event")
+            AppLogger.shared.debug("Received wheelSpin event", category: .general)
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     DispatchQueue.main.async {
@@ -580,7 +580,7 @@ class WheelState: ObservableObject {
                     }
                 }
             } catch {
-                print("❌ WheelState: Failed to decode spin data: \(error)")
+                AppLogger.shared.error("Failed to decode spin data: \(error)", category: .general)
             }
         }
 
@@ -593,13 +593,13 @@ class WheelState: ObservableObject {
                     }
                 }
             } catch {
-                print("❌ WheelState: Failed to decode shuffle data: \(error)")
+                AppLogger.shared.error("Failed to decode shuffle data: \(error)", category: .general)
             }
         }
 
         // Handle sectors sync
         socket.on(.syncSectors) { [weak self] data in
-            print("📥 WheelState: Received sectors:sync event")
+            AppLogger.shared.debug("Received sectors:sync event", category: .general)
             // Просто запрашиваем актуальные данные с сервера
             DispatchQueue.main.async {
                 self?.requestSectors()
@@ -608,7 +608,7 @@ class WheelState: ObservableObject {
 
         // Handle sector updates
         socket.on(.sectorUpdated) { [weak self] data in
-            print("📥 WheelState: Received sector:updated event")
+            AppLogger.shared.debug("Received sector:updated event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
             DispatchQueue.main.async {
                 self?.requestSectors()
@@ -617,7 +617,7 @@ class WheelState: ObservableObject {
 
         // Handle sector creation
         socket.on(.sectorCreated) { [weak self] data in
-            print("📥 WheelState: Received sector:created event")
+            AppLogger.shared.debug("Received sector:created event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
             DispatchQueue.main.async {
                 self?.requestSectors()
@@ -626,7 +626,7 @@ class WheelState: ObservableObject {
 
         // Handle sector removal
         socket.on(.sectorRemoved) { [weak self] data in
-            print("📥 WheelState: Received sector:removed event")
+            AppLogger.shared.debug("Received sector:removed event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
             DispatchQueue.main.async {
                 self?.requestSectors()
@@ -635,7 +635,7 @@ class WheelState: ObservableObject {
 
         // Handle room users
         socket.on(.roomUsers) { data in
-            print("👥 WheelState: Received room users update")
+            AppLogger.shared.debug("👥 WheelState: Received room users update", category: .general)
 
             do {
                 let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
@@ -645,13 +645,13 @@ class WheelState: ObservableObject {
                     NotificationCenter.default.post(name: .roomUsersUpdated, object: users)
                 }
             } catch {
-                print("❌ WheelState: Failed to decode room users: \(error)")
+                AppLogger.shared.error("Failed to decode room users: \(error)", category: .general)
             }
         }
 
         // Handle request:sectors - respond with current sectors
         socket.on(.requestSectors) { [weak self] data in
-            print("📋 WheelState: Received request:sectors, responding with current sectors")
+            AppLogger.shared.debug("📋 WheelState: Received request:sectors, responding with current sectors", category: .general)
 
             guard let self = self,
                 let socket = self.socket,
@@ -670,14 +670,14 @@ class WheelState: ObservableObject {
                 self.createSectorDictionaryForShuffle(sector)
             }
 
-            print("📤 WheelState: Sending \(self.sectors.count) sectors in response")
+            AppLogger.shared.debug("Sending \(self.sectors.count) sectors in response", category: .general)
             // Отправляем массив секторов напрямую, как веб-клиент
             socket.emit(.currentSectors, data: sectorsArray)
         }
 
         // Handle current:sectors - receive sectors from other clients
         socket.on(.currentSectors) { [weak self] data in
-            print("📋 WheelState: Received current:sectors from another client")
+            AppLogger.shared.debug("📋 WheelState: Received current:sectors from another client", category: .general)
 
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
@@ -716,11 +716,11 @@ class WheelState: ObservableObject {
                             )
                         }
                     } else {
-                        print("❌ WheelState: Could not find sectors array in response")
+                        AppLogger.shared.error("Could not find sectors array in response", category: .general)
                     }
                 }
             } catch {
-                print("❌ WheelState: Failed to decode current:sectors data: \(error)")
+                AppLogger.shared.error("Failed to decode current:sectors data: \(error)", category: .general)
             }
         }
 
@@ -731,7 +731,7 @@ class WheelState: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                print("🔐 WheelState: Socket authorization error detected")
+                AppLogger.shared.debug("Socket authorization error detected", category: .general)
                 self?.isAuthorized = false
                 self?.cleanup()
             }

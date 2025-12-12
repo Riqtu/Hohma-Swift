@@ -121,7 +121,7 @@ struct VoiceMessagePlayerView: View {
                     }
                 }
             } catch {
-                print("❌ VoiceMessagePlayerView: Failed to load duration: \(error)")
+                AppLogger.shared.error("Failed to load duration: \(error)", category: .ui)
             }
         }
     }

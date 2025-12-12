@@ -43,7 +43,7 @@ class VideoRecorderService: NSObject, ObservableObject {
             let videoDevice = AVCaptureDevice.default(
                 .builtInWideAngleCamera, for: .video, position: currentCameraPosition)
         else {
-            print("❌ VideoRecorderService: Failed to get video device")
+            AppLogger.shared.error("Failed to get video device", category: .general)
             return
         }
 
@@ -57,7 +57,7 @@ class VideoRecorderService: NSObject, ObservableObject {
 
             // Аудио вход
             guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
-                print("❌ VideoRecorderService: Failed to get audio device")
+                AppLogger.shared.error("Failed to get audio device", category: .general)
                 return
             }
 
@@ -89,7 +89,7 @@ class VideoRecorderService: NSObject, ObservableObject {
 
             self.captureSession = session
         } catch {
-            print("❌ VideoRecorderService: Failed to setup capture session: \(error)")
+            AppLogger.shared.error("Failed to setup capture session: \(error)", category: .general)
         }
     }
 
@@ -174,14 +174,14 @@ class VideoRecorderService: NSObject, ObservableObject {
 
     func startRecording() -> URL? {
         guard !isRecording else {
-            print("⚠️ VideoRecorderService: Recording already in progress")
+            AppLogger.shared.warning("Recording already in progress", category: .general)
             return nil
         }
         guard let session = captureSession, let output = videoOutput else { return nil }
 
         // Проверяем, не идет ли уже запись у output
         if output.isRecording {
-            print("⚠️ VideoRecorderService: Output is already recording")
+            AppLogger.shared.warning("Output is already recording", category: .general)
             return nil
         }
 
@@ -232,7 +232,7 @@ class VideoRecorderService: NSObject, ObservableObject {
             self.recordingDuration += 0.1
         }
 
-        print("✅ VideoRecorderService: Recording started")
+        AppLogger.shared.info("Recording started", category: .general)
         return videoFilename
     }
 
@@ -273,7 +273,7 @@ class VideoRecorderService: NSObject, ObservableObject {
         segmentStartTime = 0
         stopRecordingCompletion = nil
 
-        print("✅ VideoRecorderService: Recording cancelled")
+        AppLogger.shared.info("Recording cancelled", category: .general)
     }
 
     private func mergeVideoSegments(completion: @escaping (Data?) -> Void) {
@@ -323,7 +323,7 @@ class VideoRecorderService: NSObject, ObservableObject {
 
                     currentTime = CMTimeAdd(currentTime, videoTimeRange.duration)
                 } catch {
-                    print("❌ VideoRecorderService: Failed to merge segment: \(error)")
+                    AppLogger.shared.error("Failed to merge segment: \(error)", category: .general)
                 }
             }
 
@@ -356,7 +356,7 @@ class VideoRecorderService: NSObject, ObservableObject {
                     try? FileManager.default.removeItem(at: exportURL)
                     completion(mergedData)
                 } catch {
-                    print("❌ VideoRecorderService: Export failed: \(error.localizedDescription)")
+                    AppLogger.shared.error("Export failed: \(error.localizedDescription)", category: .general)
                     completion(nil)
                 }
             } else {
@@ -376,11 +376,11 @@ class VideoRecorderService: NSObject, ObservableObject {
                             try? FileManager.default.removeItem(at: finalExportURL)
                             completion(mergedData)
                         } catch {
-                            print("❌ VideoRecorderService: Failed to read merged video: \(error)")
+                            AppLogger.shared.error("Failed to read merged video: \(error)", category: .general)
                             completion(nil)
                         }
                     } else {
-                        print("❌ VideoRecorderService: Export failed: \(errorMessage)")
+                        AppLogger.shared.error("Export failed: \(errorMessage)", category: .general)
                         completion(nil)
                     }
                 }
@@ -408,7 +408,7 @@ class VideoRecorderService: NSObject, ObservableObject {
         // Если идет запись, нельзя переключать камеру напрямую
         // Нужно использовать другой подход - переключение происходит через изменение соединения
         guard !isRecording else {
-            print("⚠️ VideoRecorderService: Cannot switch camera during recording")
+            AppLogger.shared.warning("Cannot switch camera during recording", category: .general)
             return
         }
 
@@ -455,10 +455,10 @@ class VideoRecorderService: NSObject, ObservableObject {
                     "✅ VideoRecorderService: Camera switched to \(currentCameraPosition == .front ? "front" : "back")"
                 )
             } else {
-                print("❌ VideoRecorderService: Cannot add new video input")
+                AppLogger.shared.error("Cannot add new video input", category: .general)
             }
         } catch {
-            print("❌ VideoRecorderService: Failed to create video input: \(error)")
+            AppLogger.shared.error("Failed to create video input: \(error)", category: .general)
         }
     }
 
@@ -471,7 +471,7 @@ class VideoRecorderService: NSObject, ObservableObject {
             !isWaitingForSegmentCompletion,
             let currentURL = recordingURL
         else {
-            print("⚠️ VideoRecorderService: Cannot switch camera - recording not ready")
+            AppLogger.shared.warning("Cannot switch camera - recording not ready", category: .general)
             return
         }
 
@@ -504,7 +504,7 @@ class VideoRecorderService: NSObject, ObservableObject {
             else {
                 session.commitConfiguration()
                 self.isWaitingForSegmentCompletion = false
-                print("❌ VideoRecorderService: Failed to get new video device")
+                AppLogger.shared.error("Failed to get new video device", category: .general)
                 return
             }
 
@@ -536,12 +536,12 @@ class VideoRecorderService: NSObject, ObservableObject {
                 } else {
                     session.commitConfiguration()
                     self.isWaitingForSegmentCompletion = false
-                    print("❌ VideoRecorderService: Cannot add new video input")
+                    AppLogger.shared.error("Cannot add new video input", category: .general)
                 }
             } catch {
                 session.commitConfiguration()
                 self.isWaitingForSegmentCompletion = false
-                print("❌ VideoRecorderService: Failed to switch camera: \(error)")
+                AppLogger.shared.error("Failed to switch camera: \(error)", category: .general)
             }
         }
 
@@ -557,7 +557,7 @@ class VideoRecorderService: NSObject, ObservableObject {
 
         // Проверяем, не идет ли уже запись
         if output.isRecording {
-            print("⚠️ VideoRecorderService: Output is already recording, waiting...")
+            AppLogger.shared.warning("Output is already recording, waiting...", category: .general)
             // Пытаемся снова через небольшую задержку
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 self?.continueRecordingAfterSwitch(
@@ -636,7 +636,7 @@ extension VideoRecorderService: AVCaptureFileOutputRecordingDelegate {
             self.recordingDuration = 0
 
             if let error = error {
-                print("❌ VideoRecorderService: Recording error: \(error)")
+                AppLogger.shared.error("Recording error: \(error)", category: .general)
                 self.isWaitingForSegmentCompletion = false
                 self.pendingSegmentStart = nil
                 self.stopRecordingCompletion?(nil)
@@ -665,7 +665,7 @@ extension VideoRecorderService: AVCaptureFileOutputRecordingDelegate {
                     try? FileManager.default.removeItem(at: outputFileURL)
                     self.recordingSegments.removeAll()
                 } catch {
-                    print("❌ VideoRecorderService: Failed to read video data: \(error)")
+                    AppLogger.shared.error("Failed to read video data: \(error)", category: .general)
                     self.stopRecordingCompletion?(nil)
                 }
 

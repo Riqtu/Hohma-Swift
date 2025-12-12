@@ -40,7 +40,7 @@ struct AppleSignInButton: View {
 
 #Preview {
     AppleSignInButton {
-        print("Apple Sign In tapped")
+        AppLogger.shared.debug("Apple Sign In tapped", category: .auth)
     }
     .padding()
     .background(Color.gray.opacity(0.1))

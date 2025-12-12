@@ -83,7 +83,7 @@ class PushNotificationService: NSObject, ObservableObject {
 
             return granted
         } catch {
-            print("❌ PushNotificationService: Authorization error: \(error)")
+            AppLogger.shared.error("Authorization error", error: error, category: .general)
             return false
         }
     }
@@ -95,14 +95,22 @@ class PushNotificationService: NSObject, ObservableObject {
 
         // Получаем текущие настройки
         notificationCenter.getNotificationSettings { settings in
-            print("📱 PushNotificationService: Current notification settings:")
-            print("   - Authorization status: \(settings.authorizationStatus.rawValue)")
-            print("   - Alert setting: \(settings.alertSetting.rawValue)")
-            print("   - Badge setting: \(settings.badgeSetting.rawValue)")
-            print("   - Sound setting: \(settings.soundSetting.rawValue)")
-            print(
-                "   - Notification center setting: \(settings.notificationCenterSetting.rawValue)")
-            print("   - Lock screen setting: \(settings.lockScreenSetting.rawValue)")
+            AppLogger.shared.debug("Current notification settings:", category: .general)
+            AppLogger.shared.debug(
+                "   - Authorization status: \(settings.authorizationStatus.rawValue)",
+                category: .general)
+            AppLogger.shared.debug(
+                "   - Alert setting: \(settings.alertSetting.rawValue)", category: .general)
+            AppLogger.shared.debug(
+                "   - Badge setting: \(settings.badgeSetting.rawValue)", category: .general)
+            AppLogger.shared.debug(
+                "   - Sound setting: \(settings.soundSetting.rawValue)", category: .general)
+            AppLogger.shared.debug(
+                "   - Notification center setting: \(settings.notificationCenterSetting.rawValue)",
+                category: .general)
+            AppLogger.shared.debug(
+                "   - Lock screen setting: \(settings.lockScreenSetting.rawValue)",
+                category: .general)
         }
     }
 
@@ -132,18 +140,23 @@ class PushNotificationService: NSObject, ObservableObject {
         // Конвертируем Data в hex строку для APNs
         let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
         self.deviceToken = tokenString
-        print("📱 PushNotificationService: Raw device token length: \(deviceToken.count)")
-        print("📱 PushNotificationService: Hex device token length: \(tokenString.count)")
-        print("📱 PushNotificationService: Device token: \(tokenString)")
+        AppLogger.shared.debug("Raw device token length: \(deviceToken.count)", category: .general)
+        AppLogger.shared.debug("Hex device token length: \(tokenString.count)", category: .general)
+        // Не логируем сам токен в production для безопасности
 
         // Отправляем токен на сервер
         sendDeviceTokenToServer(tokenString)
     }
 
     private func sendDeviceTokenToServer(_ token: String) {
-        // Сохраняем локально
-        UserDefaults.standard.set(token, forKey: "deviceToken")
-        print("✅ PushNotificationService: Device token saved locally")
+        // Сохраняем в Keychain вместо UserDefaults
+        do {
+            try KeychainService.shared.saveDeviceToken(token)
+            AppLogger.shared.info("Device token saved to Keychain", category: .general)
+        } catch {
+            AppLogger.shared.error(
+                "Failed to save device token to Keychain", error: error, category: .general)
+        }
 
         // Отправляем на сервер через TRPC
         Task {
@@ -153,24 +166,24 @@ class PushNotificationService: NSObject, ObservableObject {
 
     private func sendTokenToServer(_ token: String) async {
         do {
-            print(
-                "📱 PushNotificationService: Sending token to server: \(String(token.prefix(10)))..."
-            )
+            AppLogger.shared.debug(
+                "Sending token to server: \(String(token.prefix(10)))...", category: .general)
 
             // Получаем ID пользователя из TRPC сервиса
             let userId = try TRPCService.shared.getCurrentUserId()
-            print("📱 PushNotificationService: User ID: \(userId)")
+            AppLogger.shared.debug("User ID: \(userId)", category: .general)
 
             // Отправляем device token через TRPC
             let response = try await saveDeviceToken(userId: userId, deviceToken: token)
 
             if response.success {
-                print("✅ PushNotificationService: Device token sent to server successfully")
+                AppLogger.shared.info(
+                    "Device token sent to server successfully", category: .general)
             } else {
-                print("❌ PushNotificationService: Failed to save device token on server")
+                AppLogger.shared.error("Failed to save device token on server", category: .general)
             }
         } catch {
-            print("❌ PushNotificationService: Error sending device token: \(error)")
+            AppLogger.shared.error("Error sending device token", error: error, category: .general)
         }
     }
 
@@ -232,9 +245,10 @@ class PushNotificationService: NSObject, ObservableObject {
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("❌ PushNotificationService: Failed to schedule notification: \(error)")
+                AppLogger.shared.error(
+                    "Failed to schedule notification", error: error, category: .general)
             } else {
-                print("✅ PushNotificationService: Local notification scheduled")
+                AppLogger.shared.info("Local notification scheduled", category: .general)
             }
         }
     }
@@ -247,16 +261,17 @@ class PushNotificationService: NSObject, ObservableObject {
                 if #available(iOS 17.0, *) {
                     UNUserNotificationCenter.current().setBadgeCount(count) { error in
                         if let error = error {
-                            print("❌ PushNotificationService: Failed to set badge count: \(error)")
+                            AppLogger.shared.error(
+                                "Failed to set badge count", error: error, category: .general)
                         } else {
-                            print(
-                                "📱 PushNotificationService: Updated application icon badge to \(count)"
-                            )
+                            AppLogger.shared.debug(
+                                "Updated application icon badge to \(count)", category: .general)
                         }
                     }
                 } else {
                     UIApplication.shared.applicationIconBadgeNumber = count
-                    print("📱 PushNotificationService: Updated application icon badge to \(count)")
+                    AppLogger.shared.debug(
+                        "Updated application icon badge to \(count)", category: .general)
                 }
             }
         #endif
@@ -357,7 +372,8 @@ class PushNotificationService: NSObject, ObservableObject {
             if #available(iOS 17.0, *) {
                 UNUserNotificationCenter.current().setBadgeCount(count) { error in
                     if let error = error {
-                        print("❌ PushNotificationService: Failed to set badge count: \(error)")
+                        AppLogger.shared.error(
+                            "Failed to set badge count", error: error, category: .general)
                     }
                 }
             } else {
@@ -492,13 +508,13 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
 
     private func handleFollowAction(userId: String) {
         // Здесь логика подписки на пользователя
-        print("📱 PushNotificationService: Following user \(userId)")
+        AppLogger.shared.debug("Following user \(userId)", category: .general)
         // Отправляем запрос на сервер
     }
 
     private func navigateToProfile(userId: String) {
         // Навигация к профилю пользователя
-        print("📱 PushNotificationService: Navigating to profile \(userId)")
+        AppLogger.shared.debug("Navigating to profile \(userId)", category: .general)
         NotificationCenter.default.post(
             name: .navigationRequested,
             object: nil,
@@ -508,7 +524,7 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
 
     private func navigateToWheel(wheelId: String) {
         // Навигация к колесу
-        print("📱 PushNotificationService: Navigating to wheel \(wheelId)")
+        AppLogger.shared.debug("Navigating to wheel \(wheelId)", category: .general)
         NotificationCenter.default.post(
             name: .navigationRequested,
             object: nil,
@@ -518,7 +534,7 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
 
     private func navigateToWheelResult(wheelId: String) {
         // Навигация к результату колеса
-        print("📱 PushNotificationService: Navigating to wheel result \(wheelId)")
+        AppLogger.shared.debug("Navigating to wheel result \(wheelId)", category: .general)
         NotificationCenter.default.post(
             name: .navigationRequested,
             object: nil,
@@ -528,13 +544,13 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
 
     private func handleOpenAction(userInfo: [AnyHashable: Any]) {
         // Общая обработка открытия
-        print("📱 PushNotificationService: Handling open action")
+        AppLogger.shared.debug("Handling open action", category: .general)
         handleNotificationTap(userInfo: userInfo)
     }
 
     private func navigateToChat(chatId: String) {
         // Навигация к чату
-        print("📱 PushNotificationService: Navigating to chat \(chatId)")
+        AppLogger.shared.debug("Navigating to chat \(chatId)", category: .general)
         NotificationCenter.default.post(
             name: .navigationRequested,
             object: nil,
@@ -544,7 +560,7 @@ extension PushNotificationService: UNUserNotificationCenterDelegate {
 
     private func handleNotificationTap(userInfo: [AnyHashable: Any]) {
         // Обработка нажатия на уведомление
-        print("📱 PushNotificationService: Notification tapped")
+        AppLogger.shared.debug("Notification tapped", category: .general)
 
         // Определяем тип уведомления и выполняем соответствующее действие
         if let type = userInfo["type"] as? String {

@@ -93,14 +93,14 @@ struct NotificationView: View {
             message: "Сектор успешно удален",
             type: .success
         ) {
-            print("Dismissed")
+            AppLogger.shared.debug("Dismissed", category: .ui)
         }
 
         NotificationView(
             message: "Ошибка при удалении сектора",
             type: .error
         ) {
-            print("Dismissed")
+            AppLogger.shared.debug("Dismissed", category: .ui)
         }
     }
     .padding()

@@ -127,17 +127,17 @@ struct ChatView: View {
             .presentationDetents([.height(300)])
         }
         .onAppear {
-            print("💬 ChatView: onAppear called for chatId: \(chatId)")
-            print("💬 ChatView: ViewModel exists: \(viewModel != nil)")
-            print("💬 ChatView: Calling viewModel.loadChat(chatId: \(chatId))")
+            AppLogger.shared.debug("onAppear called for chatId: \(chatId)", category: .ui)
+            AppLogger.shared.debug("ViewModel exists: \(viewModel != nil)", category: .ui)
+            AppLogger.shared.debug("Calling viewModel.loadChat(chatId: \(chatId))", category: .ui)
             viewModel.loadChat(chatId: chatId)
             // Инициализируем фон при появлении
             chatBackgroundUrl = viewModel.chat?.backgroundUrl
-            print("💬 ChatView: loadChat() call completed")
+            AppLogger.shared.debug("loadChat() call completed", category: .ui)
         }
         .onChange(of: viewModel.chat?.backgroundUrl) { _, newValue in
             chatBackgroundUrl = newValue
-            print("💬 ChatView: Background URL updated: \(newValue ?? "nil")")
+            AppLogger.shared.debug("Background URL updated: \(newValue ?? "nil")", category: .ui)
         }
         .onReceive(NotificationCenter.default.publisher(for: .chatBackgroundUpdated)) {
             notification in
@@ -619,7 +619,7 @@ extension ChatView {
                                     viewModel.addAttachment(
                                         ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
-                                    print("❌ Failed to save video: \(error)")
+                                    AppLogger.shared.error("Failed to save video", error: error, category: .ui)
                                 }
                                 continue
                             }
@@ -637,7 +637,7 @@ extension ChatView {
                                     viewModel.addAttachment(
                                         ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
-                                    print("❌ Failed to save video: \(error)")
+                                    AppLogger.shared.error("Failed to save video", error: error, category: .ui)
                                 }
                             }
                         }
@@ -1117,7 +1117,7 @@ extension ChatView {
 
             return thumbnail
         } catch {
-            print("❌ Failed to generate thumbnail: \(error.localizedDescription)")
+            AppLogger.shared.error("Failed to generate thumbnail", error: error, category: .ui)
             return nil
         }
     }

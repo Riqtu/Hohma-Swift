@@ -68,11 +68,9 @@ final class AuthService {
                 return
             }
 
-            #if DEBUG
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("Auth response status: \(httpResponse.statusCode)")
-                }
-            #endif
+            if let httpResponse = response as? HTTPURLResponse {
+                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+            }
 
             do {
                 let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
@@ -80,15 +78,18 @@ final class AuthService {
                 let token = decoded.result.data.json.token
                 let authResult = AuthResult(user: user, token: token)
 
-                if let authResultData = try? JSONEncoder().encode(authResult) {
-                    UserDefaults.standard.set(authResultData, forKey: "authResult")
+                // Сохраняем в Keychain вместо UserDefaults
+                do {
+                    try KeychainService.shared.saveAuthResult(authResult)
+                } catch {
+                    AppLogger.shared.error(
+                        "Failed to save authResult to Keychain", error: error, category: .auth)
+                    // Продолжаем выполнение даже если сохранение не удалось
                 }
 
                 completion(.success(authResult))
             } catch {
-                #if DEBUG
-                    print("Auth decode error: \(error)")
-                #endif
+                AppLogger.shared.error("Auth decode error", error: error, category: .auth)
                 completion(.failure(error))
             }
         }.resume()
@@ -130,15 +131,9 @@ final class AuthService {
                 return
             }
 
-            #if DEBUG
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("Apple auth response status: \(httpResponse.statusCode)")
-                }
-                // Выводим тело ответа для отладки
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Apple auth response body: \(responseString)")
-                }
-            #endif
+            if let httpResponse = response as? HTTPURLResponse {
+                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+            }
 
             // Проверяем статус ответа
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
@@ -157,15 +152,18 @@ final class AuthService {
                 let token = decoded.result.data.json.token
                 let authResult = AuthResult(user: user, token: token)
 
-                if let authResultData = try? JSONEncoder().encode(authResult) {
-                    UserDefaults.standard.set(authResultData, forKey: "authResult")
+                // Сохраняем в Keychain вместо UserDefaults
+                do {
+                    try KeychainService.shared.saveAuthResult(authResult)
+                } catch {
+                    AppLogger.shared.error(
+                        "Failed to save authResult to Keychain", error: error, category: .auth)
+                    // Продолжаем выполнение даже если сохранение не удалось
                 }
 
                 completion(.success(authResult))
             } catch {
-                #if DEBUG
-                    print("Apple auth decode error: \(error)")
-                #endif
+                AppLogger.shared.error("Apple auth decode error", error: error, category: .auth)
                 completion(.failure(error))
             }
         }.resume()
@@ -253,11 +251,9 @@ final class AuthService {
                 return
             }
 
-            #if DEBUG
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("Credentials auth response status: \(httpResponse.statusCode)")
-                }
-            #endif
+            if let httpResponse = response as? HTTPURLResponse {
+                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+            }
 
             if let httpResponse = response as? HTTPURLResponse,
                 !(200...299).contains(httpResponse.statusCode)
@@ -277,18 +273,19 @@ final class AuthService {
                 let token = decoded.result.data.json.token
                 let authResult = AuthResult(user: user, token: token)
 
-                if let authResultData = try? JSONEncoder().encode(authResult) {
-                    UserDefaults.standard.set(authResultData, forKey: "authResult")
+                // Сохраняем в Keychain вместо UserDefaults
+                do {
+                    try KeychainService.shared.saveAuthResult(authResult)
+                } catch {
+                    AppLogger.shared.error(
+                        "Failed to save authResult to Keychain", error: error, category: .auth)
+                    // Продолжаем выполнение даже если сохранение не удалось
                 }
 
                 completion(.success(authResult))
             } catch {
-                #if DEBUG
-                    print("Credentials auth decode error: \(error)")
-                    if let responseString = String(data: data, encoding: .utf8) {
-                        print("Credentials auth response body: \(responseString)")
-                    }
-                #endif
+                AppLogger.shared.error(
+                    "Credentials auth decode error", error: error, category: .auth)
                 completion(.failure(error))
             }
         }.resume()

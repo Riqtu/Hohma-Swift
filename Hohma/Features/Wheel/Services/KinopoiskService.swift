@@ -260,11 +260,9 @@ class KinopoiskService: ObservableObject {
     // MARK: - Private Methods
 
     private func addAuthorizationHeader(to request: inout URLRequest) {
-        // Получаем токен из UserDefaults
-        if let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-            let savedAuthResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
-        {
-            request.setValue("Bearer \(savedAuthResult.token)", forHTTPHeaderField: "Authorization")
+        // Получаем токен из Keychain
+        if let token = KeychainService.shared.authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
     }
 

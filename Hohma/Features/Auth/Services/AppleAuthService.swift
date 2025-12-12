@@ -21,9 +21,9 @@ class AppleAuthService: NSObject, ObservableObject {
         error = nil
 
         #if DEBUG
-            print("🔐 Apple Sign In: Starting authentication")
-            print("🔐 Apple Sign In: Bundle ID = \(AppleSignInConfig.bundleId)")
-            print("🔐 Apple Sign In: Client ID = \(AppleSignInConfig.clientId)")
+            AppLogger.shared.debug("Apple Sign In: Starting authentication", category: .auth)
+            AppLogger.shared.debug("Apple Sign In: Bundle ID = \(AppleSignInConfig.bundleId)", category: .auth)
+            AppLogger.shared.debug("Apple Sign In: Client ID = \(AppleSignInConfig.clientId)", category: .auth)
         #endif
 
         let request = ASAuthorizationAppleIDProvider().createRequest()
@@ -31,7 +31,7 @@ class AppleAuthService: NSObject, ObservableObject {
 
         // Добавляем поддержку для симулятора
         #if targetEnvironment(simulator)
-            print("🔐 Apple Sign In: Running on simulator")
+            AppLogger.shared.debug("Apple Sign In: Running on simulator", category: .auth)
         #endif
 
         let authorizationController = ASAuthorizationController(authorizationRequests: [request])

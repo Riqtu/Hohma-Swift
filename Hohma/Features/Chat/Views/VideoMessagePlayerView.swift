@@ -190,7 +190,7 @@ class VideoPlayerUIView: UIView {
                             }
                         }
                     } catch {
-                        print("❌ VideoMessagePlayerView: Failed to load video track properties: \(error)")
+                        AppLogger.shared.error("Failed to load video track properties: \(error)", category: .ui)
                         // Fallback: просто зеркалим если не удалось загрузить свойства
                         await MainActor.run {
                             layer.setAffineTransform(CGAffineTransform(scaleX: -1, y: 1))

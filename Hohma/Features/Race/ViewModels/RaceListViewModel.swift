@@ -53,7 +53,7 @@ class RaceListViewModel: ObservableObject, TRPCServiceProtocol {
 
                 roads = response
             } catch {
-                print("Ошибка загрузки дорог: \(error.localizedDescription)")
+                AppLogger.shared.error("Ошибка загрузки дорог: \(error.localizedDescription)", category: .ui)
             }
         }
     }

@@ -110,7 +110,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
     // MARK: - Connection Management
     func connect() {
         guard !isConnecting else {
-            print("🔌 SocketIOService: Already connecting, skipping...")
+            AppLogger.shared.debug("Already connecting, skipping...", category: .socket)
             return
         }
 
@@ -118,7 +118,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         isConnecting = true
         error = nil
 
-        print("🔌 SocketIOService: Connecting to \(baseURL)")
+        AppLogger.shared.info("Connecting to \(baseURL)", category: .socket)
 
         // Создаем WebSocket URL для Socket.IO
         let wsURL = baseURL.replacingOccurrences(of: "https://", with: "wss://")
@@ -140,18 +140,18 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         if let authToken = authToken, !authToken.isEmpty {
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             #if DEBUG
-                print("🔐 SocketIOService: Added authorization token to WebSocket connection")
+                AppLogger.shared.debug("Added authorization token to WebSocket connection", category: .socket)
             #endif
         } else {
             #if DEBUG
-                print("🔐 SocketIOService: No authorization token provided, connecting anonymously")
+                AppLogger.shared.debug("No authorization token provided, connecting anonymously", category: .socket)
             #endif
         }
 
         let task = session.webSocketTask(with: request)
         self.webSocket = task
 
-        print("🔌 SocketIOService: WebSocket task created, resuming...")
+        AppLogger.shared.debug("WebSocket task created, resuming...", category: .socket)
         task.resume()
 
         // Начинаем получать сообщения
@@ -164,8 +164,8 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
             if self.isConnected == false && !self.isManualDisconnect {
-                print(
-                    "⚠️ SocketIOService: Connection not established after 5s, attempting reconnect")
+                AppLogger.shared.warning(
+                    "Connection not established after 5s, attempting reconnect", category: .socket)
                 self.handleError("Connection timeout")
             }
         }
@@ -178,7 +178,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
     }
 
     func disconnect() {
-        print("🔌 SocketIOService: Disconnecting...")
+        AppLogger.shared.info("Disconnecting...", category: .socket)
 
         isManualDisconnect = true
         isConnecting = false
@@ -196,7 +196,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         connectionTimeoutTimer?.invalidate()
         connectionTimeoutTimer = nil
 
-        print("🔌 SocketIOService: Disconnected successfully")
+        AppLogger.shared.info("Disconnected successfully", category: .socket)
     }
 
     // MARK: - Event Handling
@@ -205,7 +205,7 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
             eventHandlers[event] = []
         }
         eventHandlers[event]?.append(handler)
-        print("📝 SocketIOService: Registered handler for event: \(event.rawValue)")
+        AppLogger.shared.debug("Registered handler for event: \(event.rawValue)", category: .socket)
     }
 
     func emit(_ event: SocketIOEvent, data: Data? = nil) {

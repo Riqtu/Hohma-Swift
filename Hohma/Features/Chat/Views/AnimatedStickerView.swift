@@ -267,7 +267,7 @@ private struct AnimatedStickerImageView: UIViewRepresentable {
                 }
             }
         } catch {
-            print("❌ Failed to load animated sticker: \(error)")
+            AppLogger.shared.error("Failed to load animated sticker", error: error, category: .ui)
         }
     }
 }

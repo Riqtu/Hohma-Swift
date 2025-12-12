@@ -93,7 +93,7 @@ struct SectorsSlideView: View {
             notification in
             // Если получаем уведомление о навигации, закрываем экран
             if let destination = notification.userInfo?["destination"] as? String {
-                print("🔄 SectorsSlideView: Navigation requested to \(destination), closing view")
+                AppLogger.shared.debug("Navigation requested to \(destination), closing view", category: .ui)
                 isPresented = false
 
                 // Отправляем дополнительное уведомление для навигации
@@ -168,7 +168,7 @@ struct SectorSlideRowView: View {
                     if viewModel.isSocketConnected {
                         viewModel.deleteSector(sector)
                     } else {
-                        print("⚠️ SectorsSlideView: Socket not connected, attempting to connect...")
+                        AppLogger.shared.warning("Socket not connected, attempting to connect...", category: .ui)
                         viewModel.connectSocket()
 
                         // Ждем подключения и повторяем попытку (уменьшили задержку)
@@ -176,7 +176,7 @@ struct SectorSlideRowView: View {
                             if viewModel.isSocketConnected {
                                 viewModel.deleteSector(sector)
                             } else {
-                                print("❌ SectorsSlideView: Socket still not connected after retry")
+                                AppLogger.shared.error("Socket still not connected after retry", category: .ui)
                             }
                         }
                     }

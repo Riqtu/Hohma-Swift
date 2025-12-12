@@ -70,14 +70,17 @@ final class ProfileViewModel: ObservableObject {
                 self.user = updatedUser
                 successMessage = "Профиль успешно обновлен"
 
-                // Обновляем данные в AuthViewModel
-                if let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-                    var authResult = try? JSONDecoder().decode(
-                        AuthResult.self, from: authResultData)
-                {
+                // Обновляем данные в Keychain
+                if var authResult = KeychainService.shared.loadAuthResult() {
                     authResult.user = updatedUser
-                    if let newAuthResultData = try? JSONEncoder().encode(authResult) {
-                        UserDefaults.standard.set(newAuthResultData, forKey: "authResult")
+                    do {
+                        try KeychainService.shared.saveAuthResult(authResult)
+                    } catch {
+                        #if DEBUG
+                            print(
+                                "⚠️ ProfileViewModel: Failed to update authResult in Keychain: \(error)"
+                            )
+                        #endif
                     }
                 }
 

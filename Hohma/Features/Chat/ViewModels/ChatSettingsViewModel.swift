@@ -84,7 +84,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 }
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to load chat: \(error)")
+                AppLogger.shared.error("Failed to load chat: \(error)", category: .ui)
             }
             
             isLoading = false
@@ -110,7 +110,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 }
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update notifications: \(error)")
+                AppLogger.shared.error("Failed to update notifications: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -133,7 +133,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 loadChat()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update mute status: \(error)")
+                AppLogger.shared.error("Failed to update mute status: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -167,7 +167,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update chat name: \(error)")
+                AppLogger.shared.error("Failed to update chat name: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -201,7 +201,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update chat description: \(error)")
+                AppLogger.shared.error("Failed to update chat description: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -240,7 +240,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update chat avatar: \(error)")
+                AppLogger.shared.error("Failed to update chat avatar: \(error)", category: .ui)
             }
             
             isUploadingAvatar = false
@@ -283,7 +283,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update chat background: \(error)")
+                AppLogger.shared.error("Failed to update chat background: \(error)", category: .ui)
             }
             
             isUploadingBackground = false
@@ -309,7 +309,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 loadChat()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to update member role: \(error)")
+                AppLogger.shared.error("Failed to update member role: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -330,7 +330,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 loadChat()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to remove member: \(error)")
+                AppLogger.shared.error("Failed to remove member: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -375,7 +375,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
                     isSearching = false
-                    print("❌ ChatSettingsViewModel: Failed to search users: \(error)")
+                    AppLogger.shared.error("Failed to search users: \(error)", category: .ui)
                 }
             }
         }
@@ -399,7 +399,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 searchResults = []
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to add member: \(error)")
+                AppLogger.shared.error("Failed to add member: \(error)", category: .ui)
             }
             
             isUpdating = false
@@ -447,7 +447,7 @@ final class ChatSettingsViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatSettingsViewModel: Failed to remove chat background: \(error)")
+                AppLogger.shared.error("Failed to remove chat background: \(error)", category: .ui)
             }
             
             isUpdating = false

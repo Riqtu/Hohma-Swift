@@ -47,7 +47,7 @@ class CacheManagerService: ObservableObject {
         )
         URLCache.shared = cache
         
-        print("📦 CacheManager: Настроен URLCache - память: \(memoryCapacity / 1024 / 1024) MB, диск: \(diskCapacity / 1024 / 1024) MB")
+        AppLogger.shared.info("Настроен URLCache - память: \(memoryCapacity / 1024 / 1024) MB, диск: \(diskCapacity / 1024 / 1024) MB", category: .cache)
     }
     
     // MARK: - Cache Limits
@@ -109,11 +109,11 @@ class CacheManagerService: ObservableObject {
         // Проверяем, не превышен ли лимит дискового кэша (без учёта Documents)
         let diskLimit = Int64(getDiskLimit())
         if diskCacheSize > diskLimit {
-            print("⚠️ CacheManager: Размер кэша (\(diskCacheSize / 1024 / 1024) MB) превышает лимит (\(diskLimit / 1024 / 1024) MB)")
+            AppLogger.shared.warning("Размер кэша (\(diskCacheSize / 1024 / 1024) MB) превышает лимит (\(diskLimit / 1024 / 1024) MB)", category: .cache)
             // URLCache автоматически удалит старые записи при следующем сохранении
             // Но мы можем принудительно очистить часть кэша, если превышение значительное
             if diskCacheSize > diskLimit * 2 {
-                print("⚠️ CacheManager: Превышение лимита более чем в 2 раза, рекомендуется очистка кэша")
+                AppLogger.shared.warning("Превышение лимита более чем в 2 раза, рекомендуется очистка кэша", category: .cache)
             }
         }
     }
@@ -129,7 +129,7 @@ class CacheManagerService: ObservableObject {
                 let customCachePath = cacheDir.appendingPathComponent("hohma_cache")
                 let customSize = await self.calculateDirectorySize(at: customCachePath)
                 totalSize += customSize
-                print("📦 CacheManager: Размер hohma_cache: \(customSize / 1024 / 1024) MB")
+                AppLogger.shared.debug("Размер hohma_cache: \(customSize / 1024 / 1024) MB", category: .cache)
                 
                 // 2. Проверяем стандартную директорию URLCache (может быть в другом месте)
                 // URLCache может хранить данные в разных местах в зависимости от iOS версии
@@ -141,7 +141,7 @@ class CacheManagerService: ObservableObject {
                 for path in urlCachePaths {
                     let size = await self.calculateDirectorySize(at: path)
                     if size > 0 {
-                        print("📦 CacheManager: Размер \(path.lastPathComponent): \(size / 1024 / 1024) MB")
+                        AppLogger.shared.debug("Размер \(path.lastPathComponent): \(size / 1024 / 1024) MB", category: .cache)
                         totalSize += size
                     }
                 }
@@ -153,11 +153,11 @@ class CacheManagerService: ObservableObject {
             let tempDir = fileManager.temporaryDirectory
             let tempSize = await self.calculateTemporaryDirectorySize(at: tempDir)
             if tempSize > 0 {
-                print("📦 CacheManager: Размер временных файлов приложения: \(tempSize / 1024 / 1024) MB")
+                AppLogger.shared.debug("Размер временных файлов приложения: \(tempSize / 1024 / 1024) MB", category: .cache)
             }
             totalSize += tempSize
             
-            print("📦 CacheManager: Общий размер кэша (без Documents): \(totalSize / 1024 / 1024) MB")
+            AppLogger.shared.debug("Общий размер кэша (без Documents): \(totalSize / 1024 / 1024) MB", category: .cache)
             return totalSize
         }.value
     }
@@ -172,7 +172,7 @@ class CacheManagerService: ObservableObject {
             
             let size = await self.calculateDirectorySize(at: documentsDir)
             if size > 0 {
-                print("📦 CacheManager: Размер пользовательских данных (Documents): \(size / 1024 / 1024) MB")
+                AppLogger.shared.debug("Размер пользовательских данных (Documents): \(size / 1024 / 1024) MB", category: .cache)
             }
             return size
         }.value
@@ -211,7 +211,7 @@ class CacheManagerService: ObservableObject {
                             try fileManager.removeItem(at: url)
                             deletedCount += 1
                         } catch {
-                            print("❌ CacheManager: Ошибка при удалении старого медиа \(name): \(error)")
+                            AppLogger.shared.error("Ошибка при удалении старого медиа \(name)", error: error, category: .cache)
                         }
                     }
                 }

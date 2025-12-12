@@ -31,8 +31,14 @@ final class NetworkManager {
 
     // MARK: - Public Methods
     func request<T: Decodable>(_ endpoint: URLRequest) async throws -> T {
+        // Логируем запрос
+        AppLogger.shared.logRequest(endpoint, category: .network)
+
         do {
             let (data, response) = try await session.data(for: endpoint)
+
+            // Логируем ответ
+            AppLogger.shared.logResponse(response, data: data, category: .network)
 
             // Handle HTTP errors
             try handleHTTPErrors(data: data, response: response)
@@ -55,12 +61,10 @@ final class NetworkManager {
                     shouldLog = true
                 }
             }
-            
-            #if DEBUG
-                if shouldLog {
-                print("❌ NetworkManager: Request failed with error: \(error)")
-                }
-            #endif
+
+            if shouldLog {
+                AppLogger.shared.error("Request failed", error: error, category: .network)
+            }
             throw error
         }
     }
@@ -88,9 +92,7 @@ final class NetworkManager {
     }
 
     private func handleUnauthorizedError() {
-        #if DEBUG
-            print("🔐 NetworkManager: Received 401 error, logging out user")
-        #endif
+        AppLogger.shared.warning("Received 401 error, logging out user", category: .network)
 
         NotificationCenter.default.post(name: .socketAuthorizationError, object: nil)
 
@@ -120,9 +122,7 @@ final class NetworkManager {
         do {
             return try decoder.decode(type, from: data)
         } catch {
-            #if DEBUG
-                print("🔍 NetworkManager: Direct decoding failed, trying tRPC format")
-            #endif
+            AppLogger.shared.debug("Direct decoding failed, trying tRPC format", category: .network)
         }
 
         // Try tRPC response format
@@ -134,9 +134,7 @@ final class NetworkManager {
             throw AppError.dataError("Invalid JSON response")
         }
 
-        #if DEBUG
-            print("🔍 NetworkManager: Response JSON structure: \(json)")
-        #endif
+        AppLogger.shared.debug("Response JSON structure: \(json)", category: .network)
 
         // Try different tRPC response formats
         if let result = json["result"] as? [String: Any],

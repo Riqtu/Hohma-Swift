@@ -110,12 +110,12 @@ class SocketIOServiceAdapter: ObservableObject {
 
     // MARK: - Debug Methods
     func printDebugInfo() {
-        print("🔍 SocketIOServiceAdapter Debug Info:")
-        print("   - Using new implementation: \(useNewImplementation)")
-        print("   - Is Connected: \(isConnected)")
-        print("   - Is Connecting: \(isConnecting)")
-        print("   - Error: \(error ?? "None")")
-        print("   - Client ID: \(clientId)")
+        AppLogger.shared.debug("SocketIOServiceAdapter Debug Info:", category: .socket)
+        AppLogger.shared.debug("   - Using new implementation: \(useNewImplementation)", category: .socket)
+        AppLogger.shared.debug("   - Is Connected: \(isConnected)", category: .socket)
+        AppLogger.shared.debug("   - Is Connecting: \(isConnecting)", category: .socket)
+        AppLogger.shared.debug("   - Error: \(error ?? "None")", category: .socket)
+        AppLogger.shared.debug("   - Client ID: \(clientId)", category: .socket)
 
         if let v2Service = socketService as? SocketIOServiceV2 {
             v2Service.printDebugInfo()

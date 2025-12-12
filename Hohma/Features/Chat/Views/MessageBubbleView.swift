@@ -1152,7 +1152,7 @@ struct RegularVideoPlayerView: View {
                     self.isHorizontal = thumbnailImage.size.width > thumbnailImage.size.height
                 }
             } catch {
-                print("❌ Failed to generate thumbnail: \(error)")
+                AppLogger.shared.error("Failed to generate thumbnail: \(error)", category: .ui)
             }
         }
     }

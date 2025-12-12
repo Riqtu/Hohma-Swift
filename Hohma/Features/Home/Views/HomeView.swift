@@ -70,12 +70,12 @@ struct HomeView: View {
                                     }
                                 },
                                 onProfileTap: {
-                                    print("🏠 HomeView: Кнопка профиля нажата")
+                                    AppLogger.shared.debug("Кнопка профиля нажата", category: .ui)
                                     if isIPhone {
-                                        print("🏠 HomeView: iPhone - добавляем profile в navigationPath")
+                                        AppLogger.shared.debug("iPhone - добавляем profile в navigationPath", category: .ui)
                                         navigationPath.append(NavigationDestination.profile)
                                     } else {
-                                        print("🏠 HomeView: iPad - отправляем уведомление о навигации к profile")
+                                        AppLogger.shared.debug("iPad - отправляем уведомление о навигации к profile", category: .ui)
                                         NotificationCenter.default.post(
                                             name: .navigationRequested,
                                             object: nil,
@@ -267,7 +267,7 @@ struct HomeView: View {
             .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
                 notification in
                 if let destination = notification.userInfo?["destination"] as? String {
-                    print("🏠 HomeView: Получено уведомление о навигации к \(destination)")
+                    AppLogger.shared.debug("Получено уведомление о навигации к \(destination)", category: .ui)
                     // Для iPhone обрабатываем навигацию через NavigationPath
                     if isIPhone {
                         if destination == "race" {

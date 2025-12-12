@@ -110,8 +110,8 @@ struct RaceSceneView: View {
                 )
 
                 // Устанавливаем тему из данных гонки
-                print("🎨 RaceSceneView: Race theme from API: '\(race.theme)'")
-                print("🎨 RaceSceneView: Road theme from API: '\(race.road.theme)'")
+                AppLogger.shared.debug("🎨 RaceSceneView: Race theme from API: '\(race.theme)'", category: .ui)
+                AppLogger.shared.debug("🎨 RaceSceneView: Road theme from API: '\(race.road.theme)'", category: .ui)
                 themeManager.setThemeFromRace(race.road.theme)
                 print(
                     "🎨 RaceSceneView: Current theme after setting: \(themeManager.currentTheme.rawValue)"

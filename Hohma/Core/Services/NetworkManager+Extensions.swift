@@ -35,9 +35,8 @@ extension NetworkManager {
                 }
 
                 #if DEBUG
-                    print(
-                        "🔄 NetworkManager: Retry attempt \(attempt)/\(maxRetries) after error: \(error)"
-                    )
+                    AppLogger.shared.debug(
+                        "Retry attempt \(attempt)/\(maxRetries) after error: \(error)", category: .network)
                 #endif
 
                 try await Task.sleep(nanoseconds: UInt64(retryDelay * 1_000_000_000))

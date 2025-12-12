@@ -76,11 +76,11 @@ final class ChatViewModel: ObservableObject {
     }
 
     init() {
-        print("💬 ChatViewModel: init() called")
+        AppLogger.shared.debug("init() called", category: .general)
         setupSocketAdapter()
         setupAudioRecorderBinding()
         setupVideoRecorderBinding()
-        print("💬 ChatViewModel: init() completed")
+        AppLogger.shared.debug("init() completed", category: .general)
     }
 
     private func setupAudioRecorderBinding() {
@@ -127,28 +127,28 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Socket Setup
 
     private func setupSocketAdapter() {
-        print("💬 ChatViewModel: setupSocketAdapter() called")
+        AppLogger.shared.debug("setupSocketAdapter() called", category: .general)
         guard let authToken = TRPCService.shared.authToken else {
-            print("❌ ChatViewModel: No auth token available")
+            AppLogger.shared.error("No auth token available", category: .auth)
             return
         }
 
-        print("💬 ChatViewModel: Auth token available, creating SocketAdapter")
+        AppLogger.shared.debug("Auth token available, creating SocketAdapter", category: .general)
         // Используем тот же подход, что и в RaceViewModel
         socketAdapter = SocketIOServiceAdapter(authToken: authToken)
         socketAdapter?.connect()
-        print("💬 ChatViewModel: SocketAdapter created and connect() called")
+        AppLogger.shared.debug("SocketAdapter created and connect() called", category: .general)
 
         guard let adapter = socketAdapter else {
-            print("❌ ChatViewModel: Failed to create SocketAdapter")
+            AppLogger.shared.error("Failed to create SocketAdapter", category: .general)
             return
         }
 
-        print("💬 ChatViewModel: Creating ChatSocketManager")
+        AppLogger.shared.debug("Creating ChatSocketManager", category: .general)
         chatSocketManager = ChatSocketManager(socket: adapter)
-        print("💬 ChatViewModel: ChatSocketManager created: \(chatSocketManager != nil ? "success" : "failed")")
+        AppLogger.shared.debug("ChatSocketManager created: \(chatSocketManager != nil ? "success" : "failed")", category: .general)
         setupSocketCallbacks()
-        print("💬 ChatViewModel: Socket callbacks setup completed")
+        AppLogger.shared.debug("Socket callbacks setup completed", category: .general)
     }
 
     private func setupSocketCallbacks() {
@@ -210,11 +210,11 @@ final class ChatViewModel: ObservableObject {
         }
 
         manager.onMemberOnline = { userId in
-            print("💬 ChatViewModel: Member \(userId) came online")
+            AppLogger.shared.debug("Member \(userId) came online", category: .general)
         }
 
         manager.onMemberOffline = { userId in
-            print("💬 ChatViewModel: Member \(userId) went offline")
+            AppLogger.shared.debug("Member \(userId) went offline", category: .general)
         }
 
         manager.onMessageDeleted = { [weak self] messageId in
@@ -272,7 +272,7 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Chat Loading
 
     func loadChat(chatId: String) {
-        print("💬 ChatViewModel: loadChat() called with chatId: \(chatId)")
+        AppLogger.shared.debug("loadChat() called with chatId: \(chatId)", category: .general)
         self.chatId = chatId
 
         Task {
@@ -280,21 +280,21 @@ final class ChatViewModel: ObservableObject {
             errorMessage = nil
 
             do {
-                print("💬 ChatViewModel: Loading chat data from API...")
+                AppLogger.shared.debug("Loading chat data from API...", category: .general)
                 let loadedChat = try await chatService.getChatById(chatId: chatId)
                 self.chat = loadedChat
-                print(
-                    "💬 ChatViewModel: Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")"
+                AppLogger.shared.debug(
+                    "Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")", category: .general
                 )
-                print("💬 ChatViewModel: About to call loadMessages()")
+                AppLogger.shared.debug("About to call loadMessages()", category: .general)
                 loadMessages()
 
                 // Присоединяемся к комнате чата через Socket.IO
-                print("💬 ChatViewModel: About to call joinChat()")
+                AppLogger.shared.debug("About to call joinChat()", category: .general)
                 joinChat()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to load chat: \(error)")
+                AppLogger.shared.error("Failed to load chat", error: error, category: .general)
             }
 
             isLoading = false
@@ -327,7 +327,7 @@ final class ChatViewModel: ObservableObject {
                 markAsRead()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to load messages: \(error)")
+                AppLogger.shared.error("Failed to load messages", error: error, category: .general)
             }
 
             isLoadingMessages = false
@@ -383,7 +383,7 @@ final class ChatViewModel: ObservableObject {
                 self.messageIds = seenIds
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to load more messages: \(error)")
+                AppLogger.shared.error("Failed to load more messages", error: error, category: .general)
             }
 
             isLoadingMoreMessages = false
@@ -393,26 +393,26 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Socket Operations
 
     private func joinChat() {
-        print("💬 ChatViewModel: joinChat() called")
+        AppLogger.shared.debug("joinChat() called", category: .general)
         guard let chatId = chatId,
             let userId = currentUserId,
             let manager = chatSocketManager
         else {
-            print("❌ ChatViewModel: Cannot join chat - missing chatId or userId")
-            print("   - chatId: \(self.chatId ?? "nil")")
-            print("   - userId: \(currentUserId ?? "nil")")
-            print("   - manager: \(chatSocketManager != nil ? "exists" : "nil")")
+            AppLogger.shared.error("Cannot join chat - missing chatId or userId", category: .general)
+            AppLogger.shared.debug("   - chatId: \(self.chatId ?? "nil")", category: .general)
+            AppLogger.shared.debug("   - userId: \(currentUserId ?? "nil")", category: .general)
+            AppLogger.shared.debug("   - manager: \(chatSocketManager != nil ? "exists" : "nil")", category: .general)
             return
         }
 
-        print("💬 ChatViewModel: Socket adapter state - isConnected: \(socketAdapter?.isConnected ?? false), isConnecting: \(socketAdapter?.isConnecting ?? false)")
+        AppLogger.shared.debug("Socket adapter state - isConnected: \(socketAdapter?.isConnected ?? false), isConnecting: \(socketAdapter?.isConnecting ?? false)", category: .general)
         
         // Убеждаемся, что сокет подключен перед присоединением к комнате
         manager.connectIfNeeded()
         
         // Вызываем joinChat - он сам проверит подключение и сохранит chatId/userId
         // для автоматического переприсоединения при переподключении
-        print("💬 ChatViewModel: Calling manager.joinChat(chatId: \(chatId), userId: \(userId))")
+        AppLogger.shared.debug("Calling manager.joinChat(chatId: \(chatId), userId: \(userId))", category: .general)
         manager.joinChat(chatId: chatId, userId: userId)
     }
 
@@ -662,7 +662,7 @@ final class ChatViewModel: ObservableObject {
                 stopTyping()
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to send message: \(error)")
+                AppLogger.shared.error("Failed to send message", error: error, category: .general)
 
                 // Удаляем временное сообщение при ошибке
                 if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
@@ -755,7 +755,7 @@ final class ChatViewModel: ObservableObject {
                 )
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to send sticker: \(error)")
+                AppLogger.shared.error("Failed to send sticker", error: error, category: .general)
 
                 // Удаляем временное сообщение при ошибке
                 if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
@@ -853,7 +853,7 @@ final class ChatViewModel: ObservableObject {
                     userInfo: ["chatId": chatId]
                 )
             } catch {
-                print("❌ ChatViewModel: Failed to mark as read: \(error)")
+                AppLogger.shared.error("Failed to mark as read", error: error, category: .general)
             }
         }
     }
@@ -1146,7 +1146,7 @@ final class ChatViewModel: ObservableObject {
                 refreshMessage(messageId: messageId)
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatViewModel: Failed to handle reaction: \(error)")
+                AppLogger.shared.error("Failed to handle reaction", error: error, category: .general)
             }
         }
     }

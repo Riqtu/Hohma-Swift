@@ -46,13 +46,13 @@ import WebKit
                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
             ) {
                 if let url = navigationAction.request.url {
-                    print("Навигация по ссылке:", url)
+                    AppLogger.shared.debug("Навигация по ссылке:", category: .auth)
                     // Парсим токен из hash
                     if let fragment = url.fragment,
                         fragment.starts(with: "tgAuthResult=")
                     {
                         let token = String(fragment.dropFirst("tgAuthResult=".count))
-                        print("Перехвачен токен из hash:", token)
+                        AppLogger.shared.debug("Перехвачен токен из hash:", category: .auth)
                         onTokenReceived(token)
                         decisionHandler(.cancel)
                         return
@@ -107,14 +107,14 @@ import WebKit
                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
             ) {
                 if let url = navigationAction.request.url {
-                    print("Навигация по ссылке:", url)
+                    AppLogger.shared.debug("Навигация по ссылке:", category: .auth)
 
                     // Парсим токен из hash
                     if let fragment = url.fragment,
                         fragment.starts(with: "tgAuthResult=")
                     {
                         let token = String(fragment.dropFirst("tgAuthResult=".count))
-                        print("Перехвачен токен из hash:", token)
+                        AppLogger.shared.debug("Перехвачен токен из hash:", category: .auth)
                         onTokenReceived(token)
                         decisionHandler(.cancel)
                         return

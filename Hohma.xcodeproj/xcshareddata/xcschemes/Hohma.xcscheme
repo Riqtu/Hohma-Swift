@@ -21,20 +21,6 @@
                ReferencedContainer = "container:Hohma.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "982E79802EE710AE00DE785B"
-               BuildableName = "NotificationServiceExtension.appex"
-               BlueprintName = "NotificationServiceExtension"
-               ReferencedContainer = "container:Hohma.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

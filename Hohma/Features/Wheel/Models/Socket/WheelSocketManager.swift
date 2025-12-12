@@ -39,12 +39,12 @@ class WheelSocketManager: WheelSocketProtocol {
 
         // Handle connect event
         socket.on(.connect) { data in
-            print("🔌 WheelSocketManager: Socket connected, ready to join room")
+            AppLogger.shared.debug("Socket connected, ready to join room", category: .socket)
         }
 
         // Handle wheel spin from server
         socket.on(.wheelSpin) { [weak self] data in
-            print("🔄 WheelSocketManager: Received wheelSpin event")
+            AppLogger.shared.debug("Received wheelSpin event", category: .socket)
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     DispatchQueue.main.async {
@@ -52,7 +52,7 @@ class WheelSocketManager: WheelSocketProtocol {
                     }
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode spin data: \(error)")
+                AppLogger.shared.error("Failed to decode spin data: \(error)", category: .socket)
             }
         }
 
@@ -65,7 +65,7 @@ class WheelSocketManager: WheelSocketProtocol {
                     }
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode shuffle data: \(error)")
+                AppLogger.shared.error("Failed to decode shuffle data: \(error)", category: .socket)
             }
         }
 
@@ -80,7 +80,7 @@ class WheelSocketManager: WheelSocketProtocol {
                     self?.onSectorsSync?(sectors)
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode sectors data: \(error)")
+                AppLogger.shared.error("Failed to decode sectors data: \(error)", category: .socket)
             }
         }
 
@@ -95,7 +95,7 @@ class WheelSocketManager: WheelSocketProtocol {
                     self?.onSectorUpdated?(sector)
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode sector update: \(error)")
+                AppLogger.shared.error("Failed to decode sector update: \(error)", category: .socket)
             }
         }
 
@@ -110,7 +110,7 @@ class WheelSocketManager: WheelSocketProtocol {
                     self?.onSectorCreated?(sector)
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode sector creation: \(error)")
+                AppLogger.shared.error("Failed to decode sector creation: \(error)", category: .socket)
             }
         }
 
@@ -122,13 +122,13 @@ class WheelSocketManager: WheelSocketProtocol {
                     self?.onSectorRemoved?(sectorId)
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode sector removal: \(error)")
+                AppLogger.shared.error("Failed to decode sector removal: \(error)", category: .socket)
             }
         }
 
         // Handle room users
         socket.on(.roomUsers) { [weak self] data in
-            print("👥 WheelSocketManager: Received room users update")
+            AppLogger.shared.debug("👥 WheelSocketManager: Received room users update", category: .socket)
 
             do {
                 let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
@@ -138,25 +138,25 @@ class WheelSocketManager: WheelSocketProtocol {
                     self?.onRoomUsersUpdated?(users)
                 }
             } catch {
-                print("❌ WheelSocketManager: Failed to decode room users: \(error)")
+                AppLogger.shared.error("Failed to decode room users: \(error)", category: .socket)
             }
         }
 
         // Handle request:sectors
         socket.on(.requestSectors) { data in
-            print("📋 WheelSocketManager: Received request:sectors")
+            AppLogger.shared.debug("📋 WheelSocketManager: Received request:sectors", category: .socket)
             // This will be handled by the main WheelState
         }
 
         // Handle sync:sectors
         socket.on(.syncSectors) { data in
-            print("📋 WheelSocketManager: Received sync:sectors")
+            AppLogger.shared.debug("📋 WheelSocketManager: Received sync:sectors", category: .socket)
             // This will be handled by the main WheelState
         }
 
         // Handle current:sectors
         socket.on(.currentSectors) { data in
-            print("📋 WheelSocketManager: Received current:sectors")
+            AppLogger.shared.debug("📋 WheelSocketManager: Received current:sectors", category: .socket)
             // This will be handled by the main WheelState
         }
 
@@ -166,7 +166,7 @@ class WheelSocketManager: WheelSocketProtocol {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            print("🔐 WheelSocketManager: Socket authorization error detected")
+            AppLogger.shared.debug("Socket authorization error detected", category: .socket)
             self?.isAuthorized = false
         }
     }
@@ -193,10 +193,10 @@ class WheelSocketManager: WheelSocketProtocol {
         ]
 
         if let socket = socket, socket.isConnected, isAuthorized {
-            print("🔌 WheelSocketManager: Joining room \(roomId)")
+            AppLogger.shared.debug("Joining room \(roomId)", category: .socket)
             socket.emit(.joinRoom, data: joinData)
         } else {
-            print("⚠️ WheelSocketManager: Cannot join room - socket not connected or not authorized")
+            AppLogger.shared.warning("Cannot join room - socket not connected or not authorized", category: .socket)
         }
     }
 
@@ -216,7 +216,7 @@ class WheelSocketManager: WheelSocketProtocol {
 
     // MARK: - Sectors Synchronization
     func requestSectors() {
-        print("📋 WheelSocketManager: Requesting sectors from other clients")
+        AppLogger.shared.debug("📋 WheelSocketManager: Requesting sectors from other clients", category: .socket)
 
         if let socket = socket, socket.isConnected, isAuthorized {
             let requestData: [String: Any] = ["request": "sectors"]
@@ -230,12 +230,12 @@ class WheelSocketManager: WheelSocketProtocol {
 
     // MARK: - Server Event Handlers
     func spinWheelFromServer(_ spinData: [String: Any]) {
-        print("🔄 WheelSocketManager: Processing spin data from server")
+        AppLogger.shared.debug("Processing spin data from server", category: .socket)
         onSpinReceived?(spinData)
     }
 
     func shuffleSectorsFromServer(_ data: [String: Any]) {
-        print("🔄 WheelSocketManager: Processing shuffle data from server")
+        AppLogger.shared.debug("Processing shuffle data from server", category: .socket)
         onShuffleReceived?(data)
     }
 }

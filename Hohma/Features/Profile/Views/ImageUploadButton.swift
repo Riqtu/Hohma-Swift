@@ -154,7 +154,7 @@ struct ImageUploadButton: View {
 
 #Preview {
     ImageUploadButton { fileURL in
-        print("Загружен файл: \(fileURL)")
+        AppLogger.shared.debug("Загружен файл: \(fileURL)", category: .ui)
     }
     .padding()
     .appBackground()

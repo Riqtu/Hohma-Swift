@@ -41,7 +41,7 @@ struct TelegramSignInButton: View {
 
 #Preview {
     TelegramSignInButton {
-        print("Telegram Sign In tapped")
+        AppLogger.shared.debug("Telegram Sign In tapped", category: .auth)
     }
     .padding()
     .background(Color.gray.opacity(0.1))

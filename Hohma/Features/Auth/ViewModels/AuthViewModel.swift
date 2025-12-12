@@ -15,9 +15,8 @@ final class AuthViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     init() {
-        if let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-            let savedAuthResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
-        {
+        // Загружаем данные из Keychain (с автоматической миграцией из UserDefaults)
+        if let savedAuthResult = KeychainService.shared.loadAuthResult() {
             self.user = savedAuthResult
             self.isAuthenticated = true
         }
@@ -27,21 +26,21 @@ final class AuthViewModel: ObservableObject {
 
     @MainActor
     func logout() {
-        #if DEBUG
-            print("🔐 AuthViewModel: Logging out user")
-        #endif
+        AppLogger.shared.info("Logging out user", category: .auth)
 
         // Почистить токен, юзера, etc
         self.user = nil
         self.isAuthenticated = false
         self.errorMessage = nil
 
-        // Очищаем сохраненные данные авторизации
-        UserDefaults.standard.removeObject(forKey: "authResult")
-
-        #if DEBUG
-            print("🔐 AuthViewModel: User logged out successfully")
-        #endif
+        // Очищаем сохраненные данные авторизации из Keychain
+        do {
+            try KeychainService.shared.deleteAuthResult()
+            AppLogger.shared.info("User logged out successfully", category: .auth)
+        } catch {
+            AppLogger.shared.error(
+                "Failed to delete authResult from Keychain", error: error, category: .auth)
+        }
     }
 
     func handleTelegramAuth(token: String) {

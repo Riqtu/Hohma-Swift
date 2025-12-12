@@ -100,7 +100,7 @@ struct WheelCardView: View {
 
                     // Кнопка для запуска игры
                     Button(action: {
-                        print("🔄 WheelCardView: Starting game for wheel: \(cardData.name)")
+                        AppLogger.shared.debug("Starting game for wheel: \(cardData.name)", category: .ui)
                         showingGame = true
                     }) {
                         HStack {
@@ -127,7 +127,7 @@ struct WheelCardView: View {
                 // Показываем кнопку редактирования только владельцу колеса
                 if currentUser?.id == cardData.userId {
                     Button {
-                        print("🔧 WheelCardView: Edit button tapped for wheel: \(cardData.name)")
+                        AppLogger.shared.debug("🔧 WheelCardView: Edit button tapped for wheel: \(cardData.name)", category: .ui)
                         DispatchQueue.main.async {
                             showingEditForm = true
                         }
@@ -191,13 +191,13 @@ struct WheelCardView: View {
             EditWheelFormView(wheel: cardData)
         }
         .onChange(of: showingEditForm) { _, newValue in
-            print("🔧 WheelCardView: showingEditForm changed to: \(newValue)")
+            AppLogger.shared.debug("🔧 WheelCardView: showingEditForm changed to: \(newValue)", category: .ui)
         }
         .onAppear {
             // Отладочная информация
-            print("🔧 WheelCardView: Current user ID: \(currentUser?.id ?? "nil")")
-            print("🔧 WheelCardView: Wheel user ID: \(cardData.userId ?? "nil")")
-            print("🔧 WheelCardView: Is owner: \(currentUser?.id == cardData.userId)")
+            AppLogger.shared.debug("🔧 WheelCardView: Current user ID: \(currentUser?.id ?? "nil")", category: .ui)
+            AppLogger.shared.debug("🔧 WheelCardView: Wheel user ID: \(cardData.userId ?? "nil")", category: .ui)
+            AppLogger.shared.debug("🔧 WheelCardView: Is owner: \(currentUser?.id == cardData.userId)", category: .ui)
         }
         .alert("Удаление колеса", isPresented: $showingDeleteConfirmation) {
             Button("Отмена", role: .cancel) {}
@@ -214,10 +214,10 @@ struct WheelCardView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar(.hidden, for: .tabBar)  // Скрываем TabBar в игре
                 .onAppear {
-                    print("🔄 WheelCardView: Game view appeared")
+                    AppLogger.shared.debug("Game view appeared", category: .ui)
                 }
                 .onDisappear {
-                    print("🔄 WheelCardView: Game view disappeared")
+                    AppLogger.shared.debug("Game view disappeared", category: .ui)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
                     notification in

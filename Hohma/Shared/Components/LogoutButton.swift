@@ -26,7 +26,7 @@ struct LogoutButton: View {
 
 #Preview {
     LogoutButton {
-        print("Logout tapped")
+        AppLogger.shared.debug("Logout tapped", category: .ui)
     }
     .padding()
 }

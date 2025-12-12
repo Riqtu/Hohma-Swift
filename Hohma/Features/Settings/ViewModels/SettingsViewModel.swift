@@ -83,14 +83,14 @@ class SettingsViewModel: ObservableObject {
         // Убеждаемся, что изменения применились
         DispatchQueue.main.async {
             self.objectWillChange.send()
-            print("🎨 SettingsViewModel: UI обновлен для темы: \(theme.rawValue)")
+            AppLogger.shared.debug("🎨 SettingsViewModel: UI обновлен для темы: \(theme.rawValue)", category: .ui)
         }
     }
 
     private func setColorScheme(_ colorScheme: ColorScheme?) {
         let colorSchemeString =
             colorScheme == nil ? "system" : (colorScheme == .dark ? "dark" : "light")
-        print("🎨 SettingsViewModel: Установка ColorScheme: \(colorSchemeString)")
+        AppLogger.shared.debug("🎨 SettingsViewModel: Установка ColorScheme: \(colorSchemeString)", category: .ui)
 
         // Применяем тему к приложению
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {

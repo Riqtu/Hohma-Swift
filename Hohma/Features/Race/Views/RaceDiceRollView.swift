@@ -556,7 +556,7 @@ class RaceDiceRollViewModel: ObservableObject {
             )
         }
 
-        print("🎲 Сгенерированы индивидуальные результаты кубиков: \(diceResults)")
+        AppLogger.shared.debug("Сгенерированы индивидуальные результаты кубиков: \(diceResults)", category: .ui)
     }
 }
 

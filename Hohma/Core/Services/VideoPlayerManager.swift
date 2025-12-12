@@ -19,8 +19,8 @@ final class VideoPlayerManager: ObservableObject {
     // MARK: - Cached Player Structure
     private class CachedPlayer {
         let player: AVPlayer
-        var looper: AVPlayerLooper? // Для бесконечного зацикливания локальных видео
-        var endTimeObserver: NSObjectProtocol? // Для зацикливания внешних URL
+        var looper: AVPlayerLooper?  // Для бесконечного зацикливания локальных видео
+        var endTimeObserver: NSObjectProtocol?  // Для зацикливания внешних URL
         var isReady: Bool = false
         var isLoading: Bool = false
         var lastUsed: Date = Date()
@@ -50,7 +50,9 @@ final class VideoPlayerManager: ObservableObject {
                             // Автоматически запускаем воспроизведение когда готово
                             // Проверяем что не играет и не ждет, чтобы избежать конфликтов
                             let timeControlStatus = self.player.timeControlStatus
-                            if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                            if timeControlStatus != .playing
+                                && timeControlStatus != .waitingToPlayAtSpecifiedRate
+                            {
                                 self.player.play()
                             }
                         case .failed:
@@ -117,7 +119,7 @@ final class VideoPlayerManager: ObservableObject {
                 .playback, mode: .default, options: [.mixWithOthers, .duckOthers])
             try audioSession.setActive(true)
         } catch {
-            print("❌ Ошибка настройки аудиосессии: \(error)")
+            AppLogger.shared.error("Ошибка настройки аудиосессии", error: error, category: .general)
         }
     }
 
@@ -189,9 +191,12 @@ final class VideoPlayerManager: ObservableObject {
             if let resourcePath = Bundle.main.resourcePath {
                 do {
                     let contents = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
-                    contents.filter { $0.hasSuffix(".mp4") }.forEach { print("   - \($0)") }
+                    contents.filter { $0.hasSuffix(".mp4") }.forEach {
+                        AppLogger.shared.debug("   - \($0)", category: .general)
+                    }
                 } catch {
-                    print("❌ Ошибка чтения ресурсов: \(error)")
+                    AppLogger.shared.error(
+                        "Ошибка чтения ресурсов", error: error, category: .general)
                 }
             }
             return nil
@@ -223,10 +228,10 @@ final class VideoPlayerManager: ObservableObject {
             // Для локальных файлов используем AVQueuePlayer + AVPlayerLooper для бесконечного зацикливания
             let playerItem = AVPlayerItem(url: url)
             let queuePlayer = AVQueuePlayer(playerItem: playerItem)
-            
+
             // Создаем looper для бесконечного зацикливания
             looper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
-            
+
             player = queuePlayer
             player.automaticallyWaitsToMinimizeStalling = false
         } else {
@@ -235,7 +240,7 @@ final class VideoPlayerManager: ObservableObject {
             playerItem.preferredForwardBufferDuration = 5.0
             playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = true
             playerItem.preferredPeakBitRate = 0
-            
+
             player = AVPlayer(playerItem: playerItem)
             player.automaticallyWaitsToMinimizeStalling = true
             player.allowsExternalPlayback = false
@@ -247,12 +252,12 @@ final class VideoPlayerManager: ObservableObject {
         // Создаем cached player
         let cachedPlayer = CachedPlayer(player: player, isLocalFile: isLocalFile)
         cachedPlayer.looper = looper
-        
+
         // Для внешних URL настраиваем observer для зацикливания
         if !isLocalFile {
             cachedPlayer.setupEndTimeObserver()
         }
-        
+
         cache[key] = cachedPlayer
 
         // Начинаем воспроизведение когда готово
@@ -280,7 +285,7 @@ final class VideoPlayerManager: ObservableObject {
         for (_, cachedPlayer) in cache {
             let player = cachedPlayer.player
             let timeControlStatus = player.timeControlStatus
-            
+
             // Запускаем только если не играет и не ждет
             // Это предотвращает конфликты и множественные вызовы play()
             if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
@@ -316,7 +321,7 @@ final class VideoPlayerManager: ObservableObject {
 
     private func removePlayer(for key: String) {
         guard let cachedPlayer = cache[key] else { return }
-        
+
         // AVPlayerLooper автоматически останавливается при деаллокации
         cachedPlayer.looper = nil
         cachedPlayer.player.pause()

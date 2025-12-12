@@ -24,42 +24,47 @@ struct RootView: View {
                                 WheelListView(user: authViewModel.user)
                                     .onAppear {
                                         // Сбрасываем состояние при переходе на экран колеса
-                                        print("🔄 RootView: Navigating to wheel list")
+                                        AppLogger.shared.debug(
+                                            "Navigating to wheel list", category: .ui)
                                     }
                             case "profile":
                                 ProfileView(authViewModel: authViewModel, useNavigationStack: false)
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to profile")
+                                        AppLogger.shared.debug(
+                                            "Navigating to profile", category: .ui)
                                     }
                             case "race":
                                 RaceListView()
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to race")
+                                        AppLogger.shared.debug("Navigating to race", category: .ui)
                                     }
                             case "chat":
                                 ChatListView(viewModel: chatListViewModel)
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to chat")
+                                        AppLogger.shared.debug("Navigating to chat", category: .ui)
                                     }
                             case "settings":
-                                SettingsView(viewModel: settingsViewModel, authViewModel: authViewModel)
-                                    .onAppear {
-                                        print("🔄 RootView: Navigating to settings")
-                                    }
+                                SettingsView(
+                                    viewModel: settingsViewModel, authViewModel: authViewModel
+                                )
+                                .onAppear {
+                                    AppLogger.shared.debug("Navigating to settings", category: .ui)
+                                }
                             case "stats":
                                 StatsView()
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to stats")
+                                        AppLogger.shared.debug("Navigating to stats", category: .ui)
                                     }
                             case "movieBattle":
                                 MovieBattleListView()
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to movie battle")
+                                        AppLogger.shared.debug(
+                                            "Navigating to movie battle", category: .ui)
                                     }
                             default:
                                 HomeView(user: authViewModel.user, authViewModel: authViewModel)
                                     .onAppear {
-                                        print("🔄 RootView: Navigating to home")
+                                        AppLogger.shared.debug("Navigating to home", category: .ui)
                                     }
                             }
                         }
@@ -68,7 +73,8 @@ struct RootView: View {
                 } else {
                     TabView(selection: $selection) {
 
-                        HomeView(user: authViewModel.user, authViewModel: authViewModel).withAppBackground()
+                        HomeView(user: authViewModel.user, authViewModel: authViewModel)
+                            .withAppBackground()
                             .tabItem {
                                 Label("Главная", systemImage: "house")
                             }
@@ -103,8 +109,9 @@ struct RootView: View {
         }
         .enableInjection()
         .onAppear {
-            print("🔗 RootView: ===== ROOT VIEW APPEARED =====")
-            print("🔗 RootView: DeepLinkService shared instance: \(DeepLinkService.shared)")
+            AppLogger.shared.debug("===== ROOT VIEW APPEARED =====", category: .ui)
+            AppLogger.shared.debug(
+                "DeepLinkService shared instance: \(DeepLinkService.shared)", category: .ui)
 
             // Связываем AuthViewModel с NetworkManager для обработки 401 ошибок
             NetworkManager.shared.setAuthViewModel(authViewModel)
@@ -119,17 +126,19 @@ struct RootView: View {
                     authViewModel.logout()
                 }
             }
-            print("🔗 RootView: ===== ROOT VIEW SETUP COMPLETE =====")
+            AppLogger.shared.debug("===== ROOT VIEW SETUP COMPLETE =====", category: .ui)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
             notification in
             // Обрабатываем уведомления о навигации
-            print("🔄 RootView: ===== NAVIGATION REQUESTED =====")
-            print("🔄 RootView: Notification userInfo: \(notification.userInfo ?? [:])")
+            AppLogger.shared.debug("===== NAVIGATION REQUESTED =====", category: .ui)
+            AppLogger.shared.debug(
+                "Notification userInfo: \(notification.userInfo ?? [:])", category: .ui)
 
             if let destination = notification.userInfo?["destination"] as? String {
                 let isForce = notification.userInfo?["force"] as? Bool ?? false
-                print("🔄 RootView: Navigation requested to \(destination), force: \(isForce)")
+                AppLogger.shared.debug(
+                    "Navigation requested to \(destination), force: \(isForce)", category: .ui)
 
                 // Обновляем selection для навигации с приоритетом
                 DispatchQueue.main.async {
@@ -156,7 +165,7 @@ struct RootView: View {
                         mappedDestination = destination
                     }
 
-                    print("🔄 RootView: Current selection: \(self.selection)")
+                    AppLogger.shared.debug("Current selection: \(self.selection)", category: .ui)
                     print(
                         "🔄 RootView: Mapped destination '\(destination)' to '\(mappedDestination)'")
 
@@ -166,11 +175,13 @@ struct RootView: View {
                     if self.isSidebarPreferred {
                         // iPad: переключаем selection для NavigationSplitView
                         self.selection = mappedDestination
-                        print("🔄 RootView: New selection set to: \(self.selection)")
+                        AppLogger.shared.debug(
+                            "New selection set to: \(self.selection)", category: .ui)
 
                         // Если это принудительная навигация, добавляем дополнительную задержку
                         if isForce {
-                            print("🔄 RootView: Force navigation - adding additional delay")
+                            AppLogger.shared.debug(
+                                "Force navigation - adding additional delay", category: .ui)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 self.selection = mappedDestination
                                 print(
@@ -181,7 +192,9 @@ struct RootView: View {
                     } else {
                         // iPhone: переключаем selection только для существующих вкладок
                         // wheelList, race, stats и movieBattle обрабатываются через NavigationStack в HomeView
-                        if mappedDestination == "wheelList" || mappedDestination == "race" || mappedDestination == "stats" || mappedDestination == "movieBattle" {
+                        if mappedDestination == "wheelList" || mappedDestination == "race"
+                            || mappedDestination == "stats" || mappedDestination == "movieBattle"
+                        {
                             // Оставляем на home, HomeView сам обработает навигацию через NavigationPath
                             print(
                                 "🔄 RootView: iPhone - навигация будет обработана в HomeView через NavigationStack"
@@ -197,11 +210,13 @@ struct RootView: View {
                         } else {
                             // Для остальных вкладок переключаем как обычно
                             self.selection = mappedDestination
-                            print("🔄 RootView: New selection set to: \(self.selection)")
+                            AppLogger.shared.debug(
+                                "New selection set to: \(self.selection)", category: .ui)
 
                             // Если это принудительная навигация, добавляем дополнительную задержку
                             if isForce {
-                                print("🔄 RootView: Force navigation - adding additional delay")
+                                AppLogger.shared.debug(
+                                    "Force navigation - adding additional delay", category: .ui)
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                     self.selection = mappedDestination
                                     print(
@@ -213,30 +228,30 @@ struct RootView: View {
                     }
                 }
             } else {
-                print("🔄 RootView: ❌ No destination found in notification")
+                AppLogger.shared.warning("No destination found in notification", category: .ui)
             }
-            print("🔄 RootView: ===== NAVIGATION REQUEST COMPLETE =====")
+            AppLogger.shared.debug("===== NAVIGATION REQUEST COMPLETE =====", category: .ui)
         }
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Обрабатываем уведомления об обновлении данных колеса
-            print("🔄 RootView: Wheel data updated")
+            AppLogger.shared.debug("Wheel data updated", category: .ui)
         }
         .onOpenURL { url in
-            print("🔗 RootView: ===== ON OPEN URL RECEIVED =====")
-            print("🔗 RootView: Received URL: \(url)")
-            print("🔗 RootView: URL scheme: \(url.scheme ?? "nil")")
-            print("🔗 RootView: URL host: \(url.host ?? "nil")")
-            print("🔗 RootView: URL path: \(url.path)")
-            print("🔗 RootView: URL pathComponents: \(url.pathComponents)")
+            AppLogger.shared.debug("===== ON OPEN URL RECEIVED =====", category: .ui)
+            AppLogger.shared.debug("Received URL: \(url)", category: .ui)
+            AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .ui)
+            AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .ui)
+            AppLogger.shared.debug("URL path: \(url.path)", category: .ui)
+            AppLogger.shared.debug("URL pathComponents: \(url.pathComponents)", category: .ui)
 
             // Обрабатываем deep link через DeepLinkService
             if let wheelId = extractWheelIdFromURL(url) {
-                print("🔗 RootView: ✅ Extracted wheel ID: \(wheelId)")
+                AppLogger.shared.debug("Extracted wheel ID: \(wheelId)", category: .ui)
                 DeepLinkService.shared.handleDeepLinkToWheel(wheelId: wheelId)
             } else {
-                print("🔗 RootView: ❌ Failed to extract wheel ID from URL")
+                AppLogger.shared.warning("Failed to extract wheel ID from URL", category: .ui)
             }
-            print("🔗 RootView: ===== ON OPEN URL COMPLETE =====")
+            AppLogger.shared.debug("===== ON OPEN URL COMPLETE =====", category: .ui)
         }
     }
 
@@ -250,20 +265,21 @@ struct RootView: View {
 
     // MARK: - Deep Link Helper
     private func extractWheelIdFromURL(_ url: URL) -> String? {
-        print("🔗 RootView: Extracting wheel ID from URL: \(url)")
-        print("🔗 RootView: URL scheme: \(url.scheme ?? "nil")")
-        print("🔗 RootView: URL host: \(url.host ?? "nil")")
-        print("🔗 RootView: URL path: \(url.path)")
-        print("🔗 RootView: URL pathComponents: \(url.pathComponents)")
+        AppLogger.shared.debug("Extracting wheel ID from URL: \(url)", category: .ui)
+        AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .ui)
+        AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .ui)
+        AppLogger.shared.debug("URL path: \(url.path)", category: .ui)
+        AppLogger.shared.debug("URL pathComponents: \(url.pathComponents)", category: .ui)
 
         let pathComponents = url.pathComponents
-        print("🔗 RootView: Path components: \(pathComponents)")
+        AppLogger.shared.debug("Path components: \(pathComponents)", category: .ui)
 
         // Для custom URL scheme: riqtu.Hohma://fortune-wheel/{wheelId}
         // host = "fortune-wheel", path = "/{wheelId}"
         if let host = url.host, host == "fortune-wheel" && pathComponents.count >= 2 {
             let wheelId = pathComponents[1]  // pathComponents[0] = "/", pathComponents[1] = wheelId
-            print("🔗 RootView: Extracted wheel ID from custom scheme: \(wheelId)")
+            AppLogger.shared.debug(
+                "Extracted wheel ID from custom scheme: \(wheelId)", category: .ui)
             return wheelId
         }
 
@@ -275,14 +291,16 @@ struct RootView: View {
                 fortuneWheelIndex + 1 < pathComponents.count
             {
                 let wheelId = pathComponents[fortuneWheelIndex + 1]
-                print("🔗 RootView: Extracted wheel ID from path with fortune-wheel: \(wheelId)")
+                AppLogger.shared.debug(
+                    "Extracted wheel ID from path with fortune-wheel: \(wheelId)", category: .ui)
                 return wheelId
             }
 
             // Если нет "fortune-wheel", но есть ID в path (например, riqtu.Hohma:///{wheelId})
             if pathComponents.count == 2 && pathComponents[0] == "/" {
                 let wheelId = pathComponents[1]
-                print("🔗 RootView: Extracted wheel ID from simple path: \(wheelId)")
+                AppLogger.shared.debug(
+                    "Extracted wheel ID from simple path: \(wheelId)", category: .ui)
                 return wheelId
             }
         }
@@ -293,11 +311,12 @@ struct RootView: View {
             fortuneWheelIndex + 1 < pathComponents.count
         {
             let wheelId = pathComponents[fortuneWheelIndex + 1]
-            print("🔗 RootView: Extracted wheel ID from universal link: \(wheelId)")
+            AppLogger.shared.debug(
+                "Extracted wheel ID from universal link: \(wheelId)", category: .ui)
             return wheelId
         }
 
-        print("🔗 RootView: Failed to extract wheel ID")
+        AppLogger.shared.warning("Failed to extract wheel ID", category: .ui)
         return nil
     }
 }

@@ -39,7 +39,7 @@ class RaceAudioService: NSObject, ObservableObject {
         backgroundPlayer?.volume = Float(currentVolume * 0.5)
         // Обновляем громкость для звука лошади (70% от общей громкости)
         horseSoundPlayer?.volume = Float(currentVolume * 0.7)
-        print("🔊 RaceAudioService: Volume updated to \(currentVolume)")
+        AppLogger.shared.debug("🔊 RaceAudioService: Volume updated to \(currentVolume)", category: .general)
     }
     
     private func setupAudioSession() {
@@ -48,7 +48,7 @@ class RaceAudioService: NSObject, ObservableObject {
             try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
         } catch {
-            print("❌ RaceAudioService: Failed to setup audio session: \(error)")
+            AppLogger.shared.error("Failed to setup audio session: \(error)", category: .general)
         }
     }
     
@@ -77,7 +77,7 @@ class RaceAudioService: NSObject, ObservableObject {
         }
         
         guard let fileUrl = url else {
-            print("❌ RaceAudioService: Background music file not found for theme: \(theme.rawValue) (file: \(fileName).\(fileExtension))")
+            AppLogger.shared.error("Background music file not found for theme: \(theme.rawValue) (file: \(fileName).\(fileExtension))", category: .general)
             return
         }
         
@@ -88,9 +88,9 @@ class RaceAudioService: NSObject, ObservableObject {
             backgroundPlayer?.volume = Float(currentVolume * 0.5) // 50% от общей громкости для фоновой музыки
             backgroundPlayer?.prepareToPlay()
             backgroundPlayer?.play()
-            print("✅ RaceAudioService: Playing background music for theme: \(theme.rawValue) from: \(fileUrl.lastPathComponent)")
+            AppLogger.shared.info("Playing background music for theme: \(theme.rawValue) from: \(fileUrl.lastPathComponent)", category: .general)
         } catch {
-            print("❌ RaceAudioService: Failed to play background music: \(error)")
+            AppLogger.shared.error("Failed to play background music: \(error)", category: .general)
             backgroundPlayer = nil
         }
     }
@@ -99,17 +99,17 @@ class RaceAudioService: NSObject, ObservableObject {
         backgroundPlayer?.stop()
         backgroundPlayer = nil
         currentTheme = nil
-        print("🛑 RaceAudioService: Background music stopped")
+        AppLogger.shared.debug("🛑 RaceAudioService: Background music stopped", category: .general)
     }
     
     func pauseBackgroundMusic() {
         backgroundPlayer?.pause()
-        print("⏸️ RaceAudioService: Background music paused")
+        AppLogger.shared.debug("⏸️ RaceAudioService: Background music paused", category: .general)
     }
     
     func resumeBackgroundMusic() {
         backgroundPlayer?.play()
-        print("▶️ RaceAudioService: Background music resumed")
+        AppLogger.shared.debug("Background music resumed", category: .general)
     }
     
     // MARK: - Horse Sound
@@ -129,7 +129,7 @@ class RaceAudioService: NSObject, ObservableObject {
         }
         
         guard let fileUrl = url else {
-            print("❌ RaceAudioService: Horse sound file not found")
+            AppLogger.shared.error("Horse sound file not found", category: .general)
             return
         }
         
@@ -140,9 +140,9 @@ class RaceAudioService: NSObject, ObservableObject {
             horseSoundPlayer?.volume = Float(currentVolume * 0.7) // 70% от общей громкости для звука лошади
             horseSoundPlayer?.prepareToPlay()
             horseSoundPlayer?.play()
-            print("🐴 RaceAudioService: Playing horse sound from: \(fileUrl.lastPathComponent)")
+            AppLogger.shared.debug("🐴 RaceAudioService: Playing horse sound from: \(fileUrl.lastPathComponent)", category: .general)
         } catch {
-            print("❌ RaceAudioService: Failed to play horse sound: \(error)")
+            AppLogger.shared.error("Failed to play horse sound: \(error)", category: .general)
             horseSoundPlayer = nil
         }
     }
@@ -150,7 +150,7 @@ class RaceAudioService: NSObject, ObservableObject {
     func stopHorseSound() {
         horseSoundPlayer?.stop()
         horseSoundPlayer = nil
-        print("🛑 RaceAudioService: Horse sound stopped")
+        AppLogger.shared.debug("🛑 RaceAudioService: Horse sound stopped", category: .general)
     }
     
     // MARK: - Cleanup
@@ -176,7 +176,7 @@ extension RaceAudioService: AVAudioPlayerDelegate {
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("❌ RaceAudioService: Decode error: \(error?.localizedDescription ?? "unknown")")
+        AppLogger.shared.error("Decode error: \(error?.localizedDescription ?? "unknown")", category: .general)
         if player == backgroundPlayer {
             backgroundPlayer = nil
             currentTheme = nil

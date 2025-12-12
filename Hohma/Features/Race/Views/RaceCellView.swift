@@ -200,7 +200,7 @@ struct RaceCellView: View {
         if !isAnimating {
             let shouldShow = cellData.position == participant.currentPosition
             if shouldShow {
-                print("📍 Клетка \(cellData.position): показываем участника (не анимируется)")
+                AppLogger.shared.debug("📍 Клетка \(cellData.position): показываем участника (не анимируется)", category: .ui)
             }
             return shouldShow
         }

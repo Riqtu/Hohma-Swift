@@ -52,7 +52,7 @@ class VideoPlayerView: UIView {
             }
             try audioSession.setActive(true)
         } catch {
-            print("❌ Ошибка настройки аудиосессии: \(error)")
+            AppLogger.shared.error("Ошибка настройки аудиосессии", error: error, category: .general)
         }
     }
 
@@ -67,7 +67,9 @@ class VideoPlayerView: UIView {
                 if item.status == .readyToPlay && self.isVisible {
                     let timeControlStatus = player.timeControlStatus
                     // Запускаем только если не играет и не ждет
-                    if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                    if timeControlStatus != .playing
+                        && timeControlStatus != .waitingToPlayAtSpecifiedRate
+                    {
                         player.play()
                     }
                 }
@@ -96,15 +98,19 @@ class VideoPlayerView: UIView {
             // Запускаем видео если оно готово и не играет
             let status = player.currentItem?.status ?? .unknown
             let timeControlStatus = player.timeControlStatus
-            
+
             if status == .readyToPlay {
                 // Готово - запускаем только если не играет и не ждет
-                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                if timeControlStatus != .playing
+                    && timeControlStatus != .waitingToPlayAtSpecifiedRate
+                {
                     player.play()
                 }
             } else if status == .unknown {
                 // Еще загружается - вызываем play() чтобы запустилось когда будет готово
-                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                if timeControlStatus != .playing
+                    && timeControlStatus != .waitingToPlayAtSpecifiedRate
+                {
                     player.play()
                 }
             }
@@ -155,10 +161,12 @@ struct VideoBackgroundView: UIViewRepresentable {
         if isVisible {
             let status = player.currentItem?.status ?? .unknown
             let timeControlStatus = player.timeControlStatus
-            
+
             if status == .readyToPlay {
                 // Готово - запускаем только если не играет и не ждет
-                if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
+                if timeControlStatus != .playing
+                    && timeControlStatus != .waitingToPlayAtSpecifiedRate
+                {
                     player.play()
                 }
             }

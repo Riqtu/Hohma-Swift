@@ -28,7 +28,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             try audioSession.setCategory(.playback, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
         } catch {
-            print("❌ AudioPlayerService: Failed to setup audio session: \(error)")
+            AppLogger.shared.error("Failed to setup audio session: \(error)", category: .general)
         }
     }
     
@@ -62,9 +62,9 @@ class AudioPlayerService: NSObject, ObservableObject {
             // Запускаем таймер для обновления времени
             startUpdateTimer()
             
-            print("✅ AudioPlayerService: Playing audio from URL")
+            AppLogger.shared.info("Playing audio from URL", category: .general)
         } catch {
-            print("❌ AudioPlayerService: Failed to play audio: \(error)")
+            AppLogger.shared.error("Failed to play audio: \(error)", category: .general)
             currentURL = nil
         }
     }
@@ -120,11 +120,11 @@ extension AudioPlayerService: AVAudioPlayerDelegate {
         isPlaying = false
         currentTime = 0
         stopUpdateTimer()
-        print("✅ AudioPlayerService: Audio finished playing")
+        AppLogger.shared.info("Audio finished playing", category: .general)
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("❌ AudioPlayerService: Decode error: \(error?.localizedDescription ?? "unknown")")
+        AppLogger.shared.error("Decode error: \(error?.localizedDescription ?? "unknown")", category: .general)
         stop()
     }
 }

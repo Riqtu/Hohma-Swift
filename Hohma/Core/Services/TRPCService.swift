@@ -29,30 +29,18 @@ class TRPCService {
 
     // MARK: - Auth Token Management
     var authToken: String? {
-        guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-            let authResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
-        else {
-            return nil
-        }
-        return authResult.token
+        return KeychainService.shared.authToken
     }
 
     var currentUser: AuthUser? {
-        guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-            let authResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
-        else {
-            return nil
-        }
-        return authResult.user
+        return KeychainService.shared.currentUser
     }
 
     func getCurrentUserId() throws -> String {
-        guard let authResultData = UserDefaults.standard.data(forKey: "authResult"),
-            let authResult = try? JSONDecoder().decode(AuthResult.self, from: authResultData)
-        else {
+        guard let userId = KeychainService.shared.currentUser?.id else {
             throw NetworkError.unauthorized
         }
-        return authResult.user.id
+        return userId
     }
 
     // MARK: - Request Builders

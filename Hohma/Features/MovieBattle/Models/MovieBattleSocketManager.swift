@@ -32,7 +32,7 @@ class MovieBattleSocketManager {
     func setupHandlers() {
         // Обработка подключения - присоединяемся к комнате после подключения
         socket.on(.connect) { [weak self] _ in
-            print("📡 MovieBattleSocketManager: Socket connected event received, joining room...")
+            AppLogger.shared.debug("📡 MovieBattleSocketManager: Socket connected event received, joining room...", category: .socket)
             // Не проверяем isConnected, так как событие connect уже означает подключение
             // Добавляем небольшую задержку для стабилизации соединения
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -90,21 +90,21 @@ class MovieBattleSocketManager {
     func joinRoom() {
         // Проверяем подключение, но если событие connect пришло, пробуем присоединиться в любом случае
         if !socket.isConnected {
-            print("⚠️ MovieBattleSocketManager: Socket reports not connected, but trying to join room anyway (connect event received)")
+            AppLogger.shared.warning("Socket reports not connected, but trying to join room anyway (connect event received)", category: .socket)
         }
         
         joinRoomImmediately()
     }
     
     private func joinRoomImmediately() {
-        print("📡 MovieBattleSocketManager: Joining room: \(roomId)")
+        AppLogger.shared.debug("📡 MovieBattleSocketManager: Joining room: \(roomId)", category: .socket)
         // Присоединяемся к комнате
         let payload: [String: Any] = [
             "roomId": roomId,
             "userId": userId,
         ]
         socket.emit(.joinRoom, data: payload)
-        print("✅ MovieBattleSocketManager: Join room event emitted")
+        AppLogger.shared.info("Join room event emitted", category: .socket)
     }
     
     func disconnect() {
@@ -117,21 +117,21 @@ class MovieBattleSocketManager {
     private func handleBattleUpdate(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                print("📡 MovieBattleSocketManager: Received battle update event")
+                AppLogger.shared.debug("📡 MovieBattleSocketManager: Received battle update event", category: .socket)
                 
                 if let battleData = json["battle"] as? [String: Any],
                    let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
                    let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                    print("✅ MovieBattleSocketManager: Successfully decoded battle update")
+                    AppLogger.shared.info("Successfully decoded battle update", category: .socket)
                     DispatchQueue.main.async {
                         self.onBattleUpdate?(battle)
                     }
                 } else {
-                    print("⚠️ MovieBattleSocketManager: Failed to decode battle from update event")
+                    AppLogger.shared.warning("Failed to decode battle from update event", category: .socket)
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse battle update: \(error)")
+            AppLogger.shared.error("Failed to parse battle update: \(error)", category: .socket)
         }
     }
     
@@ -146,7 +146,7 @@ class MovieBattleSocketManager {
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse movie added: \(error)")
+            AppLogger.shared.error("Failed to parse movie added: \(error)", category: .socket)
         }
     }
     
@@ -161,18 +161,18 @@ class MovieBattleSocketManager {
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse generation started: \(error)")
+            AppLogger.shared.error("Failed to parse generation started: \(error)", category: .socket)
         }
     }
     
     private func handleGenerationProgress(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                print("📡 MovieBattleSocketManager: Received generation progress event: \(json)")
+                AppLogger.shared.debug("📡 MovieBattleSocketManager: Received generation progress event: \(json)", category: .socket)
                 
                 guard let movieCardId = json["movieCardId"] as? String,
                       let statusString = json["status"] as? String else {
-                    print("⚠️ MovieBattleSocketManager: Missing movieCardId or status in event")
+                    AppLogger.shared.warning("Missing movieCardId or status in event", category: .socket)
                     return
                 }
                 
@@ -193,30 +193,30 @@ class MovieBattleSocketManager {
                     }
                 }
                 
-                print("📡 MovieBattleSocketManager: Parsed status: \(status.rawValue) for movieCardId: \(movieCardId)")
+                AppLogger.shared.debug("📡 MovieBattleSocketManager: Parsed status: \(status.rawValue) for movieCardId: \(movieCardId)", category: .socket)
                 
                 // Пытаемся декодировать movieCard, если он есть в событии
                 var movieCard: MovieCard? = nil
                 if let movieCardData = json["movieCard"] as? [String: Any] {
-                    print("📡 MovieBattleSocketManager: Found movieCard in event, decoding...")
+                    AppLogger.shared.debug("📡 MovieBattleSocketManager: Found movieCard in event, decoding...", category: .socket)
                     if let movieCardJson = try? JSONSerialization.data(withJSONObject: movieCardData),
                        let decodedCard = try? JSONDecoder().decode(MovieCard.self, from: movieCardJson) {
                         movieCard = decodedCard
-                        print("✅ MovieBattleSocketManager: Successfully decoded movieCard")
+                        AppLogger.shared.info("Successfully decoded movieCard", category: .socket)
                     } else {
-                        print("⚠️ MovieBattleSocketManager: Failed to decode movieCard")
+                        AppLogger.shared.warning("Failed to decode movieCard", category: .socket)
                     }
                 } else {
-                    print("ℹ️ MovieBattleSocketManager: No movieCard in event")
+                    AppLogger.shared.debug("ℹ️ MovieBattleSocketManager: No movieCard in event", category: .socket)
                 }
                 
                 DispatchQueue.main.async {
-                    print("📡 MovieBattleSocketManager: Calling onGenerationProgress callback")
+                    AppLogger.shared.debug("📡 MovieBattleSocketManager: Calling onGenerationProgress callback", category: .socket)
                     self.onGenerationProgress?(movieCardId, status, movieCard)
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse generation progress: \(error)")
+            AppLogger.shared.error("Failed to parse generation progress: \(error)", category: .socket)
         }
     }
     
@@ -231,7 +231,7 @@ class MovieBattleSocketManager {
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse voting started: \(error)")
+            AppLogger.shared.error("Failed to parse voting started: \(error)", category: .socket)
         }
     }
     
@@ -246,7 +246,7 @@ class MovieBattleSocketManager {
                 }
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse vote cast: \(error)")
+            AppLogger.shared.error("Failed to parse vote cast: \(error)", category: .socket)
         }
     }
     
@@ -255,7 +255,7 @@ class MovieBattleSocketManager {
             // Событие может прийти как массив или как объект
             let json = try JSONSerialization.jsonObject(with: data)
             
-            print("📡 MovieBattleSocketManager: Received round complete event: \(json)")
+            AppLogger.shared.debug("📡 MovieBattleSocketManager: Received round complete event: \(json)", category: .socket)
             
             var battleData: [String: Any]?
             var eliminatedMovieId: String?
@@ -264,13 +264,13 @@ class MovieBattleSocketManager {
             
             // Проверяем, является ли это массивом
             if let jsonArray = json as? [Any], jsonArray.count >= 2 {
-                print("📡 MovieBattleSocketManager: Event data is array with \(jsonArray.count) elements")
+                AppLogger.shared.debug("📡 MovieBattleSocketManager: Event data is array with \(jsonArray.count) elements", category: .socket)
                 // Первый элемент - объект battle
                 if let firstElement = jsonArray[0] as? [String: Any] {
                     battleData = firstElement
-                    print("✅ MovieBattleSocketManager: Extracted battle data from array[0]")
+                    AppLogger.shared.info("Extracted battle data from array[0]", category: .socket)
                 } else {
-                    print("⚠️ MovieBattleSocketManager: Array[0] is not a dictionary")
+                    AppLogger.shared.warning("Array[0] is not a dictionary", category: .socket)
                 }
                 
                 // Второй элемент - объект с eliminatedMovieId, roundNumber, isFinished
@@ -283,12 +283,12 @@ class MovieBattleSocketManager {
                     } else if let isFinishedBool = secondElement["isFinished"] as? Bool {
                         isFinished = isFinishedBool
                     }
-                    print("✅ MovieBattleSocketManager: Extracted metadata from array[1]: eliminatedMovieId=\(eliminatedMovieId ?? "nil"), roundNumber=\(roundNumber?.description ?? "nil"), isFinished=\(isFinished?.description ?? "nil")")
+                    AppLogger.shared.info("Extracted metadata from array[1]: eliminatedMovieId=\(eliminatedMovieId ?? "nil"), roundNumber=\(roundNumber?.description ?? "nil"), isFinished=\(isFinished?.description ?? "nil")", category: .socket)
                 } else {
-                    print("⚠️ MovieBattleSocketManager: Array[1] is not a dictionary: \(jsonArray[1])")
+                    AppLogger.shared.warning("Array[1] is not a dictionary: \(jsonArray[1])", category: .socket)
                 }
             } else if let jsonDict = json as? [String: Any] {
-                print("📡 MovieBattleSocketManager: Event data is dictionary")
+                AppLogger.shared.debug("📡 MovieBattleSocketManager: Event data is dictionary", category: .socket)
                 // Если это объект, ищем battle внутри
                 battleData = jsonDict["battle"] as? [String: Any]
                 eliminatedMovieId = jsonDict["eliminatedMovieId"] as? String
@@ -300,14 +300,14 @@ class MovieBattleSocketManager {
                     isFinished = isFinishedBool
                 }
             } else {
-                print("⚠️ MovieBattleSocketManager: Event data is neither array nor dictionary: \(type(of: json))")
+                AppLogger.shared.warning("Event data is neither array nor dictionary: \(type(of: json))", category: .socket)
             }
             
             guard let battleData = battleData,
                   let eliminatedMovieId = eliminatedMovieId,
                   let roundNumber = roundNumber else {
-                print("⚠️ MovieBattleSocketManager: Missing required fields in round complete event")
-                print("   battleData: \(battleData != nil), eliminatedMovieId: \(eliminatedMovieId ?? "nil"), roundNumber: \(roundNumber?.description ?? "nil"), isFinished: \(isFinished?.description ?? "nil")")
+                AppLogger.shared.warning("Missing required fields in round complete event", category: .socket)
+                AppLogger.shared.debug("\(battleData != nil), eliminatedMovieId: \(eliminatedMovieId ?? "nil"), roundNumber: \(roundNumber?.description ?? "nil"), isFinished: \(isFinished?.description ?? "nil")", category: .socket)
                 return
             }
             
@@ -315,7 +315,7 @@ class MovieBattleSocketManager {
             let isFinishedBool: Bool = isFinished ?? false
             
             guard let battleJson = try? JSONSerialization.data(withJSONObject: battleData) else {
-                print("⚠️ MovieBattleSocketManager: Failed to serialize battle data to JSON")
+                AppLogger.shared.warning("Failed to serialize battle data to JSON", category: .socket)
                 return
             }
             
@@ -323,35 +323,35 @@ class MovieBattleSocketManager {
             do {
                 battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
             } catch {
-                print("⚠️ MovieBattleSocketManager: Failed to decode battle from round complete event: \(error)")
+                AppLogger.shared.warning("Failed to decode battle from round complete event: \(error)", category: .socket)
                 if let jsonString = String(data: battleJson, encoding: .utf8) {
-                    print("   Battle JSON (first 1000 chars): \(String(jsonString.prefix(1000)))")
+                    AppLogger.shared.debug("Battle JSON (first 1000 chars): \(String(jsonString.prefix(1000)))", category: .socket)
                 }
                 // Пытаемся декодировать с более детальной информацией об ошибке
                 if let decodingError = error as? DecodingError {
                     switch decodingError {
                     case .keyNotFound(let key, let context):
-                        print("   Missing key: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                        AppLogger.shared.debug("Missing key: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))", category: .socket)
                     case .typeMismatch(let type, let context):
-                        print("   Type mismatch: expected \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                        AppLogger.shared.debug("Type mismatch: expected \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))", category: .socket)
                     case .valueNotFound(let type, let context):
-                        print("   Value not found: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                        AppLogger.shared.debug("Value not found: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))", category: .socket)
                     case .dataCorrupted(let context):
-                        print("   Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), error: \(context.debugDescription)")
+                        AppLogger.shared.error("Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), error: \(context.debugDescription)", category: .socket)
                     @unknown default:
-                        print("   Unknown decoding error: \(decodingError)")
+                        AppLogger.shared.error("Unknown decoding error: \(decodingError)", category: .socket)
                     }
                 }
                 return
             }
             
-            print("✅ MovieBattleSocketManager: Parsed round complete - roundNumber: \(roundNumber), eliminatedMovieId: \(eliminatedMovieId), isFinished: \(isFinishedBool)")
+            AppLogger.shared.info("Parsed round complete - roundNumber: \(roundNumber), eliminatedMovieId: \(eliminatedMovieId), isFinished: \(isFinishedBool)", category: .socket)
             
             DispatchQueue.main.async {
                 self.onRoundComplete?(battle, eliminatedMovieId, roundNumber, isFinishedBool)
             }
         } catch {
-            print("❌ MovieBattleSocketManager: Failed to parse round complete: \(error)")
+            AppLogger.shared.error("Failed to parse round complete: \(error)", category: .socket)
         }
     }
 }

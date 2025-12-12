@@ -33,14 +33,14 @@ class AudioRecorderService: NSObject, ObservableObject {
                 case .undetermined:
                     AVAudioApplication.requestRecordPermission { granted in
                         if granted {
-                            print("✅ AudioRecorderService: Microphone permission granted")
+                            AppLogger.shared.info("Microphone permission granted", category: .general)
                         } else {
-                            print("❌ AudioRecorderService: Microphone permission denied")
+                            AppLogger.shared.error("Microphone permission denied", category: .general)
                         }
                     }
                     return
                 case .denied:
-                    print("❌ AudioRecorderService: Microphone permission denied")
+                    AppLogger.shared.error("Microphone permission denied", category: .general)
                     return
                 case .granted:
                     break
@@ -52,16 +52,16 @@ class AudioRecorderService: NSObject, ObservableObject {
                 if audioSession.recordPermission == .undetermined {
                     audioSession.requestRecordPermission { granted in
                         if granted {
-                            print("✅ AudioRecorderService: Microphone permission granted")
+                            AppLogger.shared.info("Microphone permission granted", category: .general)
                         } else {
-                            print("❌ AudioRecorderService: Microphone permission denied")
+                            AppLogger.shared.error("Microphone permission denied", category: .general)
                         }
                     }
                     return
                 }
                 
                 guard audioSession.recordPermission == .granted else {
-                    print("❌ AudioRecorderService: Microphone permission not granted")
+                    AppLogger.shared.error("Microphone permission not granted", category: .general)
                     return
                 }
             }
@@ -69,7 +69,7 @@ class AudioRecorderService: NSObject, ObservableObject {
             try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
         } catch {
-            print("❌ AudioRecorderService: Failed to setup audio session: \(error)")
+            AppLogger.shared.error("Failed to setup audio session: \(error)", category: .general)
         }
     }
     
@@ -88,12 +88,12 @@ class AudioRecorderService: NSObject, ObservableObject {
                             _ = self?.startRecording()
                         }
                     } else {
-                        print("❌ AudioRecorderService: Microphone permission denied")
+                        AppLogger.shared.error("Microphone permission denied", category: .general)
                     }
                 }
                 return nil
             case .denied:
-                print("❌ AudioRecorderService: Microphone permission denied")
+                AppLogger.shared.error("Microphone permission denied", category: .general)
                 return nil
             case .granted:
                 break
@@ -109,14 +109,14 @@ class AudioRecorderService: NSObject, ObservableObject {
                             _ = self?.startRecording()
                         }
                     } else {
-                        print("❌ AudioRecorderService: Microphone permission denied")
+                        AppLogger.shared.error("Microphone permission denied", category: .general)
                     }
                 }
                 return nil
             }
             
             guard audioSession.recordPermission == .granted else {
-                print("❌ AudioRecorderService: Microphone permission not granted")
+                AppLogger.shared.error("Microphone permission not granted", category: .general)
                 return nil
             }
         }
@@ -126,7 +126,7 @@ class AudioRecorderService: NSObject, ObservableObject {
             try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
         } catch {
-            print("❌ AudioRecorderService: Failed to setup audio session: \(error)")
+            AppLogger.shared.error("Failed to setup audio session: \(error)", category: .general)
             return nil
         }
         
@@ -148,7 +148,7 @@ class AudioRecorderService: NSObject, ObservableObject {
             audioRecorder?.isMeteringEnabled = true
             
             guard audioRecorder?.record() == true else {
-                print("❌ AudioRecorderService: Failed to start recording")
+                AppLogger.shared.error("Failed to start recording", category: .general)
                 return nil
             }
             
@@ -171,10 +171,10 @@ class AudioRecorderService: NSObject, ObservableObject {
                 self.audioLevel = min(max(normalizedLevel * 2, 0.1), 1.0)
             }
             
-            print("✅ AudioRecorderService: Recording started")
+            AppLogger.shared.info("Recording started", category: .general)
             return audioFilename
         } catch {
-            print("❌ AudioRecorderService: Failed to create audio recorder: \(error)")
+            AppLogger.shared.error("Failed to create audio recorder: \(error)", category: .general)
             return nil
         }
     }
@@ -202,10 +202,10 @@ class AudioRecorderService: NSObject, ObservableObject {
             // Удаляем временный файл
             try? FileManager.default.removeItem(at: url)
             
-            print("✅ AudioRecorderService: Recording stopped, duration: \(audioData.count) bytes")
+            AppLogger.shared.info("Recording stopped, duration: \(audioData.count) bytes", category: .general)
             return audioData
         } catch {
-            print("❌ AudioRecorderService: Failed to read recording: \(error)")
+            AppLogger.shared.error("Failed to read recording: \(error)", category: .general)
             return nil
         }
     }
@@ -230,7 +230,7 @@ class AudioRecorderService: NSObject, ObservableObject {
         }
         recordingURL = nil
         
-        print("❌ AudioRecorderService: Recording cancelled")
+        AppLogger.shared.error("Recording cancelled", category: .general)
     }
 }
 
@@ -238,13 +238,13 @@ class AudioRecorderService: NSObject, ObservableObject {
 extension AudioRecorderService: AVAudioRecorderDelegate {
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         if !flag {
-            print("⚠️ AudioRecorderService: Recording finished with error")
+            AppLogger.shared.warning("Recording finished with error", category: .general)
             isRecording = false
         }
     }
     
     func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
-        print("❌ AudioRecorderService: Encoding error: \(error?.localizedDescription ?? "unknown")")
+        AppLogger.shared.error("Encoding error: \(error?.localizedDescription ?? "unknown")", category: .general)
         isRecording = false
     }
 }

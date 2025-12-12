@@ -112,7 +112,7 @@ final class MyMoviesListViewModel: ObservableObject {
             userMovies: []
         )
         
-        let tempUserMovie = UserMovieRecord(
+        _ = UserMovieRecord(
             id: "temp_user_\(searchDoc.id)",
             isWatched: false,
             userRating: nil,

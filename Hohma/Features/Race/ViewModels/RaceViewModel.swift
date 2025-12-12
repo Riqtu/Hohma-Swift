@@ -19,18 +19,18 @@ final class RaceSocketManager {
 
     private func setupHandlers() {
         socket.on(.connect) { _ in
-            print("🔌 RaceSocketManager: connected")
+            AppLogger.shared.debug("connected", category: .ui)
         }
 
         socket.on(.raceUpdate) { [weak self] data in
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("🏁 RaceSocketManager: race:update -> keys=\(Array(json.keys))")
+                    AppLogger.shared.debug("race:update -> keys=\(Array(json.keys))", category: .ui)
                     self.onRaceUpdate?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:update payload: \(error)")
+                AppLogger.shared.error("failed to parse race:update payload: \(error)", category: .ui)
             }
         }
 
@@ -38,11 +38,11 @@ final class RaceSocketManager {
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("📦 RaceSocketManager: race:state received")
+                    AppLogger.shared.info("race:state received", category: .ui)
                     self.onRaceState?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:state payload: \(error)")
+                AppLogger.shared.error("failed to parse race:state payload: \(error)", category: .ui)
             }
         }
 
@@ -50,11 +50,11 @@ final class RaceSocketManager {
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("🎲 RaceSocketManager: race:dice:open received")
+                    AppLogger.shared.debug("race:dice:open received", category: .ui)
                     self.onRaceDiceOpen?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:dice:open payload: \(error)")
+                AppLogger.shared.error("failed to parse race:dice:open payload: \(error)", category: .ui)
             }
         }
 
@@ -62,11 +62,11 @@ final class RaceSocketManager {
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("🎲 RaceSocketManager: race:dice:results received")
+                    AppLogger.shared.debug("race:dice:results received", category: .ui)
                     self.onRaceDiceResults?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:dice:results payload: \(error)")
+                AppLogger.shared.error("failed to parse race:dice:results payload: \(error)", category: .ui)
             }
         }
 
@@ -74,11 +74,11 @@ final class RaceSocketManager {
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("➡️ RaceSocketManager: race:dice:next received")
+                    AppLogger.shared.debug("➡️ RaceSocketManager: race:dice:next received", category: .ui)
                     self.onRaceDiceNext?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:dice:next payload: \(error)")
+                AppLogger.shared.error("failed to parse race:dice:next payload: \(error)", category: .ui)
             }
         }
 
@@ -86,11 +86,11 @@ final class RaceSocketManager {
             guard let self = self else { return }
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    print("🏁 RaceSocketManager: race:finish received")
+                    AppLogger.shared.debug("race:finish received", category: .ui)
                     self.onRaceFinish?(json)
                 }
             } catch {
-                print("❌ RaceSocketManager: failed to parse race:finish payload: \(error)")
+                AppLogger.shared.error("failed to parse race:finish payload: \(error)", category: .ui)
             }
         }
     }
@@ -401,8 +401,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     }
                     if let win = payload["winnerId"] as? String {
                         self.winnerId = win
-                        print("🏁 Получено событие race:finish через сокет. Победитель: \(win)")
-                        print("🏁 Финишировавшие участники: \(self.finishingParticipants)")
+                        AppLogger.shared.debug("Получено событие race:finish через сокет. Победитель: \(win)", category: .ui)
+                        AppLogger.shared.debug("Финишировавшие участники: \(self.finishingParticipants)", category: .ui)
                     }
                     
                     // Если анимация не идет, показываем экран сразу
@@ -478,7 +478,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Определяем, очередь ли текущего пользователя (упрощенная логика)
         isMyTurn = canMakeMove
 
-        print("🎮 Любой участник может инициировать ход всех участников")
+        AppLogger.shared.debug("Любой участник может инициировать ход всех участников", category: .ui)
     }
 
     func joinRace(movie: RaceMovieSelection, completion: (() -> Void)? = nil) {
@@ -532,7 +532,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     func makeMove() {
-        print("🎲 makeMove() вызвана")
+        AppLogger.shared.debug("makeMove() вызвана", category: .ui)
         guard canMakeMove, raceId != nil, !isAnimating else {
             print(
                 "❌ makeMove() заблокирована: canMakeMove=\(canMakeMove), raceId=\(raceId != nil), isAnimating=\(isAnimating)"
@@ -540,7 +540,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             return
         }
 
-        print("✅ makeMove() выполняется")
+        AppLogger.shared.info("makeMove() выполняется", category: .ui)
 
         // Старт нового раунда броска
         let roundId = UUID().uuidString
@@ -573,8 +573,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         self.diceResults = diceResults
         self.showingDiceRoll = true
 
-        print("🎲 executeMoveWithDiceResults() вызвана с результатами: \(diceResults)")
-        print("🎲 Отправляем на сервер diceResults: \(diceResults)")
+        AppLogger.shared.debug("executeMoveWithDiceResults() вызвана с результатами: \(diceResults)", category: .ui)
+        AppLogger.shared.debug("Отправляем на сервер diceResults: \(diceResults)", category: .ui)
         isLoading = true
         errorMessage = nil
 
@@ -582,7 +582,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         let currentPositions = Dictionary(
             uniqueKeysWithValues: participants.map { ($0.id, $0.currentPosition) })
 
-        print("📍 Сохранены текущие позиции: \(currentPositions)")
+        AppLogger.shared.debug("📍 Сохранены текущие позиции: \(currentPositions)", category: .ui)
 
         // Используем результат кубика для текущего пользователя
         let currentUserParticipantId = currentUserParticipant?.id
@@ -602,23 +602,23 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
         Task {
             do {
-                print("🌐 Отправляем запрос на сервер...")
+                AppLogger.shared.debug("🌐 Отправляем запрос на сервер...", category: .ui)
                 let response: MakeMoveResponse = try await trpcService.executePOST(
                     endpoint: "race.makeMove",
                     body: request
                 )
-                print("✅ Ответ от сервера получен")
+                AppLogger.shared.info("Ответ от сервера получен", category: .ui)
 
                 await MainActor.run {
-                    print("🔄 Обновляем данные после хода...")
+                    AppLogger.shared.debug("Обновляем данные после хода...", category: .ui)
 
                     // Проверяем, завершилась ли гонка
                     if response.raceFinished {
                         // Сохраняем информацию о завершении, но НЕ показываем экран победителя сразу
                         self.finishingParticipants = response.finishingParticipants ?? []
                         self.winnerId = response.winnerId
-                        print("🏁 Гонка завершена! Победитель: \(self.winnerId ?? "неизвестно")")
-                        print("🏁 Финишировавшие участники: \(self.finishingParticipants)")
+                        AppLogger.shared.debug("Гонка завершена! Победитель: \(self.winnerId ?? "неизвестно")", category: .ui)
+                        AppLogger.shared.debug("Финишировавшие участники: \(self.finishingParticipants)", category: .ui)
 
                         // Сервер уже отправил событие race:finish всем участникам через сокет,
                         // поэтому не нужно отправлять его повторно от клиента
@@ -637,7 +637,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     self.isLoading = false
                 }
             } catch {
-                print("❌ Ошибка при выполнении хода: \(error)")
+                AppLogger.shared.error("Ошибка при выполнении хода: \(error)", category: .ui)
                 await MainActor.run {
                     self.errorMessage = "Ошибка хода: \(error.localizedDescription)"
                     self.isLoading = false
@@ -717,7 +717,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     }
 
     private func startAnimation(withPreviousPositions previousPositions: [String: Int]) {
-        print("🚀 startAnimation() вызвана")
+        AppLogger.shared.debug("🚀 startAnimation() вызвана", category: .ui)
         isAnimating = true
 
         // Сохраняем предыдущие позиции для анимации
@@ -732,7 +732,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         }
 
         // Запускаем одновременную анимацию всех участников
-        print("🎬 Запускаем одновременную анимацию всех участников")
+        AppLogger.shared.debug("🎬 Запускаем одновременную анимацию всех участников", category: .ui)
         animateAllParticipantsSimultaneously()
     }
 
@@ -771,7 +771,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         // Находим максимальное количество шагов среди всех участников
         let maxSteps = participantAnimationSteps.values.map { $0.count }.max() ?? 0
 
-        print("🎬 Максимальное количество шагов: \(maxSteps)")
+        AppLogger.shared.debug("🎬 Максимальное количество шагов: \(maxSteps)", category: .ui)
 
         // Анимируем все шаги одновременно
         animateStep(stepIndex: 0, maxSteps: maxSteps)
@@ -779,12 +779,12 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
     private func animateStep(stepIndex: Int, maxSteps: Int) {
         guard stepIndex < maxSteps else {
-            print("✅ Все шаги анимированы - завершаем")
+            AppLogger.shared.info("Все шаги анимированы - завершаем", category: .ui)
             finishAnimation()
             return
         }
 
-        print("🎯 Анимируем шаг \(stepIndex + 1)/\(maxSteps)")
+        AppLogger.shared.debug("🎯 Анимируем шаг \(stepIndex + 1)/\(maxSteps)", category: .ui)
 
         // Анимируем всех участников на текущем шаге
         for participant in participants {
@@ -794,7 +794,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
 
             let targetPosition = steps[stepIndex]
 
-            print("🎯 Участник \(participant.id): шаг \(stepIndex), позиция \(targetPosition)")
+            AppLogger.shared.debug("🎯 Участник \(participant.id): шаг \(stepIndex), позиция \(targetPosition)", category: .ui)
 
             // Устанавливаем состояние прыжка
             isJumping[participant.id] = true
@@ -863,19 +863,19 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     private func checkAndShowWinnerAfterAnimation() {
         // Проверяем, есть ли информация о завершении гонки
         guard !finishingParticipants.isEmpty, winnerId != nil else {
-            print("🏁 Анимация завершена, но гонка не завершена")
+            AppLogger.shared.debug("Анимация завершена, но гонка не завершена", category: .ui)
             return
         }
 
-        print("🏁 Анимация завершена! Показываем экран победителя")
+        AppLogger.shared.debug("Анимация завершена! Показываем экран победителя", category: .ui)
 
         // Если несколько участников финишировали одновременно, показываем экран выбора победителя
         if self.finishingParticipants.count > 1 {
-            print("🏁 Несколько участников финишировали, показываем экран выбора победителя")
+            AppLogger.shared.debug("Несколько участников финишировали, показываем экран выбора победителя", category: .ui)
             self.showingWinnerSelection = true
             self.raceFinished = false // Не показываем экран победителя сразу
         } else {
-            print("🏁 Один участник финишировал, показываем экран победителя")
+            AppLogger.shared.debug("Один участник финишировал, показываем экран победителя", category: .ui)
             // Устанавливаем флаг завершения гонки для показа экрана победителя
             self.raceFinished = true
         }
@@ -917,7 +917,7 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     self.suppressWinnerPresentation = true
                     self.loadRace(response)
 
-                    print("🎬 Запускаем анимацию движения...")
+                    AppLogger.shared.debug("🎬 Запускаем анимацию движения...", category: .ui)
                     // Запускаем анимацию движения с сохраненными позициями
                     self.startAnimation(withPreviousPositions: previousPositions)
                 }

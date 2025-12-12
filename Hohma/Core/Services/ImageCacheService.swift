@@ -51,7 +51,7 @@ final class ImageCacheService: ObservableObject {
         
         urlSession = URLSession(configuration: configuration)
         
-        print("📦 ImageCacheService: Инициализирован с лимитами - память: 200 изображений/100MB, диск: через URLCache")
+        AppLogger.shared.info("Инициализирован с лимитами - память: 200 изображений/100MB, диск: через URLCache", category: .cache)
     }
     
     // MARK: - Public Methods
@@ -66,13 +66,13 @@ final class ImageCacheService: ObservableObject {
         
         // Проверяем кеш в памяти
         if !forceRefresh, let cachedImage = memoryCache.object(forKey: cacheKey as NSString) {
-            print("✅ ImageCacheService: Изображение найдено в памяти: \(url.lastPathComponent)")
+            AppLogger.shared.debug("Изображение найдено в памяти: \(url.lastPathComponent)", category: .cache)
             return cachedImage
         }
         
         // Проверяем, не загружается ли уже это изображение
         if let existingTask = loadingTasks[cacheKey] {
-            print("⏳ ImageCacheService: Изображение уже загружается: \(url.lastPathComponent)")
+            AppLogger.shared.debug("Изображение уже загружается: \(url.lastPathComponent)", category: .cache)
             return try? await existingTask.value
         }
         
@@ -90,7 +90,7 @@ final class ImageCacheService: ObservableObject {
                 let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
                 if let cachedResponse = URLCache.shared.cachedResponse(for: request),
                    let image = UIImage(data: cachedResponse.data) {
-                    print("✅ ImageCacheService: Изображение найдено в URLCache: \(url.lastPathComponent)")
+                    AppLogger.shared.debug("Изображение найдено в URLCache: \(url.lastPathComponent)", category: .cache)
                     // Сохраняем в память для быстрого доступа
                     await MainActor.run {
                         self.memoryCache.setObject(image, forKey: cacheKey as NSString)
@@ -100,7 +100,7 @@ final class ImageCacheService: ObservableObject {
             }
             
             // Загружаем из сети
-            print("📥 ImageCacheService: Загрузка из сети: \(url.lastPathComponent)")
+            AppLogger.shared.debug("Загрузка из сети: \(url.lastPathComponent)", category: .cache)
             let request = URLRequest(
                 url: url,
                 cachePolicy: forceRefresh ? .reloadIgnoringLocalCacheData : .returnCacheDataElseLoad
@@ -124,7 +124,7 @@ final class ImageCacheService: ObservableObject {
                 self.memoryCache.setObject(image, forKey: cacheKey as NSString, cost: self.imageCost(image))
             }
             
-            print("✅ ImageCacheService: Изображение загружено и закешировано: \(url.lastPathComponent)")
+            AppLogger.shared.debug("Изображение загружено и закешировано: \(url.lastPathComponent)", category: .cache)
             return image
         }
         
@@ -180,7 +180,7 @@ final class ImageCacheService: ObservableObject {
     func clearMemoryCache() {
         memoryCache.removeAllObjects()
         loadingTasks.removeAll()
-        print("📦 ImageCacheService: Кеш в памяти очищен")
+        AppLogger.shared.info("Кеш в памяти очищен", category: .cache)
     }
     
     /// Очистить кеш для конкретного URL
@@ -192,14 +192,14 @@ final class ImageCacheService: ObservableObject {
         let request = URLRequest(url: url)
         URLCache.shared.removeCachedResponse(for: request)
         
-        print("📦 ImageCacheService: Кеш очищен для: \(url.lastPathComponent)")
+        AppLogger.shared.debug("Кеш очищен для: \(url.lastPathComponent)", category: .cache)
     }
     
     /// Очистить весь кеш
     func clearAllCache() {
         clearMemoryCache()
         URLCache.shared.removeAllCachedResponses()
-        print("📦 ImageCacheService: Весь кеш очищен")
+        AppLogger.shared.info("Весь кеш очищен", category: .cache)
     }
 
     /// Оценить "стоимость" изображения для корректной работы totalCostLimit NSCache

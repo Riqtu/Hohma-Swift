@@ -278,7 +278,7 @@ struct FortuneWheelGameView: View {
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Если получаем уведомление об обновлении данных колеса,
             // обновляем данные колеса
-            print("🔄 FortuneWheelGameView: Received wheel data update, refreshing wheel data")
+            AppLogger.shared.debug("Received wheel data update, refreshing wheel data", category: .ui)
             viewModel.refreshWheelData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {

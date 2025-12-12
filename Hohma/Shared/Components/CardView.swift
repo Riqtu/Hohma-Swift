@@ -115,11 +115,11 @@ struct CardView: View {
 
     private func resumeVideoPlayback() {
         guard let player = player ?? videoPlayer else { return }
-        
+
         // Проверяем состояние плеера перед запуском
         let status = player.currentItem?.status ?? .unknown
         let timeControlStatus = player.timeControlStatus
-        
+
         // Запускаем только если не играет и не ждет
         if timeControlStatus != .playing && timeControlStatus != .waitingToPlayAtSpecifiedRate {
             if status == .readyToPlay {
@@ -132,10 +132,10 @@ struct CardView: View {
             }
         }
     }
-    
+
     private func pauseVideoPlayback() {
         guard let player = player ?? videoPlayer else { return }
-        
+
         // Паузим только если действительно играет
         if player.timeControlStatus == .playing {
             player.pause()
@@ -152,7 +152,7 @@ struct CardView: View {
         videoName: "background",
         player: VideoPlayerManager.shared.player(resourceName: "background"),
         action: {
-            print("Карточка нажата")
+            AppLogger.shared.debug("Карточка нажата", category: .ui)
         }
     )
 }

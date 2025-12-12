@@ -101,10 +101,10 @@ class RaceThemeManager: ObservableObject {
     @Published var currentTheme: RaceTheme = .default
 
     func setThemeFromRace(_ raceTheme: String?) {
-        print("🎨 RaceThemeManager: Setting theme from race theme: '\(raceTheme ?? "nil")'")
+        AppLogger.shared.debug("🎨 RaceThemeManager: Setting theme from race theme: '\(raceTheme ?? "nil")'", category: .general)
 
         guard let themeString = raceTheme else {
-            print("🎨 RaceThemeManager: No theme string provided, using default")
+            AppLogger.shared.debug("🎨 RaceThemeManager: No theme string provided, using default", category: .general)
             DispatchQueue.main.async {
                 self.currentTheme = .default
             }
@@ -113,7 +113,7 @@ class RaceThemeManager: ObservableObject {
 
         // Попробуем найти точное совпадение
         if let theme = RaceTheme(rawValue: themeString) {
-            print("🎨 RaceThemeManager: Found exact matching theme: \(theme.rawValue)")
+            AppLogger.shared.debug("🎨 RaceThemeManager: Found exact matching theme: \(theme.rawValue)", category: .general)
             DispatchQueue.main.async {
                 self.currentTheme = theme
             }
@@ -125,7 +125,7 @@ class RaceThemeManager: ObservableObject {
         if let theme = RaceTheme.allCases.first(where: {
             $0.rawValue.lowercased() == lowercasedTheme
         }) {
-            print("🎨 RaceThemeManager: Found case-insensitive matching theme: \(theme.rawValue)")
+            AppLogger.shared.debug("🎨 RaceThemeManager: Found case-insensitive matching theme: \(theme.rawValue)", category: .general)
             DispatchQueue.main.async {
                 self.currentTheme = theme
             }
@@ -134,14 +134,14 @@ class RaceThemeManager: ObservableObject {
 
         // Проверим специальные случаи
         if lowercasedTheme.contains("halloween") || lowercasedTheme.contains("хэллоуин") {
-            print("🎨 RaceThemeManager: Detected halloween theme from content")
+            AppLogger.shared.debug("🎨 RaceThemeManager: Detected halloween theme from content", category: .general)
             DispatchQueue.main.async {
                 self.currentTheme = .halloween
             }
             return
         }
 
-        print("🎨 RaceThemeManager: No matching theme found for '\(themeString)', using default")
+        AppLogger.shared.debug("🎨 RaceThemeManager: No matching theme found for '\(themeString)', using default", category: .general)
         DispatchQueue.main.async {
             self.currentTheme = .default
         }

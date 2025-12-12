@@ -86,7 +86,7 @@ final class StreamPlayer: ObservableObject {
 
     func play() {
         guard let player = player, isReady else { return }
-        print("▶️ StreamPlayer: Запускаем воспроизведение")
+        AppLogger.shared.debug("Запускаем воспроизведение", category: .general)
         player.play()
     }
 

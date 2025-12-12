@@ -15,18 +15,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
 
-        print("🔗 AppDelegate: didFinishLaunchingWithOptions called")
+        AppLogger.shared.debug("didFinishLaunchingWithOptions called", category: .general)
 
         // Настраиваем push-уведомления
         setupPushNotifications()
 
         // Логируем launch options для отладки
         if let url = launchOptions?[.url] as? URL {
-            print("🔗 AppDelegate: ===== APP LAUNCHED WITH URL =====")
-            print("🔗 AppDelegate: App launched with URL: \(url)")
+            AppLogger.shared.debug("===== APP LAUNCHED WITH URL =====", category: .general)
+            AppLogger.shared.debug("App launched with URL: \(url)", category: .general)
             // Обрабатываем URL при запуске приложения
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                print("🔗 AppDelegate: Processing launch URL after delay")
+                AppLogger.shared.debug("Processing launch URL after delay", category: .general)
                 _ = self.handleCustomURL(url: url)
             }
         } else if let userActivity = launchOptions?[.userActivityDictionary] as? [String: Any],
@@ -34,17 +34,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 as? NSUserActivity,
             let url = userActivityObject.webpageURL
         {
-            print("🔗 AppDelegate: ===== APP LAUNCHED WITH USER ACTIVITY =====")
-            print("🔗 AppDelegate: App launched with userActivity URL: \(url)")
+            AppLogger.shared.debug("===== APP LAUNCHED WITH USER ACTIVITY =====", category: .general)
+            AppLogger.shared.debug("App launched with userActivity URL: \(url)", category: .general)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                print("🔗 AppDelegate: Processing launch userActivity URL after delay")
+                AppLogger.shared.debug("Processing launch userActivity URL after delay", category: .general)
                 _ = self.handleCustomURL(url: url)
             }
         } else {
-            print("🔗 AppDelegate: App launched without URL or userActivity")
+            AppLogger.shared.debug("App launched without URL or userActivity", category: .general)
         }
 
-        print("🔗 AppDelegate: AppDelegate setup complete")
+        AppLogger.shared.debug("AppDelegate setup complete", category: .general)
 
         return true
     }
@@ -61,29 +61,29 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         continue userActivity: NSUserActivity,
         restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
     ) -> Bool {
-        print("🔗 AppDelegate: ===== USER ACTIVITY RECEIVED =====")
-        print("🔗 AppDelegate: Received userActivity: \(userActivity.activityType)")
+        AppLogger.shared.debug("===== USER ACTIVITY RECEIVED =====", category: .general)
+        AppLogger.shared.debug("Received userActivity: \(userActivity.activityType)", category: .general)
         print(
             "🔗 AppDelegate: UserActivity URL: \(userActivity.webpageURL?.absoluteString ?? "nil")")
-        print("🔗 AppDelegate: UserActivity userInfo: \(userActivity.userInfo ?? [:])")
+        AppLogger.shared.debug("UserActivity userInfo: \(userActivity.userInfo ?? [:])", category: .general)
 
         // Обрабатываем Universal Links
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
             let url = userActivity.webpageURL
         {
-            print("🔗 AppDelegate: ✅ Processing Universal Link")
+            AppLogger.shared.info("Processing Universal Link", category: .general)
             return handleUniversalLink(url: url)
         }
 
         // Обрабатываем custom URL schemes через userActivity
         // Это происходит когда приложение уже запущено и пользователь переходит по ссылке
         if let url = userActivity.webpageURL {
-            print("🔗 AppDelegate: ✅ Processing custom URL scheme through userActivity")
+            AppLogger.shared.info("Processing custom URL scheme through userActivity", category: .general)
             return handleCustomURL(url: url)
         }
 
-        print("🔗 AppDelegate: ❌ Not a Universal Link or custom URL")
-        print("🔗 AppDelegate: ===== USER ACTIVITY PROCESSING COMPLETE =====")
+        AppLogger.shared.error("Not a Universal Link or custom URL", category: .general)
+        AppLogger.shared.debug("===== USER ACTIVITY PROCESSING COMPLETE =====", category: .general)
         return false
     }
 
@@ -92,31 +92,31 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        print("🔗 AppDelegate: ===== DEEP LINK RECEIVED (application:open:options) =====")
-        print("🔗 AppDelegate: Received custom URL: \(url)")
-        print("🔗 AppDelegate: URL scheme: \(url.scheme ?? "nil")")
-        print("🔗 AppDelegate: URL host: \(url.host ?? "nil")")
-        print("🔗 AppDelegate: URL path: \(url.path)")
-        print("🔗 AppDelegate: URL pathComponents: \(url.pathComponents)")
-        print("🔗 AppDelegate: Full URL string: \(url.absoluteString)")
-        print("🔗 AppDelegate: Options: \(options)")
-        print("🔗 AppDelegate: App state: \(app.applicationState.rawValue)")
+        AppLogger.shared.debug("===== DEEP LINK RECEIVED (application:open:options) =====", category: .general)
+        AppLogger.shared.debug("Received custom URL: \(url)", category: .general)
+        AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL path: \(url.path)", category: .general)
+        AppLogger.shared.debug("URL pathComponents: \(url.pathComponents)", category: .general)
+        AppLogger.shared.debug("Full URL string: \(url.absoluteString)", category: .general)
+        AppLogger.shared.debug("Options: \(options)", category: .general)
+        AppLogger.shared.debug("App state: \(app.applicationState.rawValue)", category: .general)
 
         // Обрабатываем custom URL schemes
         let result = handleCustomURL(url: url)
-        print("🔗 AppDelegate: handleCustomURL returned: \(result)")
-        print("🔗 AppDelegate: ===== DEEP LINK PROCESSING COMPLETE =====")
+        AppLogger.shared.debug("handleCustomURL returned: \(result)", category: .general)
+        AppLogger.shared.debug("===== DEEP LINK PROCESSING COMPLETE =====", category: .general)
         return result
     }
 
     private func handleUniversalLink(url: URL) -> Bool {
-        print("🔗 AppDelegate: Received Universal Link: \(url)")
-        print("🔗 AppDelegate: URL components: \(url.pathComponents)")
+        AppLogger.shared.debug("Received Universal Link: \(url)", category: .general)
+        AppLogger.shared.debug("URL components: \(url.pathComponents)", category: .general)
 
         // Парсим URL для извлечения ID колеса
         if let wheelId = extractWheelId(from: url) {
-            print("🔗 AppDelegate: Extracted wheel ID: \(wheelId)")
-            print("🔗 AppDelegate: Posting deepLinkToWheel notification")
+            AppLogger.shared.debug("Extracted wheel ID: \(wheelId)", category: .general)
+            AppLogger.shared.debug("Posting deepLinkToWheel notification", category: .general)
 
             // Отправляем уведомление для навигации к колесу
             NotificationCenter.default.post(
@@ -124,46 +124,46 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 object: nil,
                 userInfo: ["wheelId": wheelId]
             )
-            print("🔗 AppDelegate: Notification posted successfully")
+            AppLogger.shared.debug("Notification posted successfully", category: .general)
             return true
         } else {
-            print("🔗 AppDelegate: Failed to extract wheel ID from URL")
+            AppLogger.shared.debug("Failed to extract wheel ID from URL", category: .general)
         }
 
         return false
     }
 
     private func handleCustomURL(url: URL) -> Bool {
-        print("🔗 AppDelegate: ===== HANDLING CUSTOM URL =====")
-        print("🔗 AppDelegate: Received Custom URL: \(url)")
-        print("🔗 AppDelegate: URL scheme: \(url.scheme ?? "nil")")
-        print("🔗 AppDelegate: URL host: \(url.host ?? "nil")")
-        print("🔗 AppDelegate: URL path: \(url.path)")
+        AppLogger.shared.debug("===== HANDLING CUSTOM URL =====", category: .general)
+        AppLogger.shared.debug("Received Custom URL: \(url)", category: .general)
+        AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL path: \(url.path)", category: .general)
 
         // Обрабатываем custom URL schemes для riqtu.Hohma:// и hohma://
         if url.scheme == "riqtu.Hohma" || url.scheme == "hohma" {
-            print("🔗 AppDelegate: ✅ URL scheme matches expected schemes")
+            AppLogger.shared.info("URL scheme matches expected schemes", category: .general)
 
             // Парсим URL для извлечения ID колеса
             if let wheelId = extractWheelId(from: url) {
-                print("🔗 AppDelegate: ✅ Extracted wheel ID from custom URL: \(wheelId)")
+                AppLogger.shared.info("Extracted wheel ID from custom URL: \(wheelId)", category: .general)
 
                 // Отправляем уведомление для навигации к колесу
-                print("🔗 AppDelegate: 📤 Posting deepLinkToWheel notification...")
+                AppLogger.shared.debug("Posting deepLinkToWheel notification...", category: .general)
                 NotificationCenter.default.post(
                     name: .deepLinkToWheel,
                     object: nil,
                     userInfo: ["wheelId": wheelId]
                 )
-                print("🔗 AppDelegate: ✅ Custom URL notification posted successfully")
+                AppLogger.shared.info("Custom URL notification posted successfully", category: .general)
                 return true
             } else {
-                print("🔗 AppDelegate: ❌ Failed to extract wheel ID from custom URL")
+                AppLogger.shared.error("Failed to extract wheel ID from custom URL", category: .general)
             }
         }
         // Дополнительная проверка для Universal Links с доменом hohma.su
         else if url.scheme == "https" && url.host == "hohma.su" {
-            print("🔗 AppDelegate: ✅ Processing Universal Link with hohma.su domain")
+            AppLogger.shared.info("Processing Universal Link with hohma.su domain", category: .general)
             return handleUniversalLink(url: url)
         } else {
             print(
@@ -171,25 +171,25 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             )
         }
 
-        print("🔗 AppDelegate: ===== CUSTOM URL HANDLING COMPLETE =====")
+        AppLogger.shared.debug("===== CUSTOM URL HANDLING COMPLETE =====", category: .general)
         return false
     }
 
     private func extractWheelId(from url: URL) -> String? {
-        print("🔗 AppDelegate: Extracting wheel ID from URL: \(url)")
-        print("🔗 AppDelegate: URL scheme: \(url.scheme ?? "nil")")
-        print("🔗 AppDelegate: URL host: \(url.host ?? "nil")")
-        print("🔗 AppDelegate: URL path: \(url.path)")
-        print("🔗 AppDelegate: URL pathComponents: \(url.pathComponents)")
+        AppLogger.shared.debug("Extracting wheel ID from URL: \(url)", category: .general)
+        AppLogger.shared.debug("URL scheme: \(url.scheme ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL host: \(url.host ?? "nil")", category: .general)
+        AppLogger.shared.debug("URL path: \(url.path)", category: .general)
+        AppLogger.shared.debug("URL pathComponents: \(url.pathComponents)", category: .general)
 
         let pathComponents = url.pathComponents
-        print("🔗 AppDelegate: Path components: \(pathComponents)")
+        AppLogger.shared.debug("Path components: \(pathComponents)", category: .general)
 
         // Для custom URL scheme: riqtu.Hohma://fortune-wheel/{wheelId}
         // host = "fortune-wheel", path = "/{wheelId}"
         if let host = url.host, host == "fortune-wheel" && pathComponents.count >= 2 {
             let wheelId = pathComponents[1]  // pathComponents[0] = "/", pathComponents[1] = wheelId
-            print("🔗 AppDelegate: Extracted wheel ID from custom scheme: \(wheelId)")
+            AppLogger.shared.debug("Extracted wheel ID from custom scheme: \(wheelId)", category: .general)
             return wheelId
         }
 
@@ -201,14 +201,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 fortuneWheelIndex + 1 < pathComponents.count
             {
                 let wheelId = pathComponents[fortuneWheelIndex + 1]
-                print("🔗 AppDelegate: Extracted wheel ID from path with fortune-wheel: \(wheelId)")
+                AppLogger.shared.debug("Extracted wheel ID from path with fortune-wheel: \(wheelId)", category: .general)
                 return wheelId
             }
 
             // Если нет "fortune-wheel", но есть ID в path (например, riqtu.Hohma:///{wheelId})
             if pathComponents.count == 2 && pathComponents[0] == "/" {
                 let wheelId = pathComponents[1]
-                print("🔗 AppDelegate: Extracted wheel ID from simple path: \(wheelId)")
+                AppLogger.shared.debug("Extracted wheel ID from simple path: \(wheelId)", category: .general)
                 return wheelId
             }
         }
@@ -219,11 +219,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             fortuneWheelIndex + 1 < pathComponents.count
         {
             let wheelId = pathComponents[fortuneWheelIndex + 1]
-            print("🔗 AppDelegate: Extracted wheel ID from universal link: \(wheelId)")
+            AppLogger.shared.debug("Extracted wheel ID from universal link: \(wheelId)", category: .general)
             return wheelId
         }
 
-        print("🔗 AppDelegate: Failed to extract wheel ID")
+        AppLogger.shared.debug("Failed to extract wheel ID", category: .general)
         return nil
     }
 
@@ -240,7 +240,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        print("❌ AppDelegate: Failed to register for remote notifications: \(error)")
+        AppLogger.shared.error("Failed to register for remote notifications: \(error)", category: .general)
     }
 
     func application(
@@ -256,7 +256,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     private func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
-        print("📱 AppDelegate: Received remote notification: \(userInfo)")
+        AppLogger.shared.debug("Received remote notification: \(userInfo)", category: .general)
 
         // Обновляем последнее уведомление в сервисе для внутреннего использования
         // НЕ создаем локальное уведомление - система iOS сама покажет remote push

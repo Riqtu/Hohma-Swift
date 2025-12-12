@@ -18,7 +18,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private var authToken: String?
-    
+
     // Сохраняем обработчики события connect для вызова при подключении
     private var connectHandlers: [(Data) -> Void] = []
 
@@ -68,7 +68,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         setupEventHandlers()
 
-        print("🔌 SocketIOServiceV2: Socket manager initialized for \(baseURL)")
+        AppLogger.shared.info("Socket manager initialized for \(baseURL)", category: .socket)
     }
 
     // MARK: - Event Handlers Setup
@@ -77,14 +77,14 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         // Обработка подключения
         socket.on(clientEvent: .connect) { [weak self] data, ack in
-            print("✅ SocketIOServiceV2: Connected successfully")
-            print("📊 SocketIOServiceV2: Connect data: \(data)")
+            AppLogger.shared.info("Connected successfully", category: .socket)
+            AppLogger.shared.debug("Connect data: \(data)", category: .socket)
             DispatchQueue.main.async {
                 self?.isConnected = true
                 self?.isConnecting = false
                 self?.error = nil
             }
-            
+
             // Вызываем все зарегистрированные обработчики события connect
             if let self = self {
                 let emptyData = Data()
@@ -92,7 +92,8 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                     for handler in self.connectHandlers {
                         handler(emptyData)
                     }
-                    print("📨 SocketIOServiceV2: Called \(self.connectHandlers.count) connect handlers")
+                    AppLogger.shared.debug(
+                        "Called \(self.connectHandlers.count) connect handlers", category: .socket)
                 }
             }
 
@@ -101,7 +102,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         // Обработка отключения
         socket.on(clientEvent: .disconnect) { [weak self] data, ack in
-            print("🔌 SocketIOServiceV2: Disconnected")
+            AppLogger.shared.info("Disconnected", category: .socket)
             DispatchQueue.main.async {
                 self?.isConnected = false
                 self?.isConnecting = false
@@ -114,7 +115,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
             if let errorData = data.first as? [String: Any],
                 let message = errorData["message"] as? String
             {
-                print("❌ SocketIOServiceV2: Socket error: \(message)")
+                AppLogger.shared.error("Socket error: \(message)", category: .socket)
                 DispatchQueue.main.async {
                     self?.error = message
                 }
@@ -123,7 +124,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         // Обработка переподключения
         socket.on(clientEvent: .reconnect) { [weak self] data, ack in
-            print("🔄 SocketIOServiceV2: Reconnecting...")
+            AppLogger.shared.info("Reconnecting...", category: .socket)
             DispatchQueue.main.async {
                 self?.isConnecting = true
             }
@@ -131,13 +132,14 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         socket.on(clientEvent: .reconnectAttempt) { data, ack in
             if let attempt = data.first as? Int {
-                print("🔄 SocketIOServiceV2: Reconnect attempt \(attempt)")
+                AppLogger.shared.debug("Reconnect attempt \(attempt)", category: .socket)
             }
         }
 
         // Обработка пользовательских событий будет происходить через метод on()
         // Регистрируем только базовые события для внутренней обработки
-        print("📝 SocketIOServiceV2: Event handlers will be registered via on() method")
+        AppLogger.shared.debug(
+            "Event handlers will be registered via on() method", category: .socket)
     }
 
     // MARK: - Connection Management
@@ -148,11 +150,11 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
         }
 
         guard !isConnecting else {
-            print("🔌 SocketIOServiceV2: Already connecting, skipping...")
+            AppLogger.shared.debug("Already connecting, skipping...", category: .socket)
             return
         }
 
-        print("🔌 SocketIOServiceV2: Connecting to \(baseURL)")
+        AppLogger.shared.info("Connecting to \(baseURL)", category: .socket)
 
         DispatchQueue.main.async {
             self.isConnecting = true
@@ -165,7 +167,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     func disconnect() {
         guard let socket = socket else { return }
 
-        print("🔌 SocketIOServiceV2: Disconnecting...")
+        AppLogger.shared.info("Disconnecting...", category: .socket)
 
         DispatchQueue.main.async {
             self.isConnecting = false
@@ -178,13 +180,16 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     // MARK: - Event Handling
     func on(_ event: SocketIOEvent, handler: @escaping (Data) -> Void) {
         guard let socket = socket else {
-            print("❌ SocketIOServiceV2: Cannot register handler - socket not initialized")
+            AppLogger.shared.error(
+                "Cannot register handler - socket not initialized", category: .socket)
             return
         }
 
         // Специальная обработка события connect - сохраняем обработчик и вызываем его при подключении
         if event == .connect {
-            print("📝 SocketIOServiceV2: Registering connect handler (will be called on clientEvent: .connect)")
+            AppLogger.shared.debug(
+                "Registering connect handler (will be called on clientEvent: .connect)",
+                category: .socket)
             connectHandlers.append(handler)
             // Если уже подключены, вызываем обработчик сразу
             if isConnected {
@@ -197,18 +202,14 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         // Регистрируем обработчик напрямую в сокете для других событий
         socket.on(event.rawValue) { data, ack in
-            print("📨 SocketIOServiceV2: ===== Received event: \(event.rawValue) =====")
-            print("📊 SocketIOServiceV2: Event data count: \(data.count)")
-            print("📊 SocketIOServiceV2: Event data: \(data)")
-            
+            AppLogger.shared.debug("Received event: \(event.rawValue)", category: .socket)
+            AppLogger.shared.debug("Event data count: \(data.count)", category: .socket)
+
             // Специальная обработка для chat:list:updated
             if event == .chatListUpdated {
-                print("📨 SocketIOServiceV2: Processing chat:list:updated event")
-                if let firstData = data.first {
-                    print("📨 SocketIOServiceV2: First data type: \(type(of: firstData))")
-                    if let dictData = firstData as? [String: Any] {
-                        print("📨 SocketIOServiceV2: chat:list:updated data: \(dictData)")
-                    }
+                AppLogger.shared.debug("Processing chat:list:updated event", category: .socket)
+                if let firstData = data.first, let dictData = firstData as? [String: Any] {
+                    AppLogger.shared.debug("chat:list:updated data: \(dictData)", category: .socket)
                 }
             }
 
@@ -223,9 +224,9 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                     {
                         eventData = jsonData
                     } else {
-                        print(
-                            "⚠️ SocketIOServiceV2: Could not serialize array data for event \(event.rawValue)"
-                        )
+                        AppLogger.shared.warning(
+                            "Could not serialize array data for event \(event.rawValue)",
+                            category: .socket)
                         eventData = Data()
                     }
                 } else if let dictData = firstData as? [String: Any] {
@@ -235,9 +236,9 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                     {
                         eventData = jsonData
                     } else {
-                        print(
-                            "⚠️ SocketIOServiceV2: Could not serialize dict data for event \(event.rawValue)"
-                        )
+                        AppLogger.shared.warning(
+                            "Could not serialize dict data for event \(event.rawValue)",
+                            category: .socket)
                         eventData = Data()
                     }
                 } else if let stringData = firstData as? String {
@@ -245,16 +246,16 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
                     if let data = stringData.data(using: .utf8) {
                         eventData = data
                     } else {
-                        print(
-                            "⚠️ SocketIOServiceV2: Could not convert string data for event \(event.rawValue)"
-                        )
+                        AppLogger.shared.warning(
+                            "Could not convert string data for event \(event.rawValue)",
+                            category: .socket)
                         eventData = Data()
                     }
                 } else {
                     // Если не можем сериализовать, создаем пустые данные
-                    print(
-                        "⚠️ SocketIOServiceV2: Unknown data type for event \(event.rawValue): \(type(of: firstData))"
-                    )
+                    AppLogger.shared.warning(
+                        "Unknown data type for event \(event.rawValue): \(type(of: firstData))",
+                        category: .socket)
                     eventData = Data()
                 }
             }
@@ -263,56 +264,58 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
             handler(eventData)
         }
 
-        print("📝 SocketIOServiceV2: Registered handler for event: \(event.rawValue)")
+        AppLogger.shared.debug("Registered handler for event: \(event.rawValue)", category: .socket)
     }
 
     // MARK: - Event Emission
     func emit(_ event: SocketIOEvent, data: [String: Any]) {
         guard let socket = socket else {
-            print(
-                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
-            )
+            AppLogger.shared.error(
+                "Cannot emit event '\(event.rawValue)' - socket not initialized", category: .socket)
             return
         }
 
         guard isConnected else {
-            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - not connected", category: .socket)
             return
         }
 
-        print("📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' with data: \(data)")
+        AppLogger.shared.debug(
+            "Emitting event '\(event.rawValue)' with data: \(data)", category: .socket)
 
         socket.emit(event.rawValue, data)
     }
 
     func emit(_ event: SocketIOEvent, data: [[String: Any]]) {
         guard let socket = socket else {
-            print(
-                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
-            )
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - socket not initialized", category: .socket)
             return
         }
 
         guard isConnected else {
-            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - not connected", category: .socket)
             return
         }
 
-        print("📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' with array data: \(data)")
+        AppLogger.shared.debug(
+            "Emitting event '\(event.rawValue)' with array data: \(data)", category: .socket)
 
         socket.emit(event.rawValue, data)
     }
 
     func emit(_ event: SocketIOEvent, roomId: String, data: [String: Any]) {
         guard let socket = socket else {
-            print(
-                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
-            )
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - socket not initialized", category: .socket)
             return
         }
 
         guard isConnected else {
-            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - not connected", category: .socket)
             return
         }
 
@@ -320,9 +323,9 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
         var combinedData = data
         combinedData["roomId"] = roomId
 
-        print(
-            "📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(combinedData)"
-        )
+        AppLogger.shared.debug(
+            "Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(combinedData)",
+            category: .socket)
 
         socket.emit(event.rawValue, combinedData)
     }
@@ -330,20 +333,20 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     // Новый метод для отправки событий в формате (roomId, data) как ожидает сервер
     func emitToRoom(_ event: SocketIOEvent, roomId: String, data: [String: Any]) {
         guard let socket = socket else {
-            print(
-                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
-            )
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - socket not initialized", category: .socket)
             return
         }
 
         guard isConnected else {
-            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - not connected", category: .socket)
             return
         }
 
-        print(
-            "📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(data)"
-        )
+        AppLogger.shared.debug(
+            "Emitting event '\(event.rawValue)' to room '\(roomId)' with data: \(data)",
+            category: .socket)
 
         // Отправляем в формате (roomId, data) как ожидает сервер
         socket.emit(event.rawValue, roomId, data)
@@ -352,20 +355,20 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
     // Перегрузка для отправки строки
     func emitToRoom(_ event: SocketIOEvent, roomId: String, data: String) {
         guard let socket = socket else {
-            print(
-                "❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - socket not initialized"
-            )
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - socket not initialized", category: .socket)
             return
         }
 
         guard isConnected else {
-            print("❌ SocketIOServiceV2: Cannot emit event '\(event.rawValue)' - not connected")
+            AppLogger.shared.warning(
+                "Cannot emit event '\(event.rawValue)' - not connected", category: .socket)
             return
         }
 
-        print(
-            "📤 SocketIOServiceV2: Emitting event '\(event.rawValue)' to room '\(roomId)' with string data: \(data)"
-        )
+        AppLogger.shared.debug(
+            "Emitting event '\(event.rawValue)' to room '\(roomId)' with string data: \(data)",
+            category: .socket)
 
         // Отправляем в формате (roomId, data) как ожидает сервер
         socket.emit(event.rawValue, roomId, data)
@@ -378,12 +381,12 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
             self.error = message
             self.isConnecting = false
         }
-        print("❌ SocketIOServiceV2: \(message)")
+        AppLogger.shared.error(message, category: .socket)
     }
 
     // MARK: - Connection Management
     func forceReconnect() {
-        print("🔄 SocketIOServiceV2: Force reconnecting...")
+        AppLogger.shared.info("Force reconnecting...", category: .socket)
         disconnect()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -419,14 +422,15 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
     // MARK: - Debug Info
     func printDebugInfo() {
-        print("🔍 SocketIOServiceV2 Debug Info:")
-        print("   - Base URL: \(baseURL)")
-        print("   - Client ID: \(clientId)")
-        print("   - Connection State: \(getConnectionState())")
-        print("   - Is Connected: \(isConnected)")
-        print("   - Is Connecting: \(isConnecting)")
-        print("   - Error: \(error ?? "None")")
-        print("   - Socket ID: \(socket?.sid ?? "None")")
-        print("   - Manager Status: \(manager?.status.rawValue ?? -1)")
+        AppLogger.shared.debug("SocketIOServiceV2 Debug Info:", category: .socket)
+        AppLogger.shared.debug("   - Base URL: \(baseURL)", category: .socket)
+        AppLogger.shared.debug("   - Client ID: \(clientId)", category: .socket)
+        AppLogger.shared.debug("   - Connection State: \(getConnectionState())", category: .socket)
+        AppLogger.shared.debug("   - Is Connected: \(isConnected)", category: .socket)
+        AppLogger.shared.debug("   - Is Connecting: \(isConnecting)", category: .socket)
+        AppLogger.shared.debug("   - Error: \(error ?? "None")", category: .socket)
+        AppLogger.shared.debug("   - Socket ID: \(socket?.sid ?? "None")", category: .socket)
+        AppLogger.shared.debug(
+            "   - Manager Status: \(manager?.status.rawValue ?? -1)", category: .socket)
     }
 }

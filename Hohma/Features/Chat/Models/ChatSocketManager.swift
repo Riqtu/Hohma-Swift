@@ -29,104 +29,104 @@ final class ChatSocketManager {
 
     init(socket: SocketIOServiceAdapter) {
         self.socket = socket
-        print("💬 ChatSocketManager: Initializing with socket adapter")
+        AppLogger.shared.debug("Initializing with socket adapter", category: .socket)
         setupHandlers()
-        print("💬 ChatSocketManager: Handlers setup completed")
+        AppLogger.shared.debug("Handlers setup completed", category: .socket)
     }
 
     private func setupHandlers() {
-        print("💬 ChatSocketManager: Setting up handlers")
+        AppLogger.shared.debug("Setting up handlers", category: .socket)
         
         // Регистрируем обработчик события chat:list:updated
-        print("💬 ChatSocketManager: Registering chat:list:updated handler")
+        AppLogger.shared.debug("Registering chat:list:updated handler", category: .socket)
         socket.on(.chatListUpdated) { [weak self] data in
             guard let self = self else { return }
-            print("💬 ChatSocketManager: ===== chat:list:updated event received =====")
-            print("💬 ChatSocketManager: Data size: \(data.count) bytes")
+            AppLogger.shared.debug("===== chat:list:updated event received =====", category: .socket)
+            AppLogger.shared.debug("Data size: \(data.count) bytes", category: .socket)
             
             // Пробуем распарсить данные разными способами
             var chatId: String?
             
             // Способ 1: Прямой парсинг JSON
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                print("💬 ChatSocketManager: Parsed as JSON dict: \(json)")
+                AppLogger.shared.debug("Parsed as JSON dict: \(json)", category: .socket)
                 chatId = json["chatId"] as? String
                 if let unreadCount = json["unreadCount"] as? Int {
-                    print("💬 ChatSocketManager: unreadCount: \(unreadCount)")
+                    AppLogger.shared.debug("unreadCount: \(unreadCount)", category: .socket)
                 }
                 if let lastMessageAt = json["lastMessageAt"] as? String {
-                    print("💬 ChatSocketManager: lastMessageAt: \(lastMessageAt)")
+                    AppLogger.shared.debug("lastMessageAt: \(lastMessageAt)", category: .socket)
                 }
             } else if let jsonString = String(data: data, encoding: .utf8) {
-                print("💬 ChatSocketManager: Data as string: \(jsonString)")
+                AppLogger.shared.debug("Data as string: \(jsonString)", category: .socket)
                 // Пробуем распарсить строку как JSON
                 if let jsonData = jsonString.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                     chatId = json["chatId"] as? String
-                    print("💬 ChatSocketManager: Parsed from string, chatId: \(chatId ?? "nil")")
+                    AppLogger.shared.debug("Parsed from string, chatId: \(chatId ?? "nil")", category: .socket)
                 }
             }
             
             if let chatId = chatId {
-                print("💬 ChatSocketManager: chat:list:updated - chatId: \(chatId)")
-                print("💬 ChatSocketManager: Calling onChatListUpdated callback")
+                AppLogger.shared.debug("chat:list:updated - chatId: \(chatId)", category: .socket)
+                AppLogger.shared.debug("Calling onChatListUpdated callback", category: .socket)
                 self.onChatListUpdated?(chatId)
-                print("💬 ChatSocketManager: ===== chat:list:updated processed =====")
+                AppLogger.shared.debug("===== chat:list:updated processed =====", category: .socket)
             } else {
-                print("❌ ChatSocketManager: chat:list:updated - failed to extract chatId from data")
+                AppLogger.shared.error("chat:list:updated - failed to extract chatId from data", category: .socket)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    print("❌ ChatSocketManager: Raw data as string: \(jsonString)")
+                    AppLogger.shared.error("Raw data as string: \(jsonString)", category: .socket)
                 } else {
-                    print("❌ ChatSocketManager: Raw data (hex): \(data.map { String(format: "%02x", $0) }.joined())")
+                    AppLogger.shared.error("Raw data (hex): \(data.map { String(format: "%02x", $0) }.joined())", category: .socket)
                 }
                 // Все равно вызываем callback, чтобы обновить список
-                print("💬 ChatSocketManager: Calling onChatListUpdated with 'unknown'")
+                AppLogger.shared.debug("Calling onChatListUpdated with 'unknown'", category: .socket)
                 self.onChatListUpdated?("unknown")
             }
         }
-        print("💬 ChatSocketManager: chat:list:updated handler registered")
+        AppLogger.shared.debug("chat:list:updated handler registered", category: .socket)
         
         socket.on(.connect) { [weak self] _ in
-            print("💬 ChatSocketManager: Socket connected event received")
+            AppLogger.shared.debug("Socket connected event received", category: .socket)
             guard let self = self else { return }
             
             // Автоматически переприсоединяемся к текущему чату при переподключении
             if let chatId = self.currentChatId,
                let userId = self.currentUserId {
-                print("💬 ChatSocketManager: Auto-joining chat \(chatId) after connect")
+                AppLogger.shared.debug("Auto-joining chat \(chatId) after connect", category: .socket)
                 // Используем прямой вызов, чтобы избежать рекурсии
                 let payload: [String: Any] = [
                     "chatId": chatId,
                     "userId": userId,
                 ]
-                print("💬 ChatSocketManager: Emitting chat:join event with payload: \(payload)")
+                AppLogger.shared.debug("Emitting chat:join event with payload: \(payload)", category: .socket)
                 self.socket.emit(.chatJoin, data: payload)
-                print("💬 ChatSocketManager: Auto-join event sent for chat \(chatId)")
+                AppLogger.shared.debug("Auto-join event sent for chat \(chatId)", category: .socket)
             } else {
-                print("💬 ChatSocketManager: No current chat to auto-join")
+                AppLogger.shared.debug("No current chat to auto-join", category: .socket)
             }
             
             // Автоматически переприсоединяемся к глобальной комнате пользователя при переподключении
             if let userId = self.globalRoomUserId {
-                print("💬 ChatSocketManager: Auto-joining user global room for user \(userId) after connect")
+                AppLogger.shared.debug("Auto-joining user global room for user \(userId) after connect", category: .socket)
                 let payload: [String: Any] = ["userId": userId]
                 self.socket.emit(.userJoin, data: payload)
-                print("💬 ChatSocketManager: Auto-join user global room event sent for user \(userId)")
+                AppLogger.shared.debug("Auto-join user global room event sent for user \(userId)", category: .socket)
             }
         }
 
         socket.on(.chatMessage) { [weak self] data in
             guard let self = self else { return }
-            print("💬 ChatSocketManager: chat:message event received, data size: \(data.count)")
+            AppLogger.shared.debug("chat:message event received, data size: \(data.count)", category: .socket)
             do {
                 // Socket.IO отправляет данные в формате: { message: ChatMessage }
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                print("💬 ChatSocketManager: Parsed JSON keys: \(json?.keys.joined(separator: ", ") ?? "none")")
+                AppLogger.shared.debug("Parsed JSON keys: \(json?.keys.joined(separator: ", ") ?? "none")", category: .socket)
                 guard let messageDict = json?["message"] as? [String: Any] else {
-                    print("❌ ChatSocketManager: chat:message - missing 'message' key in payload")
-                    print("❌ ChatSocketManager: Available keys: \(json?.keys.joined(separator: ", ") ?? "none")")
+                    AppLogger.shared.error("chat:message - missing 'message' key in payload", category: .socket)
+                    AppLogger.shared.error("Available keys: \(json?.keys.joined(separator: ", ") ?? "none")", category: .socket)
                     if let jsonString = String(data: data, encoding: .utf8) {
-                        print("❌ ChatSocketManager: Raw payload: \(jsonString)")
+                        AppLogger.shared.error("Raw payload: \(jsonString)", category: .socket)
                     }
                     return
                 }
@@ -135,12 +135,12 @@ final class ChatSocketManager {
                 let decoder = JSONDecoder()
                 decoder.dateDecodingStrategy = .iso8601withMilliseconds
                 let message = try decoder.decode(ChatMessage.self, from: messageData)
-                print("💬 ChatSocketManager: chat:message received and parsed - id: \(message.id), chatId: \(message.chatId), content: \(message.content.prefix(50))")
+                AppLogger.shared.debug("chat:message received and parsed - id: \(message.id), chatId: \(message.chatId), content: \(message.content.prefix(50))", category: .socket)
                 self.onNewMessage?(message)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:message payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:message payload: \(error)", category: .socket)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    print("❌ ChatSocketManager: Raw payload: \(jsonString)")
+                    AppLogger.shared.error("Raw payload: \(jsonString)", category: .socket)
                 }
             }
         }
@@ -151,13 +151,13 @@ final class ChatSocketManager {
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 guard let userId = json?["userId"] as? String,
                       let isTyping = json?["isTyping"] as? Bool else {
-                    print("❌ ChatSocketManager: chat:typing - missing required fields")
+                    AppLogger.shared.error("chat:typing - missing required fields", category: .socket)
                     return
                 }
-                print("💬 ChatSocketManager: chat:typing received - userId: \(userId), isTyping: \(isTyping)")
+                AppLogger.shared.debug("chat:typing received - userId: \(userId), isTyping: \(isTyping)", category: .socket)
                 self.onTyping?(userId, isTyping)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:typing payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:typing payload: \(error)", category: .socket)
             }
         }
 
@@ -166,13 +166,13 @@ final class ChatSocketManager {
             do {
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 guard let userId = json?["userId"] as? String else {
-                    print("❌ ChatSocketManager: chat:member:online - missing 'userId' field")
+                    AppLogger.shared.error("chat:member:online - missing 'userId' field", category: .socket)
                     return
                 }
-                print("💬 ChatSocketManager: chat:member:online received - userId: \(userId)")
+                AppLogger.shared.debug("chat:member:online received - userId: \(userId)", category: .socket)
                 self.onMemberOnline?(userId)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:member:online payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:member:online payload: \(error)", category: .socket)
             }
         }
 
@@ -181,13 +181,13 @@ final class ChatSocketManager {
             do {
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 guard let userId = json?["userId"] as? String else {
-                    print("❌ ChatSocketManager: chat:member:offline - missing 'userId' field")
+                    AppLogger.shared.error("chat:member:offline - missing 'userId' field", category: .socket)
                     return
                 }
-                print("💬 ChatSocketManager: chat:member:offline received - userId: \(userId)")
+                AppLogger.shared.debug("chat:member:offline received - userId: \(userId)", category: .socket)
                 self.onMemberOffline?(userId)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:member:offline payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:member:offline payload: \(error)", category: .socket)
             }
         }
 
@@ -196,13 +196,13 @@ final class ChatSocketManager {
             do {
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 guard let messageId = json?["messageId"] as? String else {
-                    print("❌ ChatSocketManager: chat:message:deleted - missing 'messageId' field")
+                    AppLogger.shared.error("chat:message:deleted - missing 'messageId' field", category: .socket)
                     return
                 }
-                print("💬 ChatSocketManager: chat:message:deleted received - messageId: \(messageId)")
+                AppLogger.shared.debug("chat:message:deleted received - messageId: \(messageId)", category: .socket)
                 self.onMessageDeleted?(messageId)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:message:deleted payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:message:deleted payload: \(error)", category: .socket)
             }
         }
 
@@ -213,13 +213,13 @@ final class ChatSocketManager {
                 guard let chatId = json?["chatId"] as? String,
                       let userId = json?["userId"] as? String,
                       let unreadCount = json?["unreadCount"] as? Int else {
-                    print("❌ ChatSocketManager: chat:unreadCount:updated - missing required fields")
+                    AppLogger.shared.error("chat:unreadCount:updated - missing required fields", category: .socket)
                     return
                 }
-                print("💬 ChatSocketManager: chat:unreadCount:updated received - chatId: \(chatId), userId: \(userId), unreadCount: \(unreadCount)")
+                AppLogger.shared.debug("chat:unreadCount:updated received - chatId: \(chatId), userId: \(userId), unreadCount: \(unreadCount)", category: .socket)
                 self.onUnreadCountUpdated?(chatId, userId, unreadCount)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:unreadCount:updated payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:unreadCount:updated payload: \(error)", category: .socket)
             }
         }
         
@@ -229,7 +229,7 @@ final class ChatSocketManager {
                 let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
                 guard let messageId = json?["messageId"] as? String,
                       let allReactionsArray = json?["allReactions"] as? [[String: Any]] else {
-                    print("❌ ChatSocketManager: chat:message:reaction - missing required fields")
+                    AppLogger.shared.error("chat:message:reaction - missing required fields", category: .socket)
                     return
                 }
                 
@@ -239,12 +239,12 @@ final class ChatSocketManager {
                 decoder.dateDecodingStrategy = .iso8601withMilliseconds
                 let reactions = try decoder.decode([MessageReaction].self, from: reactionsData)
                 
-                print("💬 ChatSocketManager: chat:message:reaction received - messageId: \(messageId), reactions count: \(reactions.count)")
+                AppLogger.shared.debug("chat:message:reaction received - messageId: \(messageId), reactions count: \(reactions.count)", category: .socket)
                 self.onMessageReaction?(messageId, reactions)
             } catch {
-                print("❌ ChatSocketManager: failed to parse chat:message:reaction payload: \(error)")
+                AppLogger.shared.error("failed to parse chat:message:reaction payload: \(error)", category: .socket)
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    print("❌ ChatSocketManager: Raw payload: \(jsonString)")
+                    AppLogger.shared.error("Raw payload: \(jsonString)", category: .socket)
                 }
             }
         }
@@ -257,8 +257,8 @@ final class ChatSocketManager {
     }
 
     func joinChat(chatId: String, userId: String) {
-        print("💬 ChatSocketManager: joinChat called - chatId: \(chatId), userId: \(userId)")
-        print("💬 ChatSocketManager: Socket state - isConnected: \(socket.isConnected), isConnecting: \(socket.isConnecting)")
+        AppLogger.shared.debug("joinChat called - chatId: \(chatId), userId: \(userId)", category: .socket)
+        AppLogger.shared.debug("Socket state - isConnected: \(socket.isConnected), isConnecting: \(socket.isConnecting)", category: .socket)
         
         // Сохраняем текущий чат для автоматического переприсоединения при переподключении
         self.currentChatId = chatId
@@ -269,7 +269,7 @@ final class ChatSocketManager {
         
         // Проверяем, что сокет подключен перед отправкой события
         guard socket.isConnected else {
-            print("⚠️ ChatSocketManager: Socket not connected, saved chatId/userId for auto-join on connect")
+            AppLogger.shared.warning("Socket not connected, saved chatId/userId for auto-join on connect", category: .socket)
             // Обработчик connect автоматически присоединит к чату при подключении
             return
         }
@@ -279,9 +279,9 @@ final class ChatSocketManager {
             "chatId": chatId,
             "userId": userId,
         ]
-        print("💬 ChatSocketManager: Emitting chat:join event with payload: \(payload)")
+        AppLogger.shared.debug("Emitting chat:join event with payload: \(payload)", category: .socket)
         socket.emit(.chatJoin, data: payload)
-        print("💬 ChatSocketManager: Joining chat \(chatId) for user \(userId) - event sent")
+        AppLogger.shared.debug("Joining chat \(chatId) for user \(userId) - event sent", category: .socket)
     }
 
     func leaveChat(chatId: String) {
@@ -293,7 +293,7 @@ final class ChatSocketManager {
         
         let payload: [String: Any] = ["chatId": chatId]
         socket.emit(.chatLeave, data: payload)
-        print("💬 ChatSocketManager: Leaving chat \(chatId)")
+        AppLogger.shared.debug("Leaving chat \(chatId)", category: .socket)
     }
 
     func sendTyping(chatId: String, isTyping: Bool) {
@@ -313,14 +313,14 @@ final class ChatSocketManager {
         
         // Проверяем подключение перед отправкой
         guard socket.isConnected else {
-            print("⚠️ ChatSocketManager: Socket not connected, saved userId for auto-join on connect")
+            AppLogger.shared.warning("Socket not connected, saved userId for auto-join on connect", category: .socket)
             // Обработчик connect автоматически присоединит к глобальной комнате при подключении
             return
         }
         
         let payload: [String: Any] = ["userId": userId]
         socket.emit(.userJoin, data: payload)
-        print("💬 ChatSocketManager: Joining user global room for user \(userId)")
+        AppLogger.shared.debug("Joining user global room for user \(userId)", category: .socket)
     }
     
     func leaveUser(userId: String) {
@@ -331,7 +331,7 @@ final class ChatSocketManager {
         
         let payload: [String: Any] = ["userId": userId]
         socket.emit(.userLeave, data: payload)
-        print("💬 ChatSocketManager: Leaving user global room for user \(userId)")
+        AppLogger.shared.debug("Leaving user global room for user \(userId)", category: .socket)
     }
 }
 

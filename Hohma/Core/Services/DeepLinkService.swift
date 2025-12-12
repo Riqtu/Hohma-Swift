@@ -24,29 +24,29 @@ class DeepLinkService: ObservableObject {
         // Слушаем уведомления о deep links
         NotificationCenter.default.publisher(for: .deepLinkToWheel)
             .sink { [weak self] notification in
-                print("🔗 DeepLinkService: ===== DEEP LINK NOTIFICATION RECEIVED =====")
-                print("🔗 DeepLinkService: Received deepLinkToWheel notification")
-                print("🔗 DeepLinkService: Notification userInfo: \(notification.userInfo ?? [:])")
+                AppLogger.shared.debug("===== DEEP LINK NOTIFICATION RECEIVED =====", category: .general)
+                AppLogger.shared.debug("Received deepLinkToWheel notification", category: .general)
+                AppLogger.shared.debug("Notification userInfo: \(notification.userInfo ?? [:])", category: .general)
 
                 if let wheelId = notification.userInfo?["wheelId"] as? String {
-                    print("🔗 DeepLinkService: ✅ Processing wheel ID: \(wheelId)")
+                    AppLogger.shared.debug("Processing wheel ID: \(wheelId)", category: .general)
                     self?.handleDeepLinkToWheel(wheelId: wheelId)
                 } else {
-                    print("🔗 DeepLinkService: ❌ No wheel ID found in notification")
+                    AppLogger.shared.warning("No wheel ID found in notification", category: .general)
                 }
-                print("🔗 DeepLinkService: ===== DEEP LINK NOTIFICATION PROCESSING COMPLETE =====")
+                AppLogger.shared.debug("===== DEEP LINK NOTIFICATION PROCESSING COMPLETE =====", category: .general)
             }
             .store(in: &cancellables)
     }
 
     func handleDeepLinkToWheel(wheelId: String) {
-        print("🔗 DeepLinkService: ===== HANDLING DEEP LINK TO WHEEL =====")
-        print("🔗 DeepLinkService: Processing deep link to wheel: \(wheelId)")
+        AppLogger.shared.debug("===== HANDLING DEEP LINK TO WHEEL =====", category: .general)
+        AppLogger.shared.debug("Processing deep link to wheel: \(wheelId)", category: .general)
 
         DispatchQueue.main.async {
             self.pendingWheelId = wheelId
             self.isProcessingDeepLink = true
-            print("🔗 DeepLinkService: ✅ Set pendingWheelId to: \(wheelId)")
+            AppLogger.shared.debug("Set pendingWheelId to: \(wheelId)", category: .general)
             print("🔗 DeepLinkService: ✅ Set isProcessingDeepLink to: true")
 
             // Отправляем уведомление для навигации к конкретному колесу

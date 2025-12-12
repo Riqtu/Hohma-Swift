@@ -15,7 +15,7 @@ final class ChatListViewModel: ObservableObject {
             let newCount = chats.reduce(0) { $0 + $1.unreadCountValue }
             if totalUnreadCount != newCount {
                 totalUnreadCount = newCount
-                print("💬 ChatListViewModel: totalUnreadCount updated to \(totalUnreadCount)")
+                AppLogger.shared.debug("totalUnreadCount updated to \(totalUnreadCount)", category: .general)
             }
         }
     }
@@ -59,12 +59,12 @@ final class ChatListViewModel: ObservableObject {
         ) { [weak self] notification in
             guard let self = self else { return }
             let chatId = notification.userInfo?["chatId"] as? String ?? "unknown"
-            print("💬 ChatListViewModel: Received .chatListUpdated notification for chat \(chatId), refreshing chats")
+            AppLogger.shared.debug("Received .chatListUpdated notification for chat \(chatId), refreshing chats", category: .general)
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
-                print("💬 ChatListViewModel: Starting refreshChatsAsync from notification")
+                AppLogger.shared.debug("Starting refreshChatsAsync from notification", category: .general)
                 await self.refreshChatsAsync()
-                print("💬 ChatListViewModel: refreshChatsAsync completed from notification, totalUnreadCount: \(self.totalUnreadCount)")
+                AppLogger.shared.debug("refreshChatsAsync completed from notification, totalUnreadCount: \(self.totalUnreadCount)", category: .general)
             }
         }
     }
@@ -79,7 +79,7 @@ final class ChatListViewModel: ObservableObject {
     
     private func setupGlobalSocketListener() {
         guard let authToken = TRPCService.shared.authToken else {
-            print("❌ ChatListViewModel: No auth token available for socket")
+            AppLogger.shared.error("No auth token available for socket", category: .auth)
             return
         }
         
@@ -87,7 +87,7 @@ final class ChatListViewModel: ObservableObject {
         socketAdapter = SocketIOServiceAdapter(authToken: authToken)
         
         guard let adapter = socketAdapter else {
-            print("❌ ChatListViewModel: Failed to create SocketAdapter")
+            AppLogger.shared.error("Failed to create SocketAdapter", category: .general)
             return
         }
         
@@ -107,17 +107,17 @@ final class ChatListViewModel: ObservableObject {
     private func setupSocketCallbacks() {
         guard let manager = chatSocketManager,
               let adapter = socketAdapter else {
-            print("❌ ChatListViewModel: Cannot setup socket callbacks - missing manager or adapter")
+            AppLogger.shared.error("Cannot setup socket callbacks - missing manager or adapter", category: .general)
             return
         }
         
-        print("💬 ChatListViewModel: Setting up socket callbacks")
+        AppLogger.shared.debug("Setting up socket callbacks", category: .general)
         
         // Слушаем подключение socket и присоединяемся к глобальной комнате пользователя
         adapter.on(.connect) { [weak self] _ in
             guard let self = self else { return }
-            print("💬 ChatListViewModel: ===== Socket connected =====")
-            print("💬 ChatListViewModel: Socket connected, joining user global room")
+            AppLogger.shared.debug("===== Socket connected =====", category: .general)
+            AppLogger.shared.debug("Socket connected, joining user global room", category: .general)
             Task { @MainActor in
                 // Небольшая задержка, чтобы убедиться, что сокет полностью готов
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
@@ -126,25 +126,25 @@ final class ChatListViewModel: ObservableObject {
         }
         
         // Слушаем обновления списка чатов из глобальной комнаты пользователя
-        print("💬 ChatListViewModel: Registering onChatListUpdated callback")
+        AppLogger.shared.debug("Registering onChatListUpdated callback", category: .general)
         manager.onChatListUpdated = { [weak self] chatId in
             guard let self = self else { return }
-            print("💬 ChatListViewModel: ===== CHAT LIST UPDATED EVENT ======")
-            print("💬 ChatListViewModel: Chat ID: \(chatId)")
-            print("💬 ChatListViewModel: Current chats count: \(self.chats.count)")
-            print("💬 ChatListViewModel: Current totalUnreadCount: \(self.totalUnreadCount)")
-            print("💬 ChatListViewModel: Refreshing immediately...")
+            AppLogger.shared.debug("===== CHAT LIST UPDATED EVENT ======", category: .general)
+            AppLogger.shared.debug("Chat ID: \(chatId)", category: .general)
+            AppLogger.shared.debug("Current chats count: \(self.chats.count)", category: .general)
+            AppLogger.shared.debug("Current totalUnreadCount: \(self.totalUnreadCount)", category: .general)
+            AppLogger.shared.debug("Refreshing immediately...", category: .general)
             
             // Обновляем список чатов напрямую для обновления badge
             // Используем async без await, чтобы не блокировать
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
-                print("💬 ChatListViewModel: Starting refreshChatsAsync from WebSocket callback")
+                AppLogger.shared.debug("Starting refreshChatsAsync from WebSocket callback", category: .general)
                 await self.refreshChatsAsync()
-                print("💬 ChatListViewModel: refreshChatsAsync completed")
-                print("💬 ChatListViewModel: New chats count: \(self.chats.count)")
-                print("💬 ChatListViewModel: New totalUnreadCount: \(self.totalUnreadCount)")
-                print("💬 ChatListViewModel: ===== REFRESH COMPLETE ======")
+                AppLogger.shared.debug("refreshChatsAsync completed", category: .general)
+                AppLogger.shared.debug("New chats count: \(self.chats.count)", category: .general)
+                AppLogger.shared.debug("New totalUnreadCount: \(self.totalUnreadCount)", category: .general)
+                AppLogger.shared.debug("===== REFRESH COMPLETE =====", category: .general)
             }
             
             // Также отправляем уведомление для других подписчиков (например, ChatListView)
@@ -155,20 +155,20 @@ final class ChatListViewModel: ObservableObject {
             )
         }
         
-        print("💬 ChatListViewModel: Socket callbacks setup completed")
+        AppLogger.shared.debug("Socket callbacks setup completed", category: .general)
     }
     
     private func joinUserGlobalRoom() {
         guard let manager = chatSocketManager,
               let userId = TRPCService.shared.currentUser?.id,
               let adapter = socketAdapter else {
-            print("❌ ChatListViewModel: Cannot join user room - missing manager, userId, or adapter")
+            AppLogger.shared.error("Cannot join user room - missing manager, userId, or adapter", category: .general)
             return
         }
         
         // Проверяем, подключен ли socket
         guard adapter.isConnected else {
-            print("⚠️ ChatListViewModel: Socket not connected yet, will join user room when connected")
+            AppLogger.shared.warning("Socket not connected yet, will join user room when connected", category: .general)
             // Попробуем подключиться, если еще не подключены
             adapter.connect()
             // Обработчик connect автоматически вызовет joinUserGlobalRoom() при подключении
@@ -176,15 +176,15 @@ final class ChatListViewModel: ObservableObject {
         }
         
         // Присоединяемся к глобальной комнате пользователя для получения уведомлений о чатах
-        print("💬 ChatListViewModel: Joining user global room for user \(userId)")
+        AppLogger.shared.debug("Joining user global room for user \(userId)", category: .general)
         manager.joinUser(userId: userId)
-        print("💬 ChatListViewModel: Joined user global room for user \(userId)")
+        AppLogger.shared.debug("Joined user global room for user \(userId)", category: .general)
     }
 
     func loadChats() {
         // Предотвращаем множественные одновременные загрузки
         guard !isLoading else {
-            print("💬 ChatListViewModel: loadChats() already in progress, skipping")
+            AppLogger.shared.debug("loadChats() already in progress, skipping", category: .general)
             return
         }
         
@@ -198,9 +198,9 @@ final class ChatListViewModel: ObservableObject {
                     offset: 0,
                     search: searchQuery.isEmpty ? nil : searchQuery
                 )
-                print("💬 ChatListViewModel: Loaded \(loadedChats.count) chats")
+                AppLogger.shared.debug("Loaded \(loadedChats.count) chats", category: .general)
                 for chat in loadedChats {
-                    print("💬 ChatListViewModel: Chat \(chat.id) - unreadCount: \(chat.unreadCountValue)")
+                    AppLogger.shared.debug("Chat \(chat.id) - unreadCount: \(chat.unreadCountValue)", category: .general)
                 }
                 self.chats = loadedChats
                 // Присоединяемся к глобальной комнате пользователя после загрузки
@@ -210,7 +210,7 @@ final class ChatListViewModel: ObservableObject {
                 isLoading = false
             } catch {
                 errorMessage = error.localizedDescription
-                print("❌ ChatListViewModel: Failed to load chats: \(error)")
+                AppLogger.shared.error("Failed to load chats", error: error, category: .general)
                 isLoading = false
             }
         }
@@ -218,7 +218,7 @@ final class ChatListViewModel: ObservableObject {
 
     func refreshChats() {
         // При обновлении не показываем loading индикатор, чтобы не блокировать UI
-        print("🔄 ChatListViewModel: refreshChats() called")
+        AppLogger.shared.debug("refreshChats() called", category: .general)
         Task {
             await refreshChatsAsync()
         }
@@ -233,11 +233,11 @@ final class ChatListViewModel: ObservableObject {
                 offset: 0,
                 search: searchQuery.isEmpty ? nil : searchQuery
             )
-            print("💬 ChatListViewModel: Refreshed \(loadedChats.count) chats")
-            print("💬 ChatListViewModel: Previous chats count: \(self.chats.count)")
+            AppLogger.shared.debug("Refreshed \(loadedChats.count) chats", category: .general)
+            AppLogger.shared.debug("Previous chats count: \(self.chats.count)", category: .general)
             
             for chat in loadedChats {
-                print("💬 ChatListViewModel: Chat \(chat.id) - unreadCount: \(chat.unreadCountValue), name: \(chat.displayName), lastMessageAt: \(chat.lastMessageAt ?? "nil")")
+                AppLogger.shared.debug("Chat \(chat.id) - unreadCount: \(chat.unreadCountValue), name: \(chat.displayName), lastMessageAt: \(chat.lastMessageAt ?? "nil")", category: .general)
             }
             
             // Принудительно обновляем список
@@ -253,9 +253,9 @@ final class ChatListViewModel: ObservableObject {
                 self.chats = loadedChats
                 
                 let newUnreadCount = self.totalUnreadCount
-                print("💬 ChatListViewModel: Updated chats array")
-                print("💬 ChatListViewModel:   - Count: \(oldChatsCount) -> \(self.chats.count)")
-                print("💬 ChatListViewModel:   - Unread count: \(oldUnreadCount) -> \(newUnreadCount)")
+                AppLogger.shared.debug("Updated chats array", category: .general)
+                AppLogger.shared.debug("   - Count: \(oldChatsCount) -> \(self.chats.count)", category: .general)
+                AppLogger.shared.debug("   - Unread count: \(oldUnreadCount) -> \(newUnreadCount)", category: .general)
                 
                 // Обновляем badge на иконке приложения
                 self.updateApplicationIconBadge()
@@ -270,7 +270,7 @@ final class ChatListViewModel: ObservableObject {
             }
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ ChatListViewModel: Failed to refresh chats: \(error)")
+            AppLogger.shared.error("Failed to refresh chats", error: error, category: .general)
         }
     }
 

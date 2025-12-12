@@ -52,12 +52,12 @@ struct DeleteAccountButton: View {
 #Preview {
     VStack(spacing: 20) {
         DeleteAccountButton(
-            action: { print("Delete account tapped") },
+            action: { AppLogger.shared.debug("Delete account tapped", category: .ui) },
             isLoading: false
         )
 
         DeleteAccountButton(
-            action: { print("Delete account tapped") },
+            action: { AppLogger.shared.debug("Delete account tapped", category: .ui) },
             isLoading: true
         )
     }
