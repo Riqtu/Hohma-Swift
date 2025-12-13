@@ -101,50 +101,106 @@ struct CollectingMoviesView: View {
                         .bold()
 
                     if let battle = viewModel.battle {
-                        // Для создателя показываем общее количество фильмов, для участников - только свои
-                        let totalMovies = battle._count?.movies ?? battle.movies?.count ?? 0
-                        let displayedMovies =
-                            viewModel.isCreator ? totalMovies : (battle.movies?.count ?? 0)
-                        Text("\(displayedMovies) / \(battle.maxMovies) фильмов")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        if viewModel.isParticipant {
+                            // Для создателя показываем общее количество фильмов, для участников - только свои
+                            let totalMovies = battle._count?.movies ?? battle.movies?.count ?? 0
+                            let displayedMovies =
+                                viewModel.isCreator ? totalMovies : (battle.movies?.count ?? 0)
+                            Text("\(displayedMovies) / \(battle.maxMovies) фильмов")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            // Для неучастников показываем общую информацию
+                            let participantCount = battle.participantCount
+                            let totalMovies = battle._count?.movies ?? 0
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Участников: \(participantCount)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text("Фильмов: \(totalMovies) / \(battle.maxMovies)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
                 .padding()
 
-                // Список фильмов
-                if let movies = viewModel.battle?.movies, !movies.isEmpty {
-                    LazyVStack(spacing: 10) {
-                        ForEach(movies) { movie in
-                            MovieCardRow(
-                                movie: movie,
-                                showOriginalTitle: true,
-                                showGenerationStatus: true,
-                                showOriginalData: true
+                // Кнопка присоединения к игре
+                if viewModel.canJoinBattle {
+                    VStack(spacing: 12) {
+                        VStack(spacing: 8) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                            Text("Вы не участвуете в этой игре")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Text(
+                                "Присоединитесь, чтобы добавлять фильмы и участвовать в голосовании"
                             )
-                        }
-                    }
-                    .padding(.horizontal)
-                } else {
-                    VStack(spacing: 16) {
-                        Image(systemName: "film.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary)
-                        Text("Фильмы еще не добавлены")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                        Text("Добавьте фильмы, чтобы начать игру")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                        }
+                        .padding(.vertical)
+
+                        Button(action: {
+                            Task {
+                                await viewModel.joinBattle()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                Text("Присоединиться к игре")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color("AccentColor"))
+                            .cornerRadius(10)
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.horizontal)
                 }
 
-                // Кнопка добавления фильма
-                if viewModel.canAddMovie {
+                // Список фильмов (показывается только для участников)
+                if viewModel.isParticipant {
+                    if let movies = viewModel.battle?.movies, !movies.isEmpty {
+                        LazyVStack(spacing: 10) {
+                            ForEach(movies) { movie in
+                                MovieCardRow(
+                                    movie: movie,
+                                    showOriginalTitle: true,
+                                    showGenerationStatus: true,
+                                    showOriginalData: true
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                    } else {
+                        VStack(spacing: 16) {
+                            Image(systemName: "film.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary)
+                            Text("Фильмы еще не добавлены")
+                                .font(.title2)
+                                .foregroundColor(.secondary)
+                            Text("Добавьте фильмы, чтобы начать игру")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    }
+                }
+
+                // Кнопка добавления фильма (только для участников)
+                if viewModel.canAddMovie && viewModel.isParticipant {
                     Button(action: {
                         viewModel.showingAddMovieSheet = true
                     }) {
@@ -1293,7 +1349,7 @@ struct MovieCardDetail: View {
     }
 }
 
-fileprivate enum BattleMovieSelectionMode: String, CaseIterable {
+private enum BattleMovieSelectionMode: String, CaseIterable {
     case search = "Поиск"
     case myMovies = "Мои фильмы"
     case manual = "Ручной ввод"
@@ -1418,7 +1474,7 @@ struct AddMovieView: View {
                             Text("Мои фильмы")
                                 .font(.headline)
                                 .padding(.horizontal)
-                            
+
                             if isLoadingMyMovies {
                                 ProgressView("Загрузка...")
                                     .frame(maxWidth: .infinity)
@@ -1456,7 +1512,7 @@ struct AddMovieView: View {
                                 }
                                 .frame(maxHeight: 400)
                             }
-                            
+
                             if let selectedMyMovie = selectedMyMovie {
                                 SelectedMyMovieSummary(movie: selectedMyMovie)
                                     .padding(.horizontal)
@@ -1638,11 +1694,11 @@ struct AddMovieView: View {
         showingResults = false
         cancelSearch()
     }
-    
+
     private func loadMyMovies() {
         guard !isLoadingMyMovies else { return }
         isLoadingMyMovies = true
-        
+
         Task {
             do {
                 let response = try await myMoviesService.myMovies(page: 1, limit: 50)
@@ -1658,7 +1714,7 @@ struct AddMovieView: View {
             }
         }
     }
-    
+
     private func selectMyMovie(_ movie: MovieRecord) {
         selectedMyMovie = movie
         selectedMovie = nil
@@ -1672,7 +1728,7 @@ struct AddMovieView: View {
 
         // Предотвращаем повторные нажатия
         guard !isAddingMovie else { return }
-        
+
         // Определяем kinopoiskId в зависимости от выбранного режима
         let kinopoiskId: String?
         if let myMovie = selectedMyMovie {
@@ -1812,7 +1868,7 @@ private struct SelectedMovieSummary: View {
 
 // MARK: - My Movies Components
 
-fileprivate struct BattleMyMovieRow: View {
+private struct BattleMyMovieRow: View {
     @ObserveInjection var inject
     let item: MyMovieListItem
     let isSelected: Bool
@@ -1820,7 +1876,8 @@ fileprivate struct BattleMyMovieRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let urlString = item.movie.posterPreviewUrl ?? item.movie.posterUrl,
-               let url = URL(string: urlString) {
+                let url = URL(string: urlString)
+            {
                 CachedAsyncImage(url: url) { image in
                     image
                         .resizable()
@@ -1879,7 +1936,8 @@ private struct SelectedMyMovieSummary: View {
     var body: some View {
         HStack(spacing: 12) {
             if let urlString = movie.posterPreviewUrl ?? movie.posterUrl,
-               let url = URL(string: urlString) {
+                let url = URL(string: urlString)
+            {
                 CachedAsyncImage(url: url) { image in
                     image
                         .resizable()

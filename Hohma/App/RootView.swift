@@ -2,11 +2,11 @@ import Inject
 import SwiftUI
 
 struct RootView: View {
+    @ObserveInjection var inject
     @State private var selection: String = "home"
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var settingsViewModel = SettingsViewModel()
     @StateObject private var chatListViewModel = ChatListViewModel()
-    @ObserveInjection var inject
 
     var body: some View {
         Group {

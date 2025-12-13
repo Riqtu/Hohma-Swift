@@ -68,25 +68,28 @@ struct MessageBubbleView: View {
             if !isCurrentUser {
                 if showAvatar {
                     // Avatar for other users (слева)
-                    AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
-                        switch phase {
-                        case .empty:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        case .failure:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
-                        @unknown default:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
+                    NavigationLink(destination: OtherUserProfileView(userId: message.senderId, useNavigationStack: false)) {
+                        AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
+                            switch phase {
+                            case .empty:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            @unknown default:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .frame(width: 30, height: 30)
+                        .clipShape(Circle())
                     }
-                    .frame(width: 30, height: 30)
-                    .clipShape(Circle())
+                    .buttonStyle(PlainButtonStyle())
                     .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
                     .onAppear {
                         // Принудительная загрузка при появлении в viewport
@@ -112,6 +115,15 @@ struct MessageBubbleView: View {
                     Text(message.sender?.displayName ?? "Пользователь")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+
+                // Отображение информации о пересылке
+                if message.forwardedFromChatId != nil {
+                    ForwardedFromView(
+                        forwardedFromChatId: message.forwardedFromChatId,
+                        forwardedFromChat: message.forwardedFromChat,
+                        isCurrentUser: isCurrentUser
+                    )
                 }
 
                 // Отображение сообщения, на которое отвечают
@@ -314,25 +326,28 @@ struct MessageBubbleView: View {
             if isCurrentUser {
                 if showAvatar {
                     // Avatar for current user (справа)
-                    AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
-                        switch phase {
-                        case .empty:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        case .failure:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
-                        @unknown default:
-                            Image(systemName: "person.circle.fill")
-                                .foregroundColor(.secondary)
+                    NavigationLink(destination: OtherUserProfileView(userId: message.senderId, useNavigationStack: false)) {
+                        AsyncImage(url: URL(string: message.sender?.avatarUrl ?? "")) { phase in
+                            switch phase {
+                            case .empty:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            case .failure:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            @unknown default:
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .frame(width: 30, height: 30)
+                        .clipShape(Circle())
                     }
-                    .frame(width: 30, height: 30)
-                    .clipShape(Circle())
+                    .buttonStyle(PlainButtonStyle())
                     .id("avatar-\(message.senderId)-\(message.sender?.avatarUrl ?? "")")
                     .onAppear {
                         // Принудительная загрузка при появлении в viewport
@@ -464,6 +479,64 @@ struct MessageBubbleView: View {
             }
         }
         return dateString
+    }
+}
+
+// MARK: - Forwarded From View
+struct ForwardedFromView: View {
+    let forwardedFromChatId: String?
+    let forwardedFromChat: Chat?
+    let isCurrentUser: Bool
+    
+    @State private var chatName: String? = nil
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 6) {
+            // Иконка пересылки
+            Image(systemName: "arrowshape.turn.up.right")
+                .font(.caption2)
+                .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+            
+            // Название чата-источника
+            if let chat = forwardedFromChat {
+                Text("Из: \(chat.displayName)")
+                    .font(.caption2)
+                    .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+                    .lineLimit(1)
+            } else if let chatName = chatName {
+                Text("Из: \(chatName)")
+                    .font(.caption2)
+                    .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+                    .lineLimit(1)
+            } else if let chatId = forwardedFromChatId {
+                Text("Переслано")
+                    .font(.caption2)
+                    .foregroundColor(isCurrentUser ? Color.white.opacity(0.7) : Color.secondary)
+                    .lineLimit(1)
+                    .onAppear {
+                        loadChatName(chatId: chatId)
+                    }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isCurrentUser ? Color.white.opacity(0.15) : Color(.systemGray6))
+        )
+    }
+    
+    private func loadChatName(chatId: String) {
+        Task {
+            do {
+                let chat = try await ChatService.shared.getChatById(chatId: chatId)
+                await MainActor.run {
+                    self.chatName = chat.displayName
+                }
+            } catch {
+                AppLogger.shared.error("Failed to load chat name for forwarded message: \(error)", category: .ui)
+            }
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 //
-//  ShareToChatView.swift
+//  ForwardMessageView.swift
 //  Hohma
 //
 //  Created by Assistant on 27.01.2025.
@@ -9,14 +9,12 @@ import Foundation
 import Inject
 import SwiftUI
 
-/// Общий компонент для отправки контента (колесо, скачка, батл) в чат
-struct ShareToChatView: View {
+/// View для выбора чата при пересылке сообщения
+struct ForwardMessageView: View {
     @ObserveInjection var inject
     
-    let title: String
-    let emptyStateMessage: String
-    let messageType: MessageType
-    let itemId: String
+    let message: ChatMessage
+    let currentChatId: String  // ID текущего чата, чтобы исключить его из списка
     let onDismiss: () -> Void
     
     @StateObject private var chatListViewModel = ChatListViewModel(autoLoad: false)
@@ -34,7 +32,7 @@ struct ShareToChatView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if chatListViewModel.chats.isEmpty {
+                } else if availableChats.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "message.fill")
                             .font(.system(size: 60))
@@ -42,7 +40,7 @@ struct ShareToChatView: View {
                         Text("Нет чатов")
                             .font(.title2)
                             .foregroundColor(.secondary)
-                        Text(emptyStateMessage)
+                        Text("Нет других чатов для пересылки")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -51,9 +49,9 @@ struct ShareToChatView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(chatListViewModel.chats, id: \.id) { chat in
+                        ForEach(availableChats, id: \.id) { chat in
                             Button(action: {
-                                sendToChat(chatId: chat.id)
+                                forwardToChat(chatId: chat.id)
                             }) {
                                 ChatCellView(chat: chat)
                                     .contentShape(Rectangle())
@@ -70,7 +68,7 @@ struct ShareToChatView: View {
                 }
             }
             .appBackground()
-            .navigationTitle(title)
+            .navigationTitle("Переслать сообщение")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -94,7 +92,12 @@ struct ShareToChatView: View {
         .enableInjection()
     }
     
-    private func sendToChat(chatId: String) {
+    // Исключаем текущий чат из списка
+    private var availableChats: [Chat] {
+        chatListViewModel.chats.filter { $0.id != currentChatId }
+    }
+    
+    private func forwardToChat(chatId: String) {
         guard !isSending else { return }
         
         isSending = true
@@ -102,49 +105,50 @@ struct ShareToChatView: View {
         
         Task {
             do {
-                let request = createSendMessageRequest(chatId: chatId)
+                // Создаем запрос для пересылки сообщения
+                // Используем текущий чат как источник пересылки, если сообщение еще не переслано
+                // Иначе используем оригинальный источник
+                let sourceChatId = message.forwardedFromChatId ?? currentChatId
+                
+                let request = SendMessageRequest(
+                    chatId: chatId,
+                    content: message.content,
+                    messageType: message.messageType,
+                    attachments: message.attachments.isEmpty ? nil : message.attachments,
+                    replyToId: nil,  // При пересылке не сохраняем replyToId
+                    battleId: message.battleId,
+                    raceId: message.raceId,
+                    wheelId: message.wheelId,
+                    forwardedFromChatId: sourceChatId
+                )
+                
                 _ = try await ChatService.shared.sendMessage(request)
                 
                 await MainActor.run {
                     isSending = false
                     onDismiss()
+                    
+                    // Отправляем уведомление для навигации к целевому чату
+                    // Используем небольшую задержку, чтобы sheet успел закрыться
+                    Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
+                        NotificationCenter.default.post(
+                            name: .navigationRequested,
+                            object: nil,
+                            userInfo: [
+                                "destination": "chat",
+                                "chatId": chatId
+                            ]
+                        )
+                    }
                 }
             } catch {
                 await MainActor.run {
                     isSending = false
-                    errorMessage = ErrorHandler.shared.handle(error, context: "sendToChat", category: .general)
+                    errorMessage = ErrorHandler.shared.handle(error, context: "forwardMessage", category: .general)
                 }
             }
         }
-    }
-    
-    private func createSendMessageRequest(chatId: String) -> SendMessageRequest {
-        var battleId: String? = nil
-        var raceId: String? = nil
-        var wheelId: String? = nil
-        
-        switch messageType {
-        case .movieBattle:
-            battleId = itemId
-        case .race:
-            raceId = itemId
-        case .wheel:
-            wheelId = itemId
-        default:
-            break
-        }
-        
-        return SendMessageRequest(
-            chatId: chatId,
-            content: "",
-            messageType: messageType,
-            attachments: nil,
-            replyToId: nil,
-            battleId: battleId,
-            raceId: raceId,
-            wheelId: wheelId,
-            forwardedFromChatId: nil  // Это не пересылка, а отправка нового контента
-        )
     }
 }
 

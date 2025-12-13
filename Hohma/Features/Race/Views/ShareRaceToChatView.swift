@@ -7,8 +7,10 @@
 
 import Foundation
 import SwiftUI
+import Inject
 
 struct ShareRaceToChatView: View {
+    @ObserveInjection var inject
     let race: Race
     let onDismiss: () -> Void
 
@@ -20,5 +22,6 @@ struct ShareRaceToChatView: View {
             itemId: race.id,
             onDismiss: onDismiss
         )
+        .enableInjection()
     }
 }

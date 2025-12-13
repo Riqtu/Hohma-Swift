@@ -146,7 +146,9 @@ final class ChatViewModel: ObservableObject {
 
         AppLogger.shared.debug("Creating ChatSocketManager", category: .general)
         chatSocketManager = ChatSocketManager(socket: adapter)
-        AppLogger.shared.debug("ChatSocketManager created: \(chatSocketManager != nil ? "success" : "failed")", category: .general)
+        AppLogger.shared.debug(
+            "ChatSocketManager created: \(chatSocketManager != nil ? "success" : "failed")",
+            category: .general)
         setupSocketCallbacks()
         AppLogger.shared.debug("Socket callbacks setup completed", category: .general)
     }
@@ -284,7 +286,8 @@ final class ChatViewModel: ObservableObject {
                 let loadedChat = try await chatService.getChatById(chatId: chatId)
                 self.chat = loadedChat
                 AppLogger.shared.debug(
-                    "Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")", category: .general
+                    "Chat loaded - backgroundUrl: \(loadedChat.backgroundUrl ?? "nil"), avatarUrl: \(loadedChat.avatarUrl ?? "nil")",
+                    category: .general
                 )
                 AppLogger.shared.debug("About to call loadMessages()", category: .general)
                 loadMessages()
@@ -293,7 +296,8 @@ final class ChatViewModel: ObservableObject {
                 AppLogger.shared.debug("About to call joinChat()", category: .general)
                 joinChat()
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load chat", error: error, category: .general)
             }
 
@@ -326,7 +330,8 @@ final class ChatViewModel: ObservableObject {
                 // Отмечаем как прочитанное
                 markAsRead()
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to load messages", error: error, category: .general)
             }
 
@@ -382,8 +387,10 @@ final class ChatViewModel: ObservableObject {
                 // Обновляем Set для быстрой проверки дубликатов
                 self.messageIds = seenIds
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
-                AppLogger.shared.error("Failed to load more messages", error: error, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
+                AppLogger.shared.error(
+                    "Failed to load more messages", error: error, category: .general)
             }
 
             isLoadingMoreMessages = false
@@ -398,21 +405,26 @@ final class ChatViewModel: ObservableObject {
             let userId = currentUserId,
             let manager = chatSocketManager
         else {
-            AppLogger.shared.error("Cannot join chat - missing chatId or userId", category: .general)
+            AppLogger.shared.error(
+                "Cannot join chat - missing chatId or userId", category: .general)
             AppLogger.shared.debug("   - chatId: \(self.chatId ?? "nil")", category: .general)
             AppLogger.shared.debug("   - userId: \(currentUserId ?? "nil")", category: .general)
-            AppLogger.shared.debug("   - manager: \(chatSocketManager != nil ? "exists" : "nil")", category: .general)
+            AppLogger.shared.debug(
+                "   - manager: \(chatSocketManager != nil ? "exists" : "nil")", category: .general)
             return
         }
 
-        AppLogger.shared.debug("Socket adapter state - isConnected: \(socketAdapter?.isConnected ?? false), isConnecting: \(socketAdapter?.isConnecting ?? false)", category: .general)
-        
+        AppLogger.shared.debug(
+            "Socket adapter state - isConnected: \(socketAdapter?.isConnected ?? false), isConnecting: \(socketAdapter?.isConnecting ?? false)",
+            category: .general)
+
         // Убеждаемся, что сокет подключен перед присоединением к комнате
         manager.connectIfNeeded()
-        
+
         // Вызываем joinChat - он сам проверит подключение и сохранит chatId/userId
         // для автоматического переприсоединения при переподключении
-        AppLogger.shared.debug("Calling manager.joinChat(chatId: \(chatId), userId: \(userId))", category: .general)
+        AppLogger.shared.debug(
+            "Calling manager.joinChat(chatId: \(chatId), userId: \(userId))", category: .general)
         manager.joinChat(chatId: chatId, userId: userId)
     }
 
@@ -513,7 +525,8 @@ final class ChatViewModel: ObservableObject {
                         replyToId: savedReplyingToMessage?.id,
                         battleId: nil,
                         raceId: nil,
-                        wheelId: nil
+                        wheelId: nil,
+                        forwardedFromChatId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -567,7 +580,8 @@ final class ChatViewModel: ObservableObject {
                         replyToId: savedReplyingToMessage?.id,
                         battleId: nil,
                         raceId: nil,
-                        wheelId: nil
+                        wheelId: nil,
+                        forwardedFromChatId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -625,7 +639,8 @@ final class ChatViewModel: ObservableObject {
                         replyToId: savedReplyingToMessage?.id,
                         battleId: nil,
                         raceId: nil,
-                        wheelId: nil
+                        wheelId: nil,
+                        forwardedFromChatId: nil
                     )
 
                     let sentMessage = try await chatService.sendMessage(request)
@@ -661,7 +676,8 @@ final class ChatViewModel: ObservableObject {
                 // Останавливаем индикатор печати
                 stopTyping()
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: "sendMessage", category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: "sendMessage", category: .general)
 
                 // Удаляем временное сообщение при ошибке
                 if let tempIndex = messages.firstIndex(where: { $0.id == tempMessageId }) {
@@ -727,7 +743,8 @@ final class ChatViewModel: ObservableObject {
                     replyToId: savedReplyingToMessage?.id,
                     battleId: nil,
                     raceId: nil,
-                    wheelId: nil
+                    wheelId: nil,
+                    forwardedFromChatId: nil
                 )
 
                 let sentMessage = try await chatService.sendMessage(request)
@@ -753,7 +770,8 @@ final class ChatViewModel: ObservableObject {
                     userInfo: ["chatId": chatId]
                 )
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
                 AppLogger.shared.error("Failed to send sticker", error: error, category: .general)
 
                 // Удаляем временное сообщение при ошибке
@@ -834,7 +852,8 @@ final class ChatViewModel: ObservableObject {
                 messages.removeAll { $0.id == messageId }
                 messageIds.remove(messageId)
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
             }
         }
     }
@@ -873,7 +892,9 @@ final class ChatViewModel: ObservableObject {
 
         // Автоматически останавливаем индикатор через 3 секунды
         typingTimer?.invalidate()
-        typingTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.typingIndicatorTimeout, repeats: false) { [weak self] _ in
+        typingTimer = Timer.scheduledTimer(
+            withTimeInterval: AppConstants.typingIndicatorTimeout, repeats: false
+        ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.stopTyping()
             }
@@ -1098,8 +1119,22 @@ final class ChatViewModel: ObservableObject {
         return members.filter { $0.userId != userId }
     }
 
+    var otherUserId: String? {
+        guard let chat = chat, chat.type == .private, let members = chat.members else { return nil }
+        let userId = currentUserId
+        guard let userId = userId else { return nil }
+        return members.first(where: { $0.userId != userId })?.userId
+    }
+
     var currentUserId: String? {
         return TRPCService.shared.currentUser?.id
+    }
+
+    var currentUserLastReadAt: String? {
+        guard let chat = chat, let members = chat.members, let userId = currentUserId else {
+            return nil
+        }
+        return members.first(where: { $0.userId == userId })?.lastReadAt
     }
 
     // MARK: - Reply Operations
@@ -1144,8 +1179,10 @@ final class ChatViewModel: ObservableObject {
                 // Обновляем сообщение локально
                 refreshMessage(messageId: messageId)
             } catch {
-                errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
-                AppLogger.shared.error("Failed to handle reaction", error: error, category: .general)
+                errorMessage = ErrorHandler.shared.handle(
+                    error, context: #function, category: .general)
+                AppLogger.shared.error(
+                    "Failed to handle reaction", error: error, category: .general)
             }
         }
     }

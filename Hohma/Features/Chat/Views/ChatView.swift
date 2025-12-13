@@ -17,6 +17,8 @@ struct ChatView: View {
     let chatId: String
     @StateObject private var viewModel = ChatViewModel()
     @State private var messageToDelete: String? = nil
+    @State private var messageToForward: ChatMessage? = nil
+    @State private var messageForReaction: ChatMessage? = nil
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showSettings = false
     @State private var chatBackgroundUrl: String? = nil
@@ -126,9 +128,26 @@ struct ChatView: View {
             }
             .presentationDetents([.height(300)])
         }
+        .sheet(item: $messageToForward) { message in
+            ForwardMessageView(
+                message: message,
+                currentChatId: chatId,
+                onDismiss: {
+                    messageToForward = nil
+                }
+            )
+        }
+        .sheet(item: $messageForReaction) { message in
+            ReactionPickerView(
+                message: message,
+                onReactionSelected: { emoji in
+                    viewModel.handleReaction(messageId: message.id, emoji: emoji)
+                    messageForReaction = nil
+                }
+            )
+        }
         .onAppear {
             AppLogger.shared.debug("onAppear called for chatId: \(chatId)", category: .ui)
-            AppLogger.shared.debug("ViewModel exists: \(viewModel != nil)", category: .ui)
             AppLogger.shared.debug("Calling viewModel.loadChat(chatId: \(chatId))", category: .ui)
             viewModel.loadChat(chatId: chatId)
             // Инициализируем фон при появлении
@@ -182,11 +201,14 @@ private struct ChatMessagesScrollView: View {
     let isLoadingMore: Bool
     let hasMoreMessages: Bool
     let currentUserId: String?
+    let lastReadAt: String?
     let onLoadMore: () -> Void
     let onDeleteMessage: ((String) -> Void)?
     let findMessage: (String) -> ChatMessage?
     let onReply: (ChatMessage) -> Void
     let onReaction: (String, String) -> Void  // messageId, emoji
+    let onForward: (ChatMessage) -> Void
+    let onShowReactionPicker: (ChatMessage) -> Void
 
     @State private var scrollMetrics = ChatScrollMetrics.zero
     @State private var didPerformInitialScroll = false
@@ -213,41 +235,106 @@ private struct ChatMessagesScrollView: View {
                             let next = index + 1 < messages.count ? messages[index + 1] : nil
                             let isGroupedWithPrev = isGrouped(message, previous)
                             let isGroupedWithNext = isGrouped(message, next)
-                            let showAvatar = !isGroupedWithNext // аватар только на последнем сообщении группы
-                            let showName = !isGroupedWithPrev // имя только на первом сообщении группы
+                            let showAvatar = !isGroupedWithNext  // аватар только на последнем сообщении группы
+                            let showName = !isGroupedWithPrev  // имя только на первом сообщении группы
 
-                            MessageBubbleView(
+                            // Определяем, нужно ли показать divider перед этим сообщением
+                            let shouldShowUnreadDivider = shouldShowUnreadDivider(
                                 message: message,
-                                isCurrentUser: message.senderId == currentUserId,
-                                replyingToMessage: message.replyToId.flatMap(findMessage),
-                                onReply: {
-                                    onReply(message)
-                                },
-                                onReaction: { emoji in
-                                    onReaction(message.id, emoji)
-                                },
-                                contextMenuBuilder: {
-                                    if message.senderId == currentUserId,
-                                        let onDelete = onDeleteMessage
-                                    {
-                                        return AnyView(
-                                            Button(role: .destructive) {
-                                                onDelete(message.id)
+                                previous: previous,
+                                lastReadAt: lastReadAt,
+                                currentUserId: currentUserId
+                            )
+
+                            VStack(spacing: 0) {
+                                // Divider перед первым непрочитанным сообщением
+                                if shouldShowUnreadDivider {
+                                    HStack {
+                                        Rectangle()
+                                            .fill(Color.accentColor)
+                                            .frame(height: 1)
+
+                                        Text("Новые сообщения")
+                                            .font(.caption)
+                                            .foregroundColor(.accentColor)
+                                            .padding(.horizontal, 8)
+
+                                        Rectangle()
+                                            .fill(Color.accentColor)
+                                            .frame(height: 1)
+                                    }
+                                    .padding(.vertical, 12)
+                                    .padding(.horizontal)
+                                }
+
+                                MessageBubbleView(
+                                    message: message,
+                                    isCurrentUser: message.senderId == currentUserId,
+                                    replyingToMessage: message.replyToId.flatMap(findMessage),
+                                    onReply: {
+                                        onReply(message)
+                                    },
+                                    onReaction: { emoji in
+                                        onReaction(message.id, emoji)
+                                    },
+                                    contextMenuBuilder: {
+                                        // Кнопка "Реакция" для всех сообщений
+                                        let reactionButton = AnyView(
+                                            Button {
+                                                onShowReactionPicker(message)
                                             } label: {
-                                                Label("Удалить", systemImage: "trash")
+                                                Label("Реакция", systemImage: "face.smiling")
                                             }
                                         )
-                                    } else {
-                                        return nil
-                                    }
-                                },
-                                showAvatar: showAvatar,
-                                showSenderName: showName,
-                                isGroupedWithPrev: isGroupedWithPrev,
-                                isGroupedWithNext: isGroupedWithNext
-                            )
-                            .id(message.id)
-                            .padding(.top, isGroupedWithPrev ? 2 : 10)
+
+                                        // Кнопка "Переслать" для всех сообщений
+                                        let forwardButton = AnyView(
+                                            Button {
+                                                onForward(message)
+                                            } label: {
+                                                Label(
+                                                    "Переслать",
+                                                    systemImage: "arrowshape.turn.up.right"
+                                                )
+                                            }
+                                        )
+
+                                        if message.senderId == currentUserId,
+                                            let onDelete = onDeleteMessage
+                                        {
+                                            // Для своих сообщений: реакция, переслать и удалить
+                                            return AnyView(
+                                                Group {
+                                                    reactionButton
+                                                    forwardButton
+
+                                                    Button(role: .destructive) {
+                                                        onDelete(message.id)
+                                                    } label: {
+                                                        Label("Удалить", systemImage: "trash")
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            // Для чужих сообщений: реакция и переслать
+                                            return AnyView(
+                                                Group {
+                                                    reactionButton
+                                                    forwardButton
+                                                }
+                                            )
+                                        }
+                                    },
+                                    showAvatar: showAvatar,
+                                    showSenderName: showName,
+                                    isGroupedWithPrev: isGroupedWithPrev,
+                                    isGroupedWithNext: isGroupedWithNext
+                                )
+                                .id(message.id)
+                                .padding(
+                                    .top, isGroupedWithPrev ? 2 : (shouldShowUnreadDivider ? 0 : 10)
+                                )
+                            }
                             .onAppear {
                                 // Принудительная загрузка медиа при появлении в viewport
                                 // Это помогает загружать изображения при скролле
@@ -410,9 +497,53 @@ private struct ChatMessagesScrollView: View {
         guard let other else { return false }
         guard current.senderId == other.senderId else { return false }
         guard let currentDate = parseISODate(current.createdAt),
-              let otherDate = parseISODate(other.createdAt)
+            let otherDate = parseISODate(other.createdAt)
         else { return false }
-        return abs(currentDate.timeIntervalSince(otherDate)) <= 120 // 2 минуты
+        return abs(currentDate.timeIntervalSince(otherDate)) <= 120  // 2 минуты
+    }
+
+    private func shouldShowUnreadDivider(
+        message: ChatMessage,
+        previous: ChatMessage?,
+        lastReadAt: String?,
+        currentUserId: String?
+    ) -> Bool {
+        // Показываем divider только перед первым непрочитанным сообщением
+        // Сообщения от текущего пользователя всегда считаются прочитанными
+        guard message.senderId != currentUserId else { return false }
+
+        // Если нет lastReadAt, значит все сообщения непрочитанные, но divider показываем только один раз
+        guard let lastReadAt = lastReadAt else {
+            // Если предыдущее сообщение тоже непрочитанное или его нет, не показываем divider
+            if let previous = previous {
+                return previous.senderId != currentUserId
+            }
+            return true  // Первое сообщение и нет lastReadAt
+        }
+
+        // Проверяем, является ли это сообщение непрочитанным
+        guard let messageDate = parseISODate(message.createdAt),
+            let lastReadDate = parseISODate(lastReadAt)
+        else { return false }
+
+        let isUnread = messageDate > lastReadDate
+
+        // Показываем divider только если:
+        // 1. Это сообщение непрочитанное
+        // 2. Предыдущее сообщение было прочитанным (или его нет)
+        if isUnread {
+            if let previous = previous {
+                // Проверяем, было ли предыдущее сообщение прочитанным
+                if previous.senderId == currentUserId {
+                    return true  // Предыдущее - от текущего пользователя (всегда прочитанное)
+                }
+                guard let previousDate = parseISODate(previous.createdAt) else { return true }
+                return previousDate <= lastReadDate  // Предыдущее было прочитанным
+            }
+            return true  // Первое непрочитанное сообщение
+        }
+
+        return false
     }
 
     private func parseISODate(_ string: String) -> Date? {
@@ -473,22 +604,46 @@ private struct ChatScrollMetricsKey: PreferenceKey {
 extension ChatView {
     // MARK: - Header View
     private var headerView: some View {
-        HStack {
+        HStack(spacing: 12) {
             // Avatar
-            CachedAsyncImage(url: URL(string: viewModel.displayAvatarUrl ?? "")) { image in
-                image
+            if let otherUserId = viewModel.otherUserId, viewModel.isPrivateChat {
+                NavigationLink(
+                    destination: OtherUserProfileView(
+                        userId: otherUserId, useNavigationStack: false)
+                ) {
+                    CachedAsyncImage(url: URL(string: viewModel.displayAvatarUrl ?? "")) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Image(
+                            systemName: viewModel.isPrivateChat
+                                ? "person.circle.fill" : "person.2.circle.fill"
+                        )
+                        .resizable()
+                        .foregroundColor(.secondary)
+                    }
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .fixedSize()
+            } else {
+                CachedAsyncImage(url: URL(string: viewModel.displayAvatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(
+                        systemName: viewModel.isPrivateChat
+                            ? "person.circle.fill" : "person.2.circle.fill"
+                    )
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Image(
-                    systemName: viewModel.isPrivateChat
-                        ? "person.circle.fill" : "person.2.circle.fill"
-                )
-                .resizable()
-                .foregroundColor(.secondary)
+                    .foregroundColor(.secondary)
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
             }
-            .frame(width: 40, height: 40)
-            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(viewModel.displayName)
@@ -526,6 +681,7 @@ extension ChatView {
             isLoadingMore: viewModel.isLoadingMoreMessages,
             hasMoreMessages: viewModel.hasMoreMessages,
             currentUserId: viewModel.currentUserId,
+            lastReadAt: viewModel.currentUserLastReadAt,
             onLoadMore: {
                 viewModel.loadMoreMessages()
             },
@@ -540,6 +696,12 @@ extension ChatView {
             },
             onReaction: { messageId, emoji in
                 viewModel.handleReaction(messageId: messageId, emoji: emoji)
+            },
+            onForward: { message in
+                messageToForward = message
+            },
+            onShowReactionPicker: { message in
+                messageForReaction = message
             }
         )
     }
@@ -619,7 +781,8 @@ extension ChatView {
                                     viewModel.addAttachment(
                                         ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
-                                    AppLogger.shared.error("Failed to save video", error: error, category: .ui)
+                                    AppLogger.shared.error(
+                                        "Failed to save video", error: error, category: .ui)
                                 }
                                 continue
                             }
@@ -637,7 +800,8 @@ extension ChatView {
                                     viewModel.addAttachment(
                                         ChatAttachment(videoURL: tempURL, thumbnail: thumbnail))
                                 } catch {
-                                    AppLogger.shared.error("Failed to save video", error: error, category: .ui)
+                                    AppLogger.shared.error(
+                                        "Failed to save video", error: error, category: .ui)
                                 }
                             }
                         }

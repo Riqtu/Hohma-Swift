@@ -214,6 +214,8 @@ struct ChatMessage: Codable, Identifiable, Equatable {
     let battle: MovieBattle?
     let race: Race?
     let wheel: WheelWithRelations?
+    let forwardedFromChatId: String?  // ID чата, из которого переслано сообщение
+    let forwardedFromChat: Chat?  // Информация о чате-источнике (для отображения названия)
     // replyTo не включаем, чтобы избежать рекурсии в value type - используем только replyToId для связи
 
     enum CodingKeys: String, CodingKey {
@@ -236,6 +238,8 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         case battle
         case race
         case wheel
+        case forwardedFromChatId
+        case forwardedFromChat
         // replyTo исключен из CodingKeys, чтобы избежать рекурсии
     }
 
@@ -258,7 +262,9 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         reactions: [MessageReaction]? = nil,
         battle: MovieBattle? = nil,
         race: Race? = nil,
-        wheel: WheelWithRelations? = nil
+        wheel: WheelWithRelations? = nil,
+        forwardedFromChatId: String? = nil,
+        forwardedFromChat: Chat? = nil
     ) {
         self.id = id
         self.chatId = chatId
@@ -279,6 +285,8 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         self.battle = battle
         self.race = race
         self.wheel = wheel
+        self.forwardedFromChatId = forwardedFromChatId
+        self.forwardedFromChat = forwardedFromChat
     }
 
     init(from decoder: Decoder) throws {
@@ -303,6 +311,8 @@ struct ChatMessage: Codable, Identifiable, Equatable {
         battle = try container.decodeIfPresent(MovieBattle.self, forKey: .battle)
         race = try container.decodeIfPresent(Race.self, forKey: .race)
         wheel = try container.decodeIfPresent(WheelWithRelations.self, forKey: .wheel)
+        forwardedFromChatId = try container.decodeIfPresent(String.self, forKey: .forwardedFromChatId)
+        forwardedFromChat = try container.decodeIfPresent(Chat.self, forKey: .forwardedFromChat)
     }
 }
 
@@ -314,7 +324,8 @@ extension ChatMessage {
         lhs.content == rhs.content &&
         lhs.attachments == rhs.attachments &&
         lhs.status == rhs.status &&
-        lhs.reactions == rhs.reactions
+        lhs.reactions == rhs.reactions &&
+        lhs.forwardedFromChatId == rhs.forwardedFromChatId
     }
 }
 
@@ -416,6 +427,7 @@ struct SendMessageRequest: Codable {
     let battleId: String?
     let raceId: String?
     let wheelId: String?
+    let forwardedFromChatId: String?
 
     var dictionary: [String: Any] {
         var dict: [String: Any] = [
@@ -428,6 +440,7 @@ struct SendMessageRequest: Codable {
         if let battleId = battleId { dict["battleId"] = battleId }
         if let raceId = raceId { dict["raceId"] = raceId }
         if let wheelId = wheelId { dict["wheelId"] = wheelId }
+        if let forwardedFromChatId = forwardedFromChatId { dict["forwardedFromChatId"] = forwardedFromChatId }
         return dict
     }
 }

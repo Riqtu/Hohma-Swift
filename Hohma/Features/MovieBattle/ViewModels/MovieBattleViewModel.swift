@@ -75,23 +75,7 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             if Task.isCancelled { return }
 
             // Проверяем, является ли пользователь участником
-            let currentUserId = trpcService.currentUser?.id
-            let isParticipant =
-                loadedBattle.participants?.contains { $0.userId == currentUserId } ?? false
-
-            // Если пользователь не участник и игра еще не началась - автоматически присоединяем
-            if !isParticipant && currentUserId != nil
-                && (loadedBattle.status == .created || loadedBattle.status == .collecting)
-            {
-                do {
-                    loadedBattle = try await service.joinBattle(battleId: id)
-                } catch {
-                    // Если не удалось присоединиться, продолжаем с текущим состоянием
-                    print(
-                        "⚠️ Не удалось автоматически присоединиться к игре: \(error.localizedDescription)"
-                    )
-                }
-            }
+            // (автоматическое присоединение убрано - теперь пользователь должен нажать кнопку)
 
             await MainActor.run {
                 // Фильтруем фильмы сразу при загрузке битвы
@@ -266,8 +250,11 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             let updatedBattle = try await service.joinBattle(battleId: battleId)
 
             await MainActor.run {
-                self.battle = updatedBattle
+                // Фильтруем фильмы перед обновлением состояния
+                let filteredBattle = self.filterMovies(updatedBattle)
+                self.battle = filteredBattle
                 self.updatePhase()
+                self.setupSocket()
                 self.isLoading = false
             }
         } catch {
@@ -434,6 +421,26 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             let currentUserId = trpcService.currentUser?.id
         else { return false }
         return battle.creator.id == currentUserId
+    }
+
+    var isParticipant: Bool {
+        guard let battle = battle,
+            let currentUserId = trpcService.currentUser?.id
+        else { return false }
+        return battle.participants?.contains { $0.userId == currentUserId } ?? false
+    }
+
+    var canJoinBattle: Bool {
+        guard let battle = battle,
+            let currentUserId = trpcService.currentUser?.id
+        else { return false }
+        
+        // Проверяем, является ли пользователь уже участником
+        let isParticipant = battle.participants?.contains { $0.userId == currentUserId } ?? false
+        if isParticipant { return false }
+        
+        // Можно присоединиться только если игра еще не началась
+        return (battle.status == .created || battle.status == .collecting)
     }
 
     var canDeleteBattle: Bool {

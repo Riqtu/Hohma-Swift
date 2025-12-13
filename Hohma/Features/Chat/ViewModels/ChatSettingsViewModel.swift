@@ -57,6 +57,12 @@ final class ChatSettingsViewModel: ObservableObject {
         return chat?.type == .group
     }
     
+    var otherUserId: String? {
+        guard let chat = chat, chat.type == .private, let members = chat.members else { return nil }
+        guard let currentUserId = currentUserId else { return nil }
+        return members.first(where: { $0.userId != currentUserId })?.userId
+    }
+    
     init(chatId: String) {
         self.chatId = chatId
         self.currentUserId = TRPCService.shared.currentUser?.id

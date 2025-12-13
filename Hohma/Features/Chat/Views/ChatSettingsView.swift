@@ -86,10 +86,37 @@ struct ChatSettingsView: View {
     // MARK: - Chat Info Section
     private var chatInfoSection: some View {
         Section {
-            HStack {
-                Spacer()
-                VStack(spacing: 12) {
-                    AsyncImage(url: URL(string: viewModel.chat?.displayAvatarUrl ?? "")) { image in
+            if let otherUserId = viewModel.otherUserId, !viewModel.isGroupChat {
+                NavigationLink(
+                    destination: OtherUserProfileView(
+                        userId: otherUserId, useNavigationStack: false)
+                ) {
+                    HStack(spacing: 12) {
+                        AsyncImage(url: URL(string: viewModel.chat?.displayAvatarUrl ?? "")) {
+                            image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Image(
+                                systemName: viewModel.isGroupChat
+                                    ? "person.2.circle.fill" : "person.circle.fill"
+                            )
+                            .resizable()
+                            .foregroundColor(.secondary)
+                        }
+                        .frame(width: 50, height: 50)
+                        .clipShape(Circle())
+
+                        Text(viewModel.chat?.displayName ?? "Чате")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                    }
+                }
+            } else {
+                HStack(spacing: 12) {
+                    AsyncImage(url: URL(string: viewModel.chat?.displayAvatarUrl ?? "")) {
+                        image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -101,23 +128,14 @@ struct ChatSettingsView: View {
                         .resizable()
                         .foregroundColor(.secondary)
                     }
-                    .frame(width: 80, height: 80)
+                    .frame(width: 50, height: 50)
                     .clipShape(Circle())
 
                     Text(viewModel.chat?.displayName ?? "Чате")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    if let description = viewModel.chat?.description, !description.isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
+                        .font(.body)
+                        .foregroundColor(.primary)
                 }
-                Spacer()
             }
-            .padding(.vertical, 8)
         }
     }
 
@@ -468,16 +486,22 @@ struct MemberRowView: View {
     var body: some View {
         HStack(spacing: 12) {
             // Аватар
-            AsyncImage(url: URL(string: member.user?.avatarUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Image(systemName: "person.circle.fill")
-                    .foregroundColor(.secondary)
+            NavigationLink(
+                destination: OtherUserProfileView(userId: member.userId, useNavigationStack: false)
+            ) {
+                AsyncImage(url: URL(string: member.user?.avatarUrl ?? "")) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "person.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
             }
-            .frame(width: 40, height: 40)
-            .clipShape(Circle())
+            .buttonStyle(PlainButtonStyle())
+            .fixedSize()
 
             // Имя и роль
             VStack(alignment: .leading, spacing: 4) {

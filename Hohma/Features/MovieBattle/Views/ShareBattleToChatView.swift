@@ -7,8 +7,10 @@
 
 import Foundation
 import SwiftUI
+import Inject
 
 struct ShareBattleToChatView: View {
+    @ObserveInjection var inject
     let battle: MovieBattle
     let onDismiss: () -> Void
 
@@ -20,5 +22,6 @@ struct ShareBattleToChatView: View {
             itemId: battle.id,
             onDismiss: onDismiss
         )
+        .enableInjection()
     }
 }
