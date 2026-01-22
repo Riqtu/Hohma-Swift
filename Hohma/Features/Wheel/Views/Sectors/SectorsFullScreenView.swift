@@ -117,7 +117,8 @@ struct SectorsFullScreenView: View {
                 // Закрываем экран и отправляем дополнительное уведомление для навигации
                 dismiss()
                 // Отправляем уведомление с небольшой задержкой, чтобы экран успел закрыться
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                     NotificationCenter.default.post(
                         name: .navigationRequested,
                         object: nil,
@@ -225,7 +226,8 @@ struct SectorFullScreenRowView: View {
                         viewModel.connectSocket()
 
                         // Ждем подключения и повторяем попытку (уменьшили задержку)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
                             if viewModel.isSocketConnected {
                                 viewModel.deleteSector(sector)
                             } else {

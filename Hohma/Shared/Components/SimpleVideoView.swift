@@ -36,7 +36,8 @@ import SwiftUI
             }
 
             // Запускаем воспроизведение
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                 if player.currentItem?.status == .readyToPlay {
                     player.play()
                 }
@@ -100,7 +101,8 @@ import SwiftUI
             }
 
             // Запускаем воспроизведение
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                 if player.currentItem?.status == .readyToPlay {
                     player.play()
                 }

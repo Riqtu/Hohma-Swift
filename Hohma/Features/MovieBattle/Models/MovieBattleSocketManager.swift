@@ -35,8 +35,10 @@ class MovieBattleSocketManager {
             AppLogger.shared.debug("📡 MovieBattleSocketManager: Socket connected event received, joining room...", category: .socket)
             // Не проверяем isConnected, так как событие connect уже означает подключение
             // Добавляем небольшую задержку для стабилизации соединения
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                self?.joinRoomImmediately()
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+                self.joinRoomImmediately()
             }
         }
         

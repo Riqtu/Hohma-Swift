@@ -428,17 +428,15 @@ private struct ChatMessagesScrollView: View {
             }
         }
 
-        DispatchQueue.main.async {
+        Task { @MainActor in
             performScroll(animated)
 
             // Повторяем скролл немного позже, чтобы учесть изменение высоты
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                performScroll(false)
+            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 секунды
+            performScroll(false)
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    performScroll(false)
-                }
-            }
+            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 секунды
+            performScroll(false)
         }
     }
 

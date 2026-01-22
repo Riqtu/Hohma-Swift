@@ -194,13 +194,14 @@ struct HTMLMessageView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             // После загрузки вызываем обновление высоты несколько раз для надежности
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                 webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды (всего 0.3)
                 webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды (всего 0.6)
                 webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
             }
         }

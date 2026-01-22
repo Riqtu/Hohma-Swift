@@ -252,9 +252,13 @@ final class StreamPlayer: ObservableObject {
 
     private func handleVideoEnd() {
         // Для потокового видео просто перезапускаем без задержки
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.player?.seek(to: .zero)
-            self?.player?.play()
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            if let player = self.player {
+                _ = try? await player.seek(to: .zero)
+                player.play()
+            }
         }
     }
 

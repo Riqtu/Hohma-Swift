@@ -73,14 +73,14 @@ struct NotificationView: View {
             }
 
             // Автоматически скрываем через 3 секунды
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3.0 секунды
                 withAnimation(.easeInOut(duration: 0.3)) {
                     isVisible = false
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    onDismiss()
-                }
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
+                onDismiss()
             }
         }
         .enableInjection()

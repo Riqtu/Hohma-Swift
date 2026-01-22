@@ -25,7 +25,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             AppLogger.shared.debug("===== APP LAUNCHED WITH URL =====", category: .general)
             AppLogger.shared.debug("App launched with URL: \(url)", category: .general)
             // Обрабатываем URL при запуске приложения
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
                 AppLogger.shared.debug("Processing launch URL after delay", category: .general)
                 _ = self.handleCustomURL(url: url)
             }
@@ -36,7 +37,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         {
             AppLogger.shared.debug("===== APP LAUNCHED WITH USER ACTIVITY =====", category: .general)
             AppLogger.shared.debug("App launched with userActivity URL: \(url)", category: .general)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
                 AppLogger.shared.debug("Processing launch userActivity URL after delay", category: .general)
                 _ = self.handleCustomURL(url: url)
             }

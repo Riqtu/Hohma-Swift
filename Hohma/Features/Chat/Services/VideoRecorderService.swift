@@ -557,8 +557,10 @@ class VideoRecorderService: NSObject, ObservableObject {
         if output.isRecording {
             AppLogger.shared.warning("Output is already recording, waiting...", category: .general)
             // Пытаемся снова через небольшую задержку
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                self?.continueRecordingAfterSwitch(
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+                self.continueRecordingAfterSwitch(
                     currentURL: currentURL, savedDuration: savedDuration)
             }
             return

@@ -159,12 +159,12 @@ struct RaceWinnerView: View {
         isAnimating = true
 
         // Запускаем конфетти через небольшую задержку
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
             confettiAnimation = true
-        }
 
-        // Останавливаем конфетти через 3 секунды
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            // Останавливаем конфетти через 3 секунды
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3.0 секунды
             confettiAnimation = false
         }
     }

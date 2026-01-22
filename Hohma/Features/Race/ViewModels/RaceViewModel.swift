@@ -325,7 +325,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         }
 
         // Очищаем кэш аватарок при завершении скачки для освобождения памяти
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5.0 секунд
             self.clearAvatarCache()
         }
     }
@@ -804,16 +805,16 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         impactFeedback.impactOccurred()
 
         // Пауза на клетке перед переходом к следующему шагу
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 секунды
             // Завершаем прыжки всех участников
             for participant in self.participants {
                 self.isJumping[participant.id] = false
             }
 
             // Переходим к следующему шагу
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.animateStep(stepIndex: stepIndex + 1, maxSteps: maxSteps)
-            }
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            self.animateStep(stepIndex: stepIndex + 1, maxSteps: maxSteps)
         }
     }
 
@@ -824,18 +825,19 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         }
         
         // Финальная пауза
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             withAnimation(.easeOut(duration: 0.2)) {
                 self.isAnimating = false
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                // Очищаем только состояние анимации, но НЕ сбрасываем позиции участников
-                self.animationProgress = 0.0
-                self.currentAnimationStep = 0
-                self.totalAnimationSteps = 0
-                self.previousPositions.removeAll()
-                self.participantAnimationSteps.removeAll()
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+            // Очищаем только состояние анимации, но НЕ сбрасываем позиции участников
+            self.animationProgress = 0.0
+            self.currentAnimationStep = 0
+            self.totalAnimationSteps = 0
+            self.previousPositions.removeAll()
+            self.participantAnimationSteps.removeAll()
 
                 // НЕ очищаем currentStepPosition, isJumping и animationStepProgress
                 // чтобы аватарки участников остались видимыми на их финальных позициях
@@ -848,10 +850,9 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                     self.animationStepProgress[participant.id] = 1.0
                 }
 
-                // Разрешаем презентацию результатов и показываем победителя ПОСЛЕ анимации
-                self.suppressWinnerPresentation = false
-                self.checkAndShowWinnerAfterAnimation()
-            }
+            // Разрешаем презентацию результатов и показываем победителя ПОСЛЕ анимации
+            self.suppressWinnerPresentation = false
+            self.checkAndShowWinnerAfterAnimation()
         }
     }
 

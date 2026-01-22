@@ -122,7 +122,8 @@ struct EditProfilePopup: View {
             .onReceive(viewModel.$successMessage) { successMessage in
                 if successMessage != nil {
                     // Закрываем окно после небольшой задержки, чтобы пользователь увидел сообщение об успехе
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 секунды
                         isPresented = false
                         viewModel.clearMessages()
                     }

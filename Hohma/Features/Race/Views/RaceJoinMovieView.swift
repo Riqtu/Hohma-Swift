@@ -75,7 +75,8 @@ struct RaceJoinMovieView: View {
                         ) { _ in
                             // Клавиатура показалась - убеждаемся, что TextField в фокусе
                             if !isFieldFocused {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                                     isFieldFocused = true
                                 }
                             }
@@ -205,7 +206,8 @@ struct RaceJoinMovieView: View {
             }
         }
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
                 isFieldFocused = true
             }
         }

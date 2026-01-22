@@ -1,0 +1,120 @@
+/* 
+  Localizable.strings (English)
+  Hohma
+  
+  Created for localization
+*/
+
+// MARK: - Tab Bar
+"tab.home" = "Home";
+"tab.myMovies" = "My Movies";
+"tab.chat" = "Chats";
+"tab.settings" = "Settings";
+
+// MARK: - Navigation
+"nav.wheelList" = "Wheel List";
+"nav.profile" = "Profile";
+"nav.race" = "Race";
+"nav.stats" = "Stats";
+"nav.movieBattle" = "Movie Battle";
+
+// MARK: - Common
+"common.loading" = "Loading...";
+"common.error" = "Error";
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.edit" = "Edit";
+"common.close" = "Close";
+"common.anonymous" = "Anonymous";
+
+// MARK: - Sidebar
+"sidebar.home" = "Home";
+"sidebar.wheel" = "Wheel";
+"sidebar.race" = "Race";
+"sidebar.movieBattle" = "Movie Battle";
+"sidebar.chat" = "Chat";
+"sidebar.profile" = "Profile";
+"sidebar.stats" = "Stats";
+"sidebar.settings" = "Settings";
+
+// MARK: - Auth
+"auth.welcome" = "Welcome!";
+"auth.agreeTerms" = "By signing in, you agree to";
+"auth.termsOfService" = "Terms of Service";
+
+// MARK: - Errors
+"error.unknown" = "An unknown error occurred. Please try again later.";
+"error.network.noConnection" = "No internet connection. Check your connection.";
+"error.network.timeout" = "Request timeout. Please try again later.";
+"error.network.serverConnection" = "Could not connect to server. Check your internet.";
+"error.network.invalidResponse" = "Server returned invalid response. Please try again later.";
+"error.network.cancelled" = "Operation cancelled.";
+"error.network.unauthorized" = "Authorization required. Please sign in.";
+"error.network.ssl" = "Secure connection error. Please try again later.";
+"error.network.dataLoad" = "Could not load data. Check your internet.";
+"error.network.dataTransfer" = "Data transfer forbidden. Check your settings.";
+"error.network.general" = "Network error. Please try again later.";
+"error.data.general" = "Data error. Please refresh.";
+"error.data.format" = "Data format error. Please refresh.";
+"error.data.processing" = "Data processing error. Please refresh.";
+"error.data.preparation" = "Data preparation error. Please try again.";
+
+// MARK: - Cache Settings
+"cache.title" = "Cache Management";
+"cache.size" = "Cache Size";
+"cache.memoryLimit" = "Memory Limit";
+"cache.diskLimit" = "Disk Limit";
+"cache.clearing" = "Clearing cache...";
+"cache.clearAll" = "Clear All Cache";
+"cache.clearAllAlert.title" = "Clear all cache?";
+"cache.clearAllAlert.message" = "This action will delete all cached data, including images and media. The app may run slower until data is reloaded.";
+"cache.clearURLCache" = "Clear URL Cache";
+"cache.clearURLCacheAlert.title" = "Clear URL cache?";
+"cache.clearURLCacheAlert.message" = "This action will delete network request cache. Images and other data will be reloaded on next use.";
+"cache.clearImageCache" = "Clear Image Cache";
+"cache.clearImageCacheAlert.title" = "Clear image cache?";
+"cache.clearImageCacheAlert.message" = "This action will delete all image cache (posters, stickers, photos in chats). Images will be reloaded on next view.";
+"cache.clearAvatarCache" = "Clear Avatar Cache";
+"cache.clearAvatarCacheAlert.title" = "Clear avatar cache?";
+"cache.clearAvatarCacheAlert.message" = "This action will delete user avatar cache. Avatars will be reloaded on next view.";
+"cache.info.title" = "Cache Information";
+"cache.info.sizeDescription" = "Cache size shows actual space used in Caches, Documents and temporary files.";
+"cache.info.limitsDescription" = "Limits determine maximum URLCache size.";
+"cache.info.overLimitWarning" = "⚠️ When limit is exceeded, URLCache automatically deletes old entries (LRU - Least Recently Used). It's recommended to clear cache manually.";
+"cache.info.autoManagement" = "💡 URLCache automatically manages size: when limit is exceeded, old entries are deleted automatically.";
+"cache.overLimit" = "Cache size exceeds limit";
+"cache.clearTemporary" = "Clear Temporary Files";
+"cache.clearTemporarySuccess" = "Temporary files successfully cleared";
+"cache.limits.title" = "Cache Limits";
+"cache.limits.description" = "Increase limits for better performance when working with media (photos, videos, stickers). Memory limit affects loading speed, disk limit - amount of cached data.";
+"cache.management.title" = "Cache Management";
+"cache.management.description" = "Clearing cache may temporarily slow down the app until data is reloaded.";
+"cache.clearImageSuccess" = "Image cache successfully cleared";
+"cache.clearAvatarSuccess" = "Avatar cache successfully cleared";
+"cache.clearAllSuccess" = "All cache successfully cleared";
+"cache.clearURLSuccess" = "URL cache successfully cleared";
+
+// MARK: - Settings
+"settings.title" = "Settings";
+"settings.subtitle" = "Customize the app to your preferences";
+"settings.appearance" = "Appearance";
+"settings.general" = "General";
+"settings.myProfile" = "My Profile";
+"settings.myProfile.subtitle" = "View and edit profile";
+"settings.raceVolume" = "Race Sound Volume";
+"settings.raceVolume.subtitle" = "Background music and sound volume settings";
+"settings.cacheManagement" = "Cache Management";
+"settings.cacheManagement.subtitle" = "Data caching settings";
+"settings.about" = "About";
+"settings.version" = "Version %@";
+"settings.help" = "Help";
+"settings.help.subtitle" = "Contact support";
+"settings.legal" = "Legal Information";
+"settings.privacyPolicy" = "Privacy Policy";
+"settings.privacyPolicy.subtitle" = "How we use your data";
+"settings.termsOfService" = "Terms of Service";
+"settings.termsOfService.subtitle" = "App usage rules";
+"settings.userAgreement" = "User Agreement";
+"settings.userAgreement.subtitle" = "Brief rules";

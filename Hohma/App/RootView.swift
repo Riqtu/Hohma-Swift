@@ -77,7 +77,7 @@ struct RootView: View {
                         HomeView(user: authViewModel.user, authViewModel: authViewModel)
                             .withAppBackground()
                             .tabItem {
-                                Label("Главная", systemImage: "house")
+                                Label("tab.home".localized, systemImage: "house")
                             }
                             .tag("home")
 
@@ -85,7 +85,7 @@ struct RootView: View {
                             MyMoviesListView()
                         }
                         .tabItem {
-                            Label("Мои фильмы", systemImage: "film")
+                            Label("tab.myMovies".localized, systemImage: "film")
                         }
                         .tag("myMovies")
 
@@ -94,14 +94,14 @@ struct RootView: View {
                                 .withAppBackground()
                         }
                         .tabItem {
-                            Label("Чаты", systemImage: "message")
+                            Label("tab.chat".localized, systemImage: "message")
                         }
                         .badge(chatListViewModel.totalUnreadCount)
                         .tag("chat")
 
                         SettingsView(viewModel: settingsViewModel, authViewModel: authViewModel)
                             .tabItem {
-                                Label("Настройки", systemImage: "gearshape")
+                                Label("tab.settings".localized, systemImage: "gearshape")
                             }
                             .tag("settings")
                     }

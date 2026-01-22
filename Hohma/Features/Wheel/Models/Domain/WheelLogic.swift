@@ -44,7 +44,8 @@ class WheelLogic: WheelLogicProtocol {
         let remainingSectorsCount = updatedSectors.count
         let losersCount = updatedLosers.count
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(speed * 1_000_000_000))
             // Notify about elimination
             NotificationCenter.default.post(
                 name: .sectorEliminated,

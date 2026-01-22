@@ -389,7 +389,9 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
         AppLogger.shared.info("Force reconnecting...", category: .socket)
         disconnect()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
             self.connect()
         }
     }

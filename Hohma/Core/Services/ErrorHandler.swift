@@ -20,11 +20,11 @@ final class ErrorHandler {
     func userFriendlyMessage(from error: Error) -> String {
         // Сначала проверяем наши кастомные типы ошибок
         if let appError = error as? AppError {
-            return appError.errorDescription ?? "Произошла ошибка"
+            return appError.errorDescription ?? "common.error".localized
         }
         
         if let networkError = error as? NetworkError {
-            return networkError.errorDescription ?? "Ошибка сети"
+            return networkError.errorDescription ?? "error.network.general".localized
         }
         
         // Обрабатываем URLError (сетевые ошибки)
@@ -54,7 +54,7 @@ final class ErrorHandler {
         }
         
         // Fallback на общее сообщение
-        return "Произошла неизвестная ошибка. Попробуйте позже."
+        return "error.unknown".localized
     }
     
     /// Обрабатывает ошибку и логирует её для разработчиков
@@ -84,25 +84,25 @@ final class ErrorHandler {
     private func messageForURLError(_ error: URLError) -> String {
         switch error.code {
         case .notConnectedToInternet, .networkConnectionLost:
-            return "Нет подключения к интернету. Проверьте соединение."
+            return "error.network.noConnection".localized
         case .timedOut:
-            return "Превышено время ожидания. Попробуйте позже."
+            return "error.network.timeout".localized
         case .cannotFindHost, .cannotConnectToHost:
-            return "Не удалось подключиться к серверу. Проверьте интернет."
+            return "error.network.serverConnection".localized
         case .badServerResponse:
-            return "Сервер вернул неверный ответ. Попробуйте позже."
+            return "error.network.invalidResponse".localized
         case .cancelled:
-            return "Операция отменена."
+            return "error.network.cancelled".localized
         case .userAuthenticationRequired:
-            return "Требуется авторизация. Войдите в аккаунт."
+            return "error.network.unauthorized".localized
         case .secureConnectionFailed:
-            return "Ошибка безопасного соединения. Попробуйте позже."
+            return "error.network.ssl".localized
         case .cannotLoadFromNetwork:
-            return "Не удалось загрузить данные. Проверьте интернет."
+            return "error.network.dataLoad".localized
         case .dataNotAllowed:
-            return "Передача данных запрещена. Проверьте настройки."
+            return "error.network.dataTransfer".localized
         default:
-            return "Ошибка сети. Попробуйте позже."
+            return "error.network.general".localized
         }
     }
     
@@ -110,18 +110,18 @@ final class ErrorHandler {
         switch error {
         case .dataCorrupted(_):
             AppLogger.shared.error("Decoding error: data corrupted", error: error, category: .general)
-            return "Ошибка данных. Попробуйте обновить."
+            return "error.data.general".localized
         case .keyNotFound(let key, _):
             AppLogger.shared.error("Decoding error: key '\(key.stringValue)' not found", error: error, category: .general)
-            return "Ошибка формата данных. Попробуйте обновить."
+            return "error.data.format".localized
         case .typeMismatch(let type, _):
             AppLogger.shared.error("Decoding error: type mismatch for \(type)", error: error, category: .general)
-            return "Ошибка формата данных. Попробуйте обновить."
+            return "error.data.format".localized
         case .valueNotFound(let type, _):
             AppLogger.shared.error("Decoding error: value not found for \(type)", error: error, category: .general)
-            return "Ошибка данных. Попробуйте обновить."
+            return "error.data.general".localized
         @unknown default:
-            return "Ошибка обработки данных. Попробуйте обновить."
+            return "error.data.processing".localized
         }
     }
     
@@ -129,9 +129,9 @@ final class ErrorHandler {
         switch error {
         case .invalidValue(_, _):
             AppLogger.shared.error("Encoding error: invalid value", error: error, category: .general)
-            return "Ошибка подготовки данных. Попробуйте еще раз."
+            return "error.data.preparation".localized
         @unknown default:
-            return "Ошибка подготовки данных. Попробуйте еще раз."
+            return "error.data.preparation".localized
         }
     }
     

@@ -39,7 +39,7 @@ struct AuthView: View {
                 Text("XOXMA")
                     .font(.custom("Luckiest Guy", size: 40))
                     .bold()
-                Text("Добро пожаловать!")
+                Text("auth.welcome".localized)
                     .font(.title2)
                     .bold()
 
@@ -59,13 +59,13 @@ struct AuthView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
 
-                        Text("Авторизуясь, вы соглашаетесь с")
+                        Text("auth.agreeTerms".localized)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     .multilineTextAlignment(.center)
 
-                    Button("Условиями использования") {
+                    Button("auth.termsOfService".localized) {
                         showTermsWebView = true
                     }
                     .font(.caption)

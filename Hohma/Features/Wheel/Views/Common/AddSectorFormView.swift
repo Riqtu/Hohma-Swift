@@ -86,11 +86,11 @@ struct AddSectorFormView: View {
                         Button(action: {
                             isTextFieldFocused = true
                             // Дополнительная попытка показать клавиатуру
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                                 isTextFieldFocused = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    isTextFieldFocused = true
-                                }
+                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                                isTextFieldFocused = true
                             }
                         }) {
                             Image(systemName: "keyboard")
@@ -121,7 +121,8 @@ struct AddSectorFormView: View {
                             ) { _ in
                                 // Клавиатура показалась - убеждаемся, что TextField в фокусе
                                 if !isTextFieldFocused {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    Task { @MainActor in
+                                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                                         isTextFieldFocused = true
                                     }
                                 }
@@ -269,12 +270,12 @@ struct AddSectorFormView: View {
             .onAppear {
                 // Автоматически фокусируемся на TextField при появлении
                 // Увеличиваем задержку для более надежной работы на iPad
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
                     isTextFieldFocused = true
-                }
 
-                // Дополнительная попытка фокуса через 1 секунду для iPad
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    // Дополнительная попытка фокуса через 1 секунду для iPad
+                    try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 секунды (всего 1.0)
                     if !isTextFieldFocused {
                         isTextFieldFocused = true
                     }
@@ -288,22 +289,23 @@ struct AddSectorFormView: View {
                 ) { _ in
                     // Клавиатура показывается - убеждаемся, что TextField в фокусе
                     if !isTextFieldFocused {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                             isTextFieldFocused = true
                         }
                     }
                 }
 
                 // Проверяем доступность клавиатуры
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
                     if !isTextFieldFocused {
                         // Если клавиатура все еще не открылась, показываем дополнительную подсказку
                         AppLogger.shared.warning("Клавиатура не открылась автоматически на iPad", category: .ui)
 
                         // Попытка принудительного фокуса
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            isTextFieldFocused = true
-                        }
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
+                        isTextFieldFocused = true
                     }
                 }
             }

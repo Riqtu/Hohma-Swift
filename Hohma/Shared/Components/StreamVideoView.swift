@@ -51,7 +51,8 @@ struct StreamVideoView: View {
         .onAppear {
             // View появился - принудительно запускаем загрузку
             if streamPlayer.isReady {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                     streamPlayer.play()
                 }
             }
@@ -96,7 +97,8 @@ struct StreamVideoView: View {
             playerLayer?.backgroundColor = UIColor.clear.cgColor
 
             // Принудительно запускаем видео после настройки
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                 if player.isReady {
                     player.play()
                 }

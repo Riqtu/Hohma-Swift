@@ -104,18 +104,19 @@ struct WinnerSelectionView: View {
             // Если победитель уже определен сервером, показываем анимацию выбора
             if let winner = winnerId {
                 // Небольшая задержка для визуального эффекта
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
                     // Показываем анимацию "выбора" всех участников
                     isSelecting = true
                     
                     // Через 1.5 секунды "выбираем" победителя
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        selectWinnerWithAnimation(winner)
-                    }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 секунды
+                    selectWinnerWithAnimation(winner)
                 }
             } else {
                 // Если победитель не определен, выбираем случайного через 3 секунды
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3.0 секунды
                     if selectedWinner == nil {
                         let randomWinner =
                             finishingParticipants.randomElement() ?? finishingParticipants[0]
@@ -145,7 +146,8 @@ struct WinnerSelectionView: View {
         }
 
         // Задержка перед закрытием экрана
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
             onWinnerSelected(winnerId)
             isPresented = false
         }

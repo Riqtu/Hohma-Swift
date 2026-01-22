@@ -1,0 +1,120 @@
+/* 
+  Localizable.strings (Russian)
+  Hohma
+  
+  Created for localization
+*/
+
+// MARK: - Tab Bar
+"tab.home" = "Главная";
+"tab.myMovies" = "Мои фильмы";
+"tab.chat" = "Чаты";
+"tab.settings" = "Настройки";
+
+// MARK: - Navigation
+"nav.wheelList" = "Список колес";
+"nav.profile" = "Профиль";
+"nav.race" = "Скачки";
+"nav.stats" = "Статистика";
+"nav.movieBattle" = "Битва фильмов";
+
+// MARK: - Common
+"common.loading" = "Загрузка...";
+"common.error" = "Ошибка";
+"common.ok" = "ОК";
+"common.cancel" = "Отмена";
+"common.save" = "Сохранить";
+"common.delete" = "Удалить";
+"common.edit" = "Редактировать";
+"common.close" = "Закрыть";
+"common.anonymous" = "Аноним";
+
+// MARK: - Sidebar
+"sidebar.home" = "Главная";
+"sidebar.wheel" = "Колесо";
+"sidebar.race" = "Скачки";
+"sidebar.movieBattle" = "Битва фильмов";
+"sidebar.chat" = "Чаты";
+"sidebar.profile" = "Профиль";
+"sidebar.stats" = "Статистика";
+"sidebar.settings" = "Настройки";
+
+// MARK: - Auth
+"auth.welcome" = "Добро пожаловать!";
+"auth.agreeTerms" = "Авторизуясь, вы соглашаетесь с";
+"auth.termsOfService" = "Условиями использования";
+
+// MARK: - Errors
+"error.unknown" = "Произошла неизвестная ошибка. Попробуйте позже.";
+"error.network.noConnection" = "Нет подключения к интернету. Проверьте соединение.";
+"error.network.timeout" = "Превышено время ожидания. Попробуйте позже.";
+"error.network.serverConnection" = "Не удалось подключиться к серверу. Проверьте интернет.";
+"error.network.invalidResponse" = "Сервер вернул неверный ответ. Попробуйте позже.";
+"error.network.cancelled" = "Операция отменена.";
+"error.network.unauthorized" = "Требуется авторизация. Войдите в аккаунт.";
+"error.network.ssl" = "Ошибка безопасного соединения. Попробуйте позже.";
+"error.network.dataLoad" = "Не удалось загрузить данные. Проверьте интернет.";
+"error.network.dataTransfer" = "Передача данных запрещена. Проверьте настройки.";
+"error.network.general" = "Ошибка сети. Попробуйте позже.";
+"error.data.general" = "Ошибка данных. Попробуйте обновить.";
+"error.data.format" = "Ошибка формата данных. Попробуйте обновить.";
+"error.data.processing" = "Ошибка обработки данных. Попробуйте обновить.";
+"error.data.preparation" = "Ошибка подготовки данных. Попробуйте еще раз.";
+
+// MARK: - Cache Settings
+"cache.title" = "Управление кэшем";
+"cache.size" = "Размер кэша";
+"cache.memoryLimit" = "Лимит памяти";
+"cache.diskLimit" = "Лимит диска";
+"cache.clearing" = "Очистка кэша...";
+"cache.clearAll" = "Очистить весь кэш";
+"cache.clearAllAlert.title" = "Очистить весь кэш?";
+"cache.clearAllAlert.message" = "Это действие удалит все кэшированные данные, включая изображения и медиа. Приложение может работать медленнее до повторной загрузки данных.";
+"cache.clearURLCache" = "Очистить URL кэш";
+"cache.clearURLCacheAlert.title" = "Очистить URL кэш?";
+"cache.clearURLCacheAlert.message" = "Это действие удалит кэш сетевых запросов. Изображения и другие данные будут загружены заново при следующем использовании.";
+"cache.clearImageCache" = "Очистить кэш изображений";
+"cache.clearImageCacheAlert.title" = "Очистить кэш изображений?";
+"cache.clearImageCacheAlert.message" = "Это действие удалит кэш всех изображений (постеры, стикеры, фото в чатах). Изображения будут загружены заново при следующем просмотре.";
+"cache.clearAvatarCache" = "Очистить кэш аватарок";
+"cache.clearAvatarCacheAlert.title" = "Очистить кэш аватарок?";
+"cache.clearAvatarCacheAlert.message" = "Это действие удалит кэш аватарок пользователей. Аватары будут загружены заново при следующем просмотре.";
+"cache.info.title" = "Информация о кэше";
+"cache.info.sizeDescription" = "Размер кэша показывает реальное занятое место в Caches, Documents и временных файлах.";
+"cache.info.limitsDescription" = "Лимиты определяют максимальный размер URLCache.";
+"cache.info.overLimitWarning" = "⚠️ При превышении лимита URLCache автоматически удаляет старые записи (LRU - Least Recently Used). Рекомендуется очистить кэш вручную.";
+"cache.info.autoManagement" = "💡 URLCache автоматически управляет размером: при превышении лимита старые записи удаляются автоматически.";
+"cache.overLimit" = "Размер кэша превышает лимит";
+"cache.clearTemporary" = "Очистить временные файлы";
+"cache.clearTemporarySuccess" = "Временные файлы успешно очищены";
+"cache.limits.title" = "Лимиты кэша";
+"cache.limits.description" = "Увеличьте лимиты для лучшей производительности при работе с медиа (фото, видео, стикеры). Лимит памяти влияет на скорость загрузки, лимит диска - на количество кэшированных данных.";
+"cache.management.title" = "Управление кэшем";
+"cache.management.description" = "Очистка кэша может временно замедлить работу приложения, пока данные не будут загружены заново.";
+"cache.clearImageSuccess" = "Кэш изображений успешно очищен";
+"cache.clearAvatarSuccess" = "Кэш аватарок успешно очищен";
+"cache.clearAllSuccess" = "Весь кэш успешно очищен";
+"cache.clearURLSuccess" = "URL кэш успешно очищен";
+
+// MARK: - Settings
+"settings.title" = "Настройки";
+"settings.subtitle" = "Настройте приложение под свои предпочтения";
+"settings.appearance" = "Внешний вид";
+"settings.general" = "Общие";
+"settings.myProfile" = "Мой профиль";
+"settings.myProfile.subtitle" = "Просмотр и редактирование профиля";
+"settings.raceVolume" = "Громкость звука скачек";
+"settings.raceVolume.subtitle" = "Настройка громкости фоновой музыки и звуков";
+"settings.cacheManagement" = "Управление кэшем";
+"settings.cacheManagement.subtitle" = "Настройки кэширования данных";
+"settings.about" = "О приложении";
+"settings.version" = "Версия %@";
+"settings.help" = "Помощь";
+"settings.help.subtitle" = "Связаться с поддержкой";
+"settings.legal" = "Правовая информация";
+"settings.privacyPolicy" = "Политика конфиденциальности";
+"settings.privacyPolicy.subtitle" = "Как мы используем ваши данные";
+"settings.termsOfService" = "Условия использования";
+"settings.termsOfService.subtitle" = "Правила использования приложения";
+"settings.userAgreement" = "Пользовательское соглашение";
+"settings.userAgreement.subtitle" = "Краткие правила";

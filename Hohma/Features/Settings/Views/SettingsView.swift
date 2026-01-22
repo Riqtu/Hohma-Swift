@@ -12,7 +12,10 @@ struct SettingsView: View {
     @State private var showingProfile = false
 
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String ?? "Версия 1.3.1"
+        if let version = Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String {
+            return String(format: "settings.version".localized, version)
+        }
+        return String(format: "settings.version".localized, "1.3.1")
     }
 
     private var supportEmail: String {
@@ -25,11 +28,11 @@ struct SettingsView: View {
                 VStack(spacing: 24) {
                     // Заголовок
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Настройки")
+                        Text("settings.title".localized)
                             .font(.largeTitle)
                             .fontWeight(.bold)
 
-                        Text("Настройте приложение под свои предпочтения")
+                        Text("settings.subtitle".localized)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -38,7 +41,7 @@ struct SettingsView: View {
 
                     // Секция внешнего вида
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Внешний вид")
+                        Text("settings.appearance".localized)
                             .font(.title2)
                             .fontWeight(.semibold)
                             .padding(.horizontal)
@@ -49,7 +52,7 @@ struct SettingsView: View {
 
                     // Дополнительные настройки (можно расширить в будущем)
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Общие")
+                        Text("settings.general".localized)
                             .font(.title2)
                             .fontWeight(.semibold)
                             .padding(.horizontal)
@@ -59,8 +62,8 @@ struct SettingsView: View {
                             if authViewModel != nil {
                                 SettingsRow(
                                     icon: "person.circle",
-                                    title: "Мой профиль",
-                                    subtitle: "Просмотр и редактирование профиля",
+                                    title: "settings.myProfile".localized,
+                                    subtitle: "settings.myProfile.subtitle".localized,
                                     action: {
                                         showingProfile = true
                                     }
@@ -76,12 +79,12 @@ struct SettingsView: View {
                                         .frame(width: 24, height: 24)
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Громкость звука скачек")
+                                        Text("settings.raceVolume".localized)
                                             .font(.body)
                                             .fontWeight(.medium)
                                             .foregroundColor(.primary)
 
-                                        Text("Настройка громкости фоновой музыки и звуков")
+                                        Text("settings.raceVolume.subtitle".localized)
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -117,8 +120,8 @@ struct SettingsView: View {
 
                             SettingsRow(
                                 icon: "externaldrive",
-                                title: "Управление кэшем",
-                                subtitle: "Настройки кэширования данных",
+                                title: "settings.cacheManagement".localized,
+                                subtitle: "settings.cacheManagement.subtitle".localized,
                                 action: {
                                     showingCacheSettings = true
                                 }
@@ -126,12 +129,12 @@ struct SettingsView: View {
 
                             SettingsRow(
                                 icon: "info.circle",
-                                title: "О приложении",
+                                title: "settings.about".localized,
                                 subtitle: appVersion,
                                 action: {
                                     if let url = URL(string: "https://hohma.su/about") {
                                         webViewURL = url
-                                        webViewTitle = "О приложении"
+                                        webViewTitle = "settings.about".localized
                                         showingWebView = true
                                     }
                                 }
@@ -139,8 +142,8 @@ struct SettingsView: View {
 
                             SettingsRow(
                                 icon: "questionmark.circle",
-                                title: "Помощь",
-                                subtitle: "Связаться с поддержкой",
+                                title: "settings.help".localized,
+                                subtitle: "settings.help.subtitle".localized,
                                 action: {
                                     if let url = URL(string: "mailto:\(supportEmail)") {
                                         UIApplication.shared.open(url)
@@ -153,7 +156,7 @@ struct SettingsView: View {
 
                     // Правовая информация
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Правовая информация")
+                        Text("settings.legal".localized)
                             .font(.title2)
                             .fontWeight(.semibold)
                             .padding(.horizontal)
@@ -161,12 +164,12 @@ struct SettingsView: View {
                         VStack(spacing: 12) {
                             SettingsRow(
                                 icon: "doc.text",
-                                title: "Политика конфиденциальности",
-                                subtitle: "Как мы используем ваши данные",
+                                title: "settings.privacyPolicy".localized,
+                                subtitle: "settings.privacyPolicy.subtitle".localized,
                                 action: {
                                     if let url = URL(string: "https://hohma.su/privacy-policy") {
                                         webViewURL = url
-                                        webViewTitle = "Политика конфиденциальности"
+                                        webViewTitle = "settings.privacyPolicy".localized
                                         showingWebView = true
                                     }
                                 }
@@ -174,12 +177,12 @@ struct SettingsView: View {
 
                             SettingsRow(
                                 icon: "doc.text.fill",
-                                title: "Условия использования",
-                                subtitle: "Правила использования приложения",
+                                title: "settings.termsOfService".localized,
+                                subtitle: "settings.termsOfService.subtitle".localized,
                                 action: {
                                     if let url = URL(string: "https://hohma.su/terms-of-service") {
                                         webViewURL = url
-                                        webViewTitle = "Условия использования"
+                                        webViewTitle = "settings.termsOfService".localized
                                         showingWebView = true
                                     }
                                 }
@@ -187,8 +190,8 @@ struct SettingsView: View {
 
                             SettingsRow(
                                 icon: "person.text.rectangle",
-                                title: "Пользовательское соглашение",
-                                subtitle: "Краткие правила",
+                                title: "settings.userAgreement".localized,
+                                subtitle: "settings.userAgreement.subtitle".localized,
                                 action: {
                                     if let url = URL(string: "https://hohma.su/user-agreement") {
                                         webViewURL = url

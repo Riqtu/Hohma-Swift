@@ -33,7 +33,7 @@ struct CacheSettingsView: View {
                 // Управление кэшем
                 cacheManagementSection
             }
-            .navigationTitle("Управление кэшем")
+            .navigationTitle("cache.title".localized)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 updateLimitsFromCache()
@@ -47,7 +47,7 @@ struct CacheSettingsView: View {
                         VStack(spacing: 16) {
                             ProgressView()
                                 .scaleEffect(1.5)
-                            Text("Очистка кэша...")
+                            Text("cache.clearing".localized)
                                 .font(.headline)
                                 .foregroundColor(.white)
                         }
@@ -57,40 +57,40 @@ struct CacheSettingsView: View {
                     }
                 }
             }
-            .alert("Очистить весь кэш?", isPresented: $showingClearAllAlert) {
-                Button("Отмена", role: .cancel) {}
-                Button("Очистить", role: .destructive) {
+            .alert("cache.clearAllAlert.title".localized, isPresented: $showingClearAllAlert) {
+                Button("common.cancel".localized, role: .cancel) {}
+                Button("cache.clearAll".localized, role: .destructive) {
                     clearAllCaches()
                 }
             } message: {
-                Text("Это действие удалит все кэшированные данные, включая изображения и медиа. Приложение может работать медленнее до повторной загрузки данных.")
+                Text("cache.clearAllAlert.message".localized)
             }
-            .alert("Очистить URL кэш?", isPresented: $showingClearURLCacheAlert) {
-                Button("Отмена", role: .cancel) {}
-                Button("Очистить", role: .destructive) {
+            .alert("cache.clearURLCacheAlert.title".localized, isPresented: $showingClearURLCacheAlert) {
+                Button("common.cancel".localized, role: .cancel) {}
+                Button("cache.clearURLCache".localized, role: .destructive) {
                     clearURLCache()
                 }
             } message: {
-                Text("Это действие удалит кэш сетевых запросов. Изображения и другие данные будут загружены заново при следующем использовании.")
+                Text("cache.clearURLCacheAlert.message".localized)
             }
-            .alert("Очистить кэш изображений?", isPresented: $showingClearImageCacheAlert) {
-                Button("Отмена", role: .cancel) {}
-                Button("Очистить", role: .destructive) {
+            .alert("cache.clearImageCacheAlert.title".localized, isPresented: $showingClearImageCacheAlert) {
+                Button("common.cancel".localized, role: .cancel) {}
+                Button("cache.clearImageCache".localized, role: .destructive) {
                     clearImageCache()
                 }
             } message: {
-                Text("Это действие удалит кэш всех изображений (постеры, стикеры, фото в чатах). Изображения будут загружены заново при следующем просмотре.")
+                Text("cache.clearImageCacheAlert.message".localized)
             }
-            .alert("Очистить кэш аватарок?", isPresented: $showingClearAvatarAlert) {
-                Button("Отмена", role: .cancel) {}
-                Button("Очистить", role: .destructive) {
+            .alert("cache.clearAvatarCacheAlert.title".localized, isPresented: $showingClearAvatarAlert) {
+                Button("common.cancel".localized, role: .cancel) {}
+                Button("cache.clearAvatarCache".localized, role: .destructive) {
                     clearAvatarCache()
                 }
             } message: {
-                Text("Это действие удалит кэш аватарок пользователей. Аватары будут загружены заново при следующем просмотре.")
+                Text("cache.clearAvatarCacheAlert.message".localized)
             }
-            .alert("Готово", isPresented: $showSuccessMessage) {
-                Button("OK", role: .cancel) {}
+            .alert("common.ok".localized, isPresented: $showSuccessMessage) {
+                Button("common.ok".localized, role: .cancel) {}
             } message: {
                 Text(successMessage)
             }
@@ -106,7 +106,7 @@ struct CacheSettingsView: View {
         
         return Section {
             HStack {
-                Text("Размер кэша")
+                Text("cache.size".localized)
                 Spacer()
                 if cacheManager.diskCacheSize > 0 {
                     Text(cacheManager.formatBytes(cacheManager.diskCacheSize))
@@ -122,36 +122,36 @@ struct CacheSettingsView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text("Размер кэша превышает лимит")
+                    Text("cache.overLimit".localized)
                         .font(.caption)
                         .foregroundColor(.orange)
                 }
             }
             
             HStack {
-                Text("Лимит памяти")
+                Text("cache.memoryLimit".localized)
                 Spacer()
                 Text("\(Int(memoryLimitMB)) MB")
                     .foregroundColor(.secondary)
             }
             
             HStack {
-                Text("Лимит диска")
+                Text("cache.diskLimit".localized)
                 Spacer()
                 Text("\(Int(diskLimitMB)) MB")
                     .foregroundColor(.secondary)
             }
         } header: {
-            Text("Информация о кэше")
+            Text("cache.info.title".localized)
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Размер кэша показывает реальное занятое место в Caches, Documents и временных файлах.")
-                Text("Лимиты определяют максимальный размер URLCache.")
+                Text("cache.info.sizeDescription".localized)
+                Text("cache.info.limitsDescription".localized)
                 if isOverLimit {
-                    Text("\n⚠️ При превышении лимита URLCache автоматически удаляет старые записи (LRU - Least Recently Used). Рекомендуется очистить кэш вручную.")
+                    Text("\n\(NSLocalizedString("cache.info.overLimitWarning", comment: ""))")
                         .foregroundColor(.orange)
                 } else {
-                    Text("\n💡 URLCache автоматически управляет размером: при превышении лимита старые записи удаляются автоматически.")
+                    Text("\n\(NSLocalizedString("cache.info.autoManagement", comment: ""))")
                         .foregroundColor(.secondary)
                 }
             }
@@ -164,7 +164,7 @@ struct CacheSettingsView: View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Лимит памяти")
+                    Text("cache.memoryLimit".localized)
                     Spacer()
                     Text("\(Int(memoryLimitMB)) MB")
                         .foregroundColor(.secondary)
@@ -175,7 +175,7 @@ struct CacheSettingsView: View {
                     in: 50...300,
                     step: 10
                 ) {
-                    Text("Лимит памяти")
+                    Text("cache.memoryLimit".localized)
                 } minimumValueLabel: {
                     Text("50 MB")
                         .font(.caption)
@@ -192,7 +192,7 @@ struct CacheSettingsView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Лимит диска")
+                    Text("cache.diskLimit".localized)
                     Spacer()
                     Text("\(Int(diskLimitMB)) MB")
                         .foregroundColor(.secondary)
@@ -203,7 +203,7 @@ struct CacheSettingsView: View {
                     in: 100...2000,
                     step: 50
                 ) {
-                    Text("Лимит диска")
+                    Text("cache.diskLimit".localized)
                 } minimumValueLabel: {
                     Text("100 MB")
                         .font(.caption)
@@ -218,9 +218,9 @@ struct CacheSettingsView: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text("Лимиты кэша")
+            Text("cache.limits.title".localized)
         } footer: {
-            Text("Увеличьте лимиты для лучшей производительности при работе с медиа (фото, видео, стикеры). Лимит памяти влияет на скорость загрузки, лимит диска - на количество кэшированных данных.")
+            Text("cache.limits.description".localized)
         }
     }
     
@@ -233,7 +233,7 @@ struct CacheSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "trash")
-                    Text("Очистить URL кэш")
+                    Text("cache.clearURLCache".localized)
                 }
             }
             
@@ -242,7 +242,7 @@ struct CacheSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "photo")
-                    Text("Очистить кэш изображений")
+                    Text("cache.clearImageCache".localized)
                 }
             }
             
@@ -251,7 +251,7 @@ struct CacheSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "person.circle")
-                    Text("Очистить кэш аватарок")
+                    Text("cache.clearAvatarCache".localized)
                 }
             }
             
@@ -260,7 +260,7 @@ struct CacheSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "clock.arrow.circlepath")
-                    Text("Очистить временные файлы")
+                    Text("cache.clearTemporary".localized)
                 }
             }
             
@@ -269,13 +269,13 @@ struct CacheSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: "trash.fill")
-                    Text("Очистить весь кэш")
+                    Text("cache.clearAll".localized)
                 }
             }
         } header: {
-            Text("Управление кэшем")
+            Text("cache.management.title".localized)
         } footer: {
-            Text("Очистка кэша может временно замедлить работу приложения, пока данные не будут загружены заново.")
+            Text("cache.management.description".localized)
         }
     }
     
@@ -288,43 +288,43 @@ struct CacheSettingsView: View {
     
     private func clearURLCache() {
         isClearing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
             cacheManager.clearURLCache()
             // Очищаем также кеш изображений в памяти
             ImageCacheService.shared.clearMemoryCache()
             // Увеличиваем задержку для полной очистки и обновления размеров
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                isClearing = false
-                successMessage = "URL кэш успешно очищен"
-                showSuccessMessage = true
-                // Принудительно обновляем размеры
-                cacheManager.updateCacheSizes()
-            }
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 секунды
+            isClearing = false
+            successMessage = "cache.clearURLSuccess".localized
+            showSuccessMessage = true
+            // Принудительно обновляем размеры
+            cacheManager.updateCacheSizes()
         }
     }
     
     private func clearImageCache() {
         isClearing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
             ImageCacheService.shared.clearAllCache()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isClearing = false
-                successMessage = "Кэш изображений успешно очищен"
-                showSuccessMessage = true
-                cacheManager.updateCacheSizes()
-            }
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
+            isClearing = false
+            successMessage = "cache.clearImageSuccess".localized
+            showSuccessMessage = true
+            cacheManager.updateCacheSizes()
         }
     }
     
     private func clearAvatarCache() {
         isClearing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
             cacheManager.clearAvatarCache()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                isClearing = false
-                successMessage = "Кэш аватарок успешно очищен"
-                showSuccessMessage = true
-            }
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
+            isClearing = false
+            successMessage = "cache.clearAvatarSuccess".localized
+            showSuccessMessage = true
         }
     }
     
@@ -335,7 +335,7 @@ struct CacheSettingsView: View {
             await cacheManager.clearTemporaryFiles()
             try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             isClearing = false
-            successMessage = "Временные файлы успешно очищены"
+            successMessage = "cache.clearTemporarySuccess".localized
             showSuccessMessage = true
             cacheManager.updateCacheSizes()
         }
@@ -351,7 +351,7 @@ struct CacheSettingsView: View {
             // Увеличиваем задержку для полной очистки всех кэшей
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
             isClearing = false
-            successMessage = "Весь кэш успешно очищен"
+            successMessage = "cache.clearAllSuccess".localized
             showSuccessMessage = true
             // Принудительно обновляем размеры
             cacheManager.updateCacheSizes()

@@ -161,8 +161,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         startHeartbeat()
 
         // Проверяем состояние подключения
-        DispatchQueue.main.asyncAfter(deadline: .now() + AppConstants.connectionCheckInterval) { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(AppConstants.connectionCheckInterval * 1_000_000_000))
             if self.isConnected == false && !self.isManualDisconnect {
                 AppLogger.shared.warning(
                     "Connection not established after 5s, attempting reconnect", category: .socket)
@@ -277,7 +278,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
                 // Пытаемся переподключиться с экспоненциальной задержкой
                 let delay = min(AppConstants.maxReconnectDelay, pow(2.0, Double(self.reconnectAttempts)))
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     // Проверяем, прошло ли достаточно времени с последней попытки
                     if let lastReconnect = self.lastReconnectTime,
                         Date().timeIntervalSince(lastReconnect) < self.minReconnectInterval
@@ -298,7 +301,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
                         AppLogger.shared.warning(
                             "SocketIOService: Max reconnect attempts reached, stopping reconnection", category: .socket)
                         // Сбрасываем счетчик через 5 минут для возможности повторных попыток
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 300) {
+                        Task { @MainActor [weak self] in
+                            guard let self = self else { return }
+                            try? await Task.sleep(nanoseconds: 300_000_000_000) // 300 секунд = 5 минут
                             self.reconnectAttempts = 0
                             AppLogger.shared.info(
                                 "SocketIOService: Reset reconnect attempts, ready for new attempts", category: .socket)
@@ -422,7 +427,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         startConnectionTimeoutTimer()
 
         // Добавляем небольшую задержку перед установкой готовности
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
             AppLogger.shared.debug("SocketIOService: Connection stabilized", category: .socket)
         }
     }
@@ -586,7 +593,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
             #endif
             // Пытаемся переподключиться через задержку, только если это не ручное отключение
             if !isManualDisconnect {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3.0 секунды
                     if !self.isConnected && !self.isConnecting && !self.isManualDisconnect {
                         AppLogger.shared.info("SocketIOService: Attempting to reconnect after error", category: .socket)
                         self.connect()
@@ -784,7 +793,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
         // Проверяем доступность сети перед переподключением
         if !checkNetworkReachability() {
             AppLogger.shared.warning("SocketIOService: Network not reachable, delaying reconnect", category: .socket)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5.0 секунд
                 self.forceReconnect()
             }
             return
@@ -792,7 +803,9 @@ class SocketIOService: ObservableObject, SocketIOServiceProtocol {
 
         disconnect()
         resetReconnectAttempts()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
             self.isManualDisconnect = false  // Сбрасываем флаг для принудительного переподключения
             self.connect()
         }

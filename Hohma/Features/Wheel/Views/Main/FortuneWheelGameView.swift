@@ -34,14 +34,16 @@ struct FortuneWheelGameView: View {
                         .ignoresSafeArea()
                         .onAppear {
                             // Принудительно запускаем видео при появлении
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
                                 viewModel.resumeVideo()
                             }
                         }
                         .onChange(of: viewModel.isVideoReady) {
                             // Запускаем видео когда оно становится готовым
                             if viewModel.isVideoReady {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
                                     viewModel.resumeVideo()
                                 }
                             }
@@ -296,7 +298,8 @@ struct FortuneWheelGameView: View {
                 viewModel.cleanup()
 
                 // Отправляем дополнительное уведомление для навигации
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
                     NotificationCenter.default.post(
                         name: .navigationRequested,
                         object: nil,

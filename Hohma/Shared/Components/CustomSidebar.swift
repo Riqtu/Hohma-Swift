@@ -33,7 +33,7 @@ struct CustomSidebar: View {
                         .foregroundColor(.accentColor)
                 }
                 VStack(alignment: .leading) {
-                    Text(user?.user.firstName ?? "Аноним")
+                    Text(user?.user.firstName ?? "common.anonymous".localized)
                         .font(.headline)
                 }
             }
@@ -45,7 +45,7 @@ struct CustomSidebar: View {
             // Меню
             VStack(alignment: .leading, spacing: 6) {
                 SidebarButton(
-                    title: "Главная",
+                    title: "sidebar.home".localized,
                     icon: "house",
                     isSelected: selection == "home"
                 ) {
@@ -54,13 +54,14 @@ struct CustomSidebar: View {
                     NotificationCenter.default.post(
                         name: .navigationRequested, object: nil, userInfo: ["destination": "home"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "home"
                     }
                 }
 
                 SidebarButton(
-                    title: "Колесо",
+                    title: "sidebar.wheel".localized,
                     icon: "theatermasks.circle",
                     isSelected: selection == "wheelList"
                 ) {
@@ -70,13 +71,14 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "wheelList"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "wheelList"
                     }
                 }
 
                 SidebarButton(
-                    title: "Скачки",
+                    title: "sidebar.race".localized,
                     icon: "trophy",
                     isSelected: selection == "race"
                 ) {
@@ -86,13 +88,14 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "race"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "race"
                     }
                 }
 
                 SidebarButton(
-                    title: "Битва фильмов",
+                    title: "sidebar.movieBattle".localized,
                     icon: "film",
                     isSelected: selection == "movieBattle"
                 ) {
@@ -102,13 +105,14 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "movieBattle"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "movieBattle"
                     }
                 }
 
                 SidebarButton(
-                    title: "Статистика",
+                    title: "sidebar.stats".localized,
                     icon: "chart.bar.fill",
                     isSelected: selection == "stats"
                 ) {
@@ -118,13 +122,14 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "stats"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "stats"
                     }
                 }
 
                 SidebarButton(
-                    title: "Чаты",
+                    title: "sidebar.chat".localized,
                     icon: "message",
                     isSelected: selection == "chat"
                 ) {
@@ -134,13 +139,14 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "chat"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "chat"
                     }
                 }
 
                 SidebarButton(
-                    title: "Профиль",
+                    title: "sidebar.profile".localized,
                     icon: "person",
                     isSelected: selection == "profile"
                 ) {
@@ -150,7 +156,8 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "profile"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "profile"
                     }
                 }
@@ -165,7 +172,7 @@ struct CustomSidebar: View {
             // Нижний блок, например, настройки
             VStack(alignment: .leading) {
                 SidebarButton(
-                    title: "Настройки",
+                    title: "sidebar.settings".localized,
                     icon: "gearshape",
                     isSelected: selection == "settings"
                 ) {
@@ -175,7 +182,8 @@ struct CustomSidebar: View {
                         name: .navigationRequested, object: nil,
                         userInfo: ["destination": "settings"])
                     // Обновляем selection с небольшой задержкой для надежности
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)  // 0.05 секунды
                         selection = "settings"
                     }
                 }

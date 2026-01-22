@@ -103,7 +103,8 @@ struct RaceDiceRollView: View {
         }
 
         // Показываем кнопку "Дальше" через 2 секунды
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
             withAnimation(.easeInOut(duration: 0.5)) {
                 showContinueButton = true
             }
@@ -257,7 +258,8 @@ struct ParticipantDiceRow: View {
         hasStartedAnimation = true
 
         // Запускаем анимацию кубика с задержкой
-        DispatchQueue.main.asyncAfter(deadline: .now() + animationDelay) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(animationDelay * 1_000_000_000))
             animateDice()
         }
     }
@@ -268,16 +270,16 @@ struct ParticipantDiceRow: View {
         let animationSteps = 15  // Больше шагов для плавности
         let stepDuration = 0.1  // Быстрее смена для эффекта вращения
 
-        for step in 0..<animationSteps {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(step) * stepDuration) {
+        Task { @MainActor in
+            for step in 0..<animationSteps {
+                try? await Task.sleep(nanoseconds: UInt64(Double(step) * stepDuration * 1_000_000_000))
                 withAnimation(.easeInOut(duration: stepDuration)) {
                     currentDiceValue = Int.random(in: 1...6)
                 }
             }
-        }
 
-        // Устанавливаем финальное значение через 1.5 секунды (как вращение)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Устанавливаем финальное значение через 1.5 секунды (как вращение)
+            try? await Task.sleep(nanoseconds: UInt64(1.5 * 1_000_000_000))
             withAnimation(.easeOut(duration: 0.3)) {
                 currentDiceValue = diceValue
             }
@@ -369,34 +371,31 @@ struct DiceView: View {
             offsetY = -5
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
             withAnimation(.easeIn(duration: 0.3)) {
                 offsetY = 0
             }
-        }
 
-        // Фаза 2: Масштабирование (0.3-0.8 сек)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // Фаза 2: Масштабирование (0.3-0.8 сек)
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды (всего 0.3 от начала)
             withAnimation(.easeOut(duration: 0.2)) {
                 scale = 1.1
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                withAnimation(.easeIn(duration: 0.3)) {
-                    scale = 1.0
-                }
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+            withAnimation(.easeIn(duration: 0.3)) {
+                scale = 1.0
             }
-        }
 
-        // Фаза 3: Вращение (0.5-2.0 сек)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Фаза 3: Вращение (0.5-2.0 сек)
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды (всего 0.5 от начала)
             withAnimation(.easeOut(duration: 1.5)) {
                 rotationAngle = 360 * 3  // 3 полных оборота за 1.5 секунды
             }
-        }
 
-        // Финальный сброс через 2.0 секунды
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            // Финальный сброс через 2.0 секунды
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 секунды (всего 2.0 от начала)
             withAnimation(.easeOut(duration: 0.3)) {
                 rotationAngle = 0
                 scale = 1.0
