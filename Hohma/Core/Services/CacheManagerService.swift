@@ -218,7 +218,7 @@ class CacheManagerService: ObservableObject {
             }
             
             if deletedCount > 0 {
-                print("📦 CacheManager: Удалены старые медиа из Documents: \(deletedCount) файлов, освобождено \(deletedSize / 1024 / 1024) MB")
+                AppLogger.shared.info("CacheManager: Удалены старые медиа из Documents: \(deletedCount) файлов, освобождено \(deletedSize / 1024 / 1024) MB", category: .general)
             }
         }.value
     }
@@ -333,7 +333,7 @@ class CacheManagerService: ObservableObject {
             try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             // Обновляем размеры после очистки
             updateCacheSizes()
-            print("📦 CacheManager: URL кэш очищен и размеры обновлены")
+            AppLogger.shared.info("CacheManager: URL кэш очищен и размеры обновлены", category: .general)
         }
     }
     
@@ -343,7 +343,7 @@ class CacheManagerService: ObservableObject {
             
             // 1. Очищаем URLCache через API (делаем это первым)
             URLCache.shared.removeAllCachedResponses()
-            print("📦 CacheManager: URLCache очищен через API")
+            AppLogger.shared.info("CacheManager: URLCache очищен через API", category: .general)
             
             // 2. Удаляем нашу кастомную директорию кэша
             if let cacheDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
@@ -351,9 +351,9 @@ class CacheManagerService: ObservableObject {
                 if fileManager.fileExists(atPath: customCachePath.path) {
                     do {
                         try fileManager.removeItem(at: customCachePath)
-                        print("📦 CacheManager: Кастомная директория кэша удалена")
+                        AppLogger.shared.info("CacheManager: Кастомная директория кэша удалена", category: .general)
                     } catch {
-                        print("❌ CacheManager: Ошибка при удалении кастомной директории: \(error)")
+                        AppLogger.shared.error("CacheManager: Ошибка при удалении кастомной директории: \(error.localizedDescription)", category: .general)
                     }
                 }
                 
@@ -367,9 +367,9 @@ class CacheManagerService: ObservableObject {
                     if fileManager.fileExists(atPath: path.path) {
                         do {
                             try fileManager.removeItem(at: path)
-                            print("📦 CacheManager: Директория \(path.lastPathComponent) удалена")
+                            AppLogger.shared.info("CacheManager: Директория \(path.lastPathComponent) удалена", category: .general)
                         } catch {
-                            print("❌ CacheManager: Ошибка при удалении \(path.lastPathComponent): \(error)")
+                            AppLogger.shared.error("CacheManager: Ошибка при удалении \(path.lastPathComponent): \(error.localizedDescription)", category: .general)
                         }
                     }
                 }
@@ -382,13 +382,13 @@ class CacheManagerService: ObservableObject {
     
     func clearAvatarCache() {
         AvatarCacheService.shared.clearCache()
-        print("📦 CacheManager: Кэш аватарок очищен")
+        AppLogger.shared.info("CacheManager: Кэш аватарок очищен", category: .general)
     }
     
     func clearVideoThumbnailCache() {
         // Кэш превью видео очищается автоматически при очистке памяти
         // или можно добавить прямой доступ через публичный API
-        print("📦 CacheManager: Кэш превью видео будет очищен при следующей очистке памяти")
+        AppLogger.shared.info("CacheManager: Кэш превью видео будет очищен при следующей очистке памяти", category: .general)
     }
     
     func clearAllCaches() {
@@ -409,7 +409,7 @@ class CacheManagerService: ObservableObject {
             try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             // Обновляем размеры после очистки
             updateCacheSizes()
-            print("📦 CacheManager: Все кэши очищены и размеры обновлены")
+            AppLogger.shared.info("CacheManager: Все кэши очищены и размеры обновлены", category: .general)
         }
     }
     
@@ -453,7 +453,7 @@ class CacheManagerService: ObservableObject {
                             try fileManager.removeItem(at: url)
                             totalCount += 1
                         } catch {
-                            print("❌ CacheManager: Ошибка при удалении директории \(url.lastPathComponent): \(error)")
+                            AppLogger.shared.error("CacheManager: Ошибка при удалении директории \(url.lastPathComponent): \(error.localizedDescription)", category: .general)
                         }
                     } else {
                         // Это файл
@@ -478,7 +478,7 @@ class CacheManagerService: ObservableObject {
                                 try fileManager.removeItem(at: url)
                                 totalCount += 1
                             } catch {
-                                print("❌ CacheManager: Ошибка при удалении \(fileName): \(error)")
+                                AppLogger.shared.error("CacheManager: Ошибка при удалении \(fileName): \(error.localizedDescription)", category: .general)
                             }
                         }
                     }
@@ -494,12 +494,12 @@ class CacheManagerService: ObservableObject {
                 }
                 
                 if deletedCount > 0 {
-                    print("📦 CacheManager: Удалено временных файлов: \(deletedCount), освобождено: \(deletedSize / 1024 / 1024) MB")
+                    AppLogger.shared.info("CacheManager: Удалено временных файлов: \(deletedCount), освобождено: \(deletedSize / 1024 / 1024) MB", category: .general)
                 } else {
-                    print("📦 CacheManager: Временные файлы не найдены или не удалены")
+                    AppLogger.shared.info("CacheManager: Временные файлы не найдены или не удалены", category: .general)
                 }
             } catch {
-                print("❌ CacheManager: Ошибка при очистке временных файлов: \(error)")
+                AppLogger.shared.error("CacheManager: Ошибка при очистке временных файлов: \(error.localizedDescription)", category: .general)
             }
         }.value
     }

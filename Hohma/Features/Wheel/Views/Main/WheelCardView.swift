@@ -223,8 +223,8 @@ struct WheelCardView: View {
                     notification in
                     // Если получаем уведомление о навигации, закрываем экран игры
                     if let destination = notification.userInfo?["destination"] as? String {
-                        print(
-                            "🔄 WheelCardView: Navigation requested to \(destination), closing game")
+                        AppLogger.shared.debug(
+                            "WheelCardView: Navigation requested to \(destination), closing game", category: .ui)
                         showingGame = false
 
                         // Отправляем дополнительное уведомление для навигации

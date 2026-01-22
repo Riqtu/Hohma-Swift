@@ -11,14 +11,11 @@ final class AuthService {
     static let shared = AuthService()
     private init() {}
 
-    func loginWithTelegramToken(
-        _ token: String, completion: @escaping (Result<AuthResult, Error>) -> Void
-    ) {
+    func loginWithTelegramToken(_ token: String) async throws -> AuthResult {
         guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
             let url = URL(string: "\(apiURL)/auth.telegramLogin")
         else {
-            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
-            return
+            throw AppError.networkError("Invalid API URL")
         }
 
         var request = URLRequest(url: url)
@@ -30,22 +27,19 @@ final class AuthService {
             base64 += String(repeating: "=", count: 4 - remainder)
         }
 
-        guard let data = Data(base64Encoded: base64) else {
-            completion(.failure(NSError(domain: "Base64 decode error", code: -2)))
-            return
+        guard let base64Data = Data(base64Encoded: base64) else {
+            throw AppError.dataError("Base64 decode error")
         }
 
-        guard let decodedString = String(data: data, encoding: .utf8) else {
-            completion(.failure(NSError(domain: "String decode error", code: -3)))
-            return
+        guard let decodedString = String(data: base64Data, encoding: .utf8) else {
+            throw AppError.dataError("String decode error")
         }
 
         // Попробуем распарсить как JSON
         guard let inputJsonData = decodedString.data(using: .utf8),
             let inputJson = try? JSONSerialization.jsonObject(with: inputJsonData) as? [String: Any]
         else {
-            completion(.failure(NSError(domain: "JSON decode error", code: -4)))
-            return
+            throw AppError.dataError("JSON decode error")
         }
 
         var fixedInputJson = inputJson
@@ -57,52 +51,34 @@ final class AuthService {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let data = data else {
-                completion(.failure(NSError(domain: "No data", code: -1)))
-                return
-            }
+        if let httpResponse = response as? HTTPURLResponse {
+            AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+        }
 
-            if let httpResponse = response as? HTTPURLResponse {
-                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
-            }
+        let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
+        let user = decoded.result.data.json.user
+        let token = decoded.result.data.json.token
+        let authResult = AuthResult(user: user, token: token)
 
-            do {
-                let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
-                let user = decoded.result.data.json.user
-                let token = decoded.result.data.json.token
-                let authResult = AuthResult(user: user, token: token)
+        // Сохраняем в Keychain вместо UserDefaults
+        do {
+            try KeychainService.shared.saveAuthResult(authResult)
+        } catch {
+            AppLogger.shared.error(
+                "Failed to save authResult to Keychain", error: error, category: .auth)
+            // Продолжаем выполнение даже если сохранение не удалось
+        }
 
-                // Сохраняем в Keychain вместо UserDefaults
-                do {
-                    try KeychainService.shared.saveAuthResult(authResult)
-                } catch {
-                    AppLogger.shared.error(
-                        "Failed to save authResult to Keychain", error: error, category: .auth)
-                    // Продолжаем выполнение даже если сохранение не удалось
-                }
-
-                completion(.success(authResult))
-            } catch {
-                AppLogger.shared.error("Auth decode error", error: error, category: .auth)
-                completion(.failure(error))
-            }
-        }.resume()
+        return authResult
     }
 
-    func loginWithApple(
-        _ request: AppleAuthRequest, completion: @escaping (Result<AuthResult, Error>) -> Void
-    ) {
+    func loginWithApple(_ request: AppleAuthRequest) async throws -> AuthResult {
         guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
             let url = URL(string: "\(apiURL)/auth.appleLogin")
         else {
-            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
-            return
+            throw AppError.networkError("Invalid API URL")
         }
 
         var urlRequest = URLRequest(url: url)
@@ -113,76 +89,53 @@ final class AuthService {
         guard let requestData = try? JSONEncoder().encode(request),
             let requestDict = try? JSONSerialization.jsonObject(with: requestData) as? [String: Any]
         else {
-            completion(.failure(NSError(domain: "JSON encoding error", code: -1)))
-            return
+            throw AppError.dataError("JSON encoding error")
         }
 
         let body = ["json": requestDict]
         urlRequest.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        URLSession.shared.dataTask(with: urlRequest) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
-            guard let data = data else {
-                completion(.failure(NSError(domain: "No data", code: -1)))
-                return
-            }
-
-            if let httpResponse = response as? HTTPURLResponse {
-                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
-            }
-
+        if let httpResponse = response as? HTTPURLResponse {
+            AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+            
             // Проверяем статус ответа
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            guard (200...299).contains(httpResponse.statusCode) else {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown server error"
-                completion(
-                    .failure(
-                        NSError(
-                            domain: "Server Error", code: httpResponse.statusCode,
-                            userInfo: [NSLocalizedDescriptionKey: errorMessage])))
-                return
+                throw AppError.networkError("HTTP \(httpResponse.statusCode): \(errorMessage)")
             }
+        }
 
-            do {
-                let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
-                let user = decoded.result.data.json.user
-                let token = decoded.result.data.json.token
-                let authResult = AuthResult(user: user, token: token)
+        let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
+        let user = decoded.result.data.json.user
+        let token = decoded.result.data.json.token
+        let authResult = AuthResult(user: user, token: token)
 
-                // Сохраняем в Keychain вместо UserDefaults
-                do {
-                    try KeychainService.shared.saveAuthResult(authResult)
-                } catch {
-                    AppLogger.shared.error(
-                        "Failed to save authResult to Keychain", error: error, category: .auth)
-                    // Продолжаем выполнение даже если сохранение не удалось
-                }
+        // Сохраняем в Keychain вместо UserDefaults
+        do {
+            try KeychainService.shared.saveAuthResult(authResult)
+        } catch {
+            AppLogger.shared.error(
+                "Failed to save authResult to Keychain", error: error, category: .auth)
+            // Продолжаем выполнение даже если сохранение не удалось
+        }
 
-                completion(.success(authResult))
-            } catch {
-                AppLogger.shared.error("Apple auth decode error", error: error, category: .auth)
-                completion(.failure(error))
-            }
-        }.resume()
+        return authResult
     }
 
     func loginWithCredentials(
         username: String,
-        password: String,
-        completion: @escaping (Result<AuthResult, Error>) -> Void
-    ) {
+        password: String
+    ) async throws -> AuthResult {
         let payload: [String: Any] = [
             "username": username,
             "password": password,
         ]
 
-        performCredentialsRequest(
+        return try await performCredentialsRequest(
             endpoint: "auth.login",
-            payload: payload,
-            completion: completion
+            payload: payload
         )
     }
 
@@ -191,9 +144,8 @@ final class AuthService {
         password: String,
         email: String?,
         firstName: String?,
-        lastName: String?,
-        completion: @escaping (Result<AuthResult, Error>) -> Void
-    ) {
+        lastName: String?
+    ) async throws -> AuthResult {
         var payload: [String: Any] = [
             "username": username,
             "password": password,
@@ -209,85 +161,54 @@ final class AuthService {
             payload["lastName"] = lastName
         }
 
-        performCredentialsRequest(
+        return try await performCredentialsRequest(
             endpoint: "auth.register",
-            payload: payload,
-            completion: completion
+            payload: payload
         )
     }
 
     private func performCredentialsRequest(
         endpoint: String,
-        payload: [String: Any],
-        completion: @escaping (Result<AuthResult, Error>) -> Void
-    ) {
+        payload: [String: Any]
+    ) async throws -> AuthResult {
         guard let apiURL = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String,
             let url = URL(string: "\(apiURL)/\(endpoint)")
         else {
-            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
-            return
+            throw AppError.networkError("Invalid API URL")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        do {
-            let body = ["json": payload]
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            completion(.failure(error))
-            return
+        let body = ["json": payload]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let httpResponse = response as? HTTPURLResponse {
+            AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Server error"
+                throw AppError.networkError("HTTP \(httpResponse.statusCode): \(errorMessage)")
+            }
         }
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
+        let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
+        let user = decoded.result.data.json.user
+        let token = decoded.result.data.json.token
+        let authResult = AuthResult(user: user, token: token)
 
-            guard let data = data else {
-                completion(.failure(NSError(domain: "No data", code: -1)))
-                return
-            }
+        // Сохраняем в Keychain вместо UserDefaults
+        do {
+            try KeychainService.shared.saveAuthResult(authResult)
+        } catch {
+            AppLogger.shared.error(
+                "Failed to save authResult to Keychain", error: error, category: .auth)
+            // Продолжаем выполнение даже если сохранение не удалось
+        }
 
-            if let httpResponse = response as? HTTPURLResponse {
-                AppLogger.shared.logResponse(httpResponse, data: data, category: .auth)
-            }
-
-            if let httpResponse = response as? HTTPURLResponse,
-                !(200...299).contains(httpResponse.statusCode)
-            {
-                let errorMessage = String(data: data, encoding: .utf8) ?? "Server error"
-                completion(
-                    .failure(
-                        NSError(
-                            domain: "Server Error", code: httpResponse.statusCode,
-                            userInfo: [NSLocalizedDescriptionKey: errorMessage])))
-                return
-            }
-
-            do {
-                let decoded = try JSONDecoder().decode(ResponseRoot.self, from: data)
-                let user = decoded.result.data.json.user
-                let token = decoded.result.data.json.token
-                let authResult = AuthResult(user: user, token: token)
-
-                // Сохраняем в Keychain вместо UserDefaults
-                do {
-                    try KeychainService.shared.saveAuthResult(authResult)
-                } catch {
-                    AppLogger.shared.error(
-                        "Failed to save authResult to Keychain", error: error, category: .auth)
-                    // Продолжаем выполнение даже если сохранение не удалось
-                }
-
-                completion(.success(authResult))
-            } catch {
-                AppLogger.shared.error(
-                    "Credentials auth decode error", error: error, category: .auth)
-                completion(.failure(error))
-            }
-        }.resume()
+        return authResult
     }
 }

@@ -47,24 +47,24 @@ class DeepLinkService: ObservableObject {
             self.pendingWheelId = wheelId
             self.isProcessingDeepLink = true
             AppLogger.shared.debug("Set pendingWheelId to: \(wheelId)", category: .general)
-            print("🔗 DeepLinkService: ✅ Set isProcessingDeepLink to: true")
+            AppLogger.shared.debug("Set isProcessingDeepLink to: true", category: .general)
 
             // Отправляем уведомление для навигации к конкретному колесу
-            print("🔗 DeepLinkService: 📤 Posting navigationRequested notification...")
+            AppLogger.shared.debug("Posting navigationRequested notification...", category: .general)
             let userInfo = [
                 "destination": "wheel",
                 "wheelId": wheelId,
                 "force": true,
             ]
-            print("🔗 DeepLinkService: UserInfo: \(userInfo)")
+            AppLogger.shared.debug("UserInfo: \(userInfo)", category: .general)
 
             NotificationCenter.default.post(
                 name: .navigationRequested,
                 object: nil,
                 userInfo: userInfo
             )
-            print("🔗 DeepLinkService: ✅ Navigation notification posted successfully")
-            print("🔗 DeepLinkService: ===== DEEP LINK TO WHEEL HANDLING COMPLETE =====")
+            AppLogger.shared.debug("Navigation notification posted successfully", category: .general)
+            AppLogger.shared.debug("DEEP LINK TO WHEEL HANDLING COMPLETE", category: .general)
         }
     }
 

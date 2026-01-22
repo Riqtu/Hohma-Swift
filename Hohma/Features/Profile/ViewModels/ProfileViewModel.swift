@@ -76,11 +76,8 @@ final class ProfileViewModel: ObservableObject {
                     do {
                         try KeychainService.shared.saveAuthResult(authResult)
                     } catch {
-                        #if DEBUG
-                            print(
-                                "⚠️ ProfileViewModel: Failed to update authResult in Keychain: \(error)"
-                            )
-                        #endif
+                        AppLogger.shared.error(
+                            "ProfileViewModel: Failed to update authResult in Keychain", error: error, category: .keychain)
                     }
                 }
 

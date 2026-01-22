@@ -23,9 +23,8 @@ class SettingsViewModel: ObservableObject {
         applyTheme(themeSettings.currentTheme)
         // Применяем сохраненную громкость
         RaceAudioService.shared.updateVolume(raceSoundVolume)
-        print(
-            "🎨 SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue), громкость: \(raceSoundVolume)"
-        )
+        AppLogger.shared.debug(
+            "SettingsViewModel: Инициализирован с темой: \(themeSettings.currentTheme.rawValue), громкость: \(raceSoundVolume)", category: .general)
     }
 
     func setTheme(_ theme: AppTheme) {

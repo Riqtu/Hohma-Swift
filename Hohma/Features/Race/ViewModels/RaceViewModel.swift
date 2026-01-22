@@ -283,14 +283,12 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
             let winner = participants.first(where: { $0.id == serverWinnerId })
         {
             self.winnerId = winner.id
-            print(
-                "🏁 Гонка завершена! Победитель (с сервера): \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
-            )
+            AppLogger.shared.info(
+                "Гонка завершена! Победитель (с сервера): \(winner.user.name ?? winner.user.username ?? "Неизвестно")", category: .ui)
         } else if let winner = participants.first(where: { $0.finalPosition == 1 }) {
             self.winnerId = winner.id
-            print(
-                "🏁 Гонка завершена! Победитель по finalPosition: \(winner.user.name ?? winner.user.username ?? "Неизвестно")"
-            )
+            AppLogger.shared.info(
+                "Гонка завершена! Победитель по finalPosition: \(winner.user.name ?? winner.user.username ?? "Неизвестно")", category: .ui)
         }
 
         // Собираем список финишировавших
@@ -534,9 +532,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
     func makeMove() {
         AppLogger.shared.debug("makeMove() вызвана", category: .ui)
         guard canMakeMove, raceId != nil, !isAnimating else {
-            print(
-                "❌ makeMove() заблокирована: canMakeMove=\(canMakeMove), raceId=\(raceId != nil), isAnimating=\(isAnimating)"
-            )
+            AppLogger.shared.debug(
+                "makeMove() заблокирована: canMakeMove=\(canMakeMove), raceId=\(raceId != nil), isAnimating=\(isAnimating)", category: .ui)
             return
         }
 
@@ -588,9 +585,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
         let currentUserParticipantId = currentUserParticipant?.id
         let diceRoll = diceResults[currentUserParticipantId ?? ""] ?? Int.random(in: 1...6)
         self.diceRoll = diceRoll
-        print(
-            "🎲 Бросок кубика для текущего пользователя (participantId: \(currentUserParticipantId ?? "nil")): \(diceRoll)"
-        )
+        AppLogger.shared.debug(
+            "Бросок кубика для текущего пользователя (participantId: \(currentUserParticipantId ?? "nil")): \(diceRoll)", category: .ui)
 
         let request: [String: Any] = [
             "raceId": raceId,
@@ -760,9 +756,8 @@ class RaceViewModel: ObservableObject, TRPCServiceProtocol {
                 animationStepProgress[participant.id] = 0.0
 
                 // Отладочная информация
-                print(
-                    "🚀 Участник \(participant.id): было \(previousPos), стало \(currentPos), шаги: \(steps)"
-                )
+                AppLogger.shared.debug(
+                    "Участник \(participant.id): было \(previousPos), стало \(currentPos), шаги: \(steps)", category: .ui)
             }
         }
     }

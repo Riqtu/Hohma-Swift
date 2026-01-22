@@ -100,15 +100,13 @@ struct HomeView: View {
                                     action: {
                                         if isIPhone {
                                             // Навигация через NavigationStack для iPhone
-                                            print(
-                                                "🏠 HomeView: Переход к битве фильмов через NavigationStack"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Переход к битве фильмов через NavigationStack", category: .ui)
                                             navigationPath.append(NavigationDestination.movieBattle)
                                         } else {
                                             // Навигация через RootView для iPad
-                                            print(
-                                                "🏠 HomeView: Отправляем уведомление о переходе к битве фильмов"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Отправляем уведомление о переходе к битве фильмов", category: .ui)
                                             NotificationCenter.default.post(
                                                 name: .navigationRequested,
                                                 object: nil,
@@ -126,15 +124,13 @@ struct HomeView: View {
                                     action: {
                                         if isIPhone {
                                             // Навигация через NavigationStack для iPhone
-                                            print(
-                                                "🏠 HomeView: Переход к скачкам через NavigationStack"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Переход к скачкам через NavigationStack", category: .ui)
                                             navigationPath.append(NavigationDestination.race)
                                         } else {
                                             // Навигация через RootView для iPad
-                                            print(
-                                                "🏠 HomeView: Отправляем уведомление о переходе к скачкам"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Отправляем уведомление о переходе к скачкам", category: .ui)
                                             NotificationCenter.default.post(
                                                 name: .navigationRequested,
                                                 object: nil,
@@ -152,15 +148,13 @@ struct HomeView: View {
                                     action: {
                                         if isIPhone {
                                             // Навигация через NavigationStack для iPhone
-                                            print(
-                                                "🏠 HomeView: Переход к колесу через NavigationStack"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Переход к колесу через NavigationStack", category: .ui)
                                             navigationPath.append(NavigationDestination.wheelList)
                                         } else {
                                             // Навигация через RootView для iPad
-                                            print(
-                                                "🏠 HomeView: Отправляем уведомление о переходе к колесу"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "HomeView: Отправляем уведомление о переходе к колесу", category: .ui)
                                             NotificationCenter.default.post(
                                                 name: .navigationRequested,
                                                 object: nil,

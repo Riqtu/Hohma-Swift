@@ -59,9 +59,10 @@ struct FortuneWheelView: View {
                         size: size + 10
                     )
                     .onAppear {
-                        print(
-                            "🎨 FortuneWheelView: Rendering sector \(index) with label '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)"
-                        )
+                        #if DEBUG
+                        AppLogger.shared.debug(
+                            "FortuneWheelView: Rendering sector \(index) with label '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)", category: .ui)
+                        #endif
                     }
                 }
                 .rotationEffect(.degrees(wheelState.rotation))

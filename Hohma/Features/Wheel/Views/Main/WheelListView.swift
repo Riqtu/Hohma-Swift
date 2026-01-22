@@ -168,9 +168,8 @@ struct WheelListView: View {
             // Обрабатываем уведомления о навигации к колесу
             AppLogger.shared.debug("Received navigationRequested notification", category: .ui)
             AppLogger.shared.debug("Notification userInfo: \(notification.userInfo ?? [:])", category: .ui)
-            print(
-                "🔗 WheelListView: Current view state - showingGame: \(showingGame), selectedWheel: \(selectedWheel?.id ?? "nil")"
-            )
+            AppLogger.shared.debug(
+                "WheelListView: Current view state - showingGame: \(showingGame), selectedWheel: \(selectedWheel?.id ?? "nil")", category: .ui)
 
             if let destination = notification.userInfo?["destination"] as? String {
                 AppLogger.shared.debug("Destination: \(destination)", category: .ui)

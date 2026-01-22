@@ -41,7 +41,7 @@ struct hohmaApp: App {
                 try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
                 try audioSession.setActive(true)
             } catch {
-                print("❌ Ошибка настройки аудиосессии в приложении: \(error)")
+                AppLogger.shared.error("Ошибка настройки аудиосессии в приложении", error: error, category: .general)
             }
         #elseif os(macOS)
             // На macOS аудиосессия настраивается автоматически

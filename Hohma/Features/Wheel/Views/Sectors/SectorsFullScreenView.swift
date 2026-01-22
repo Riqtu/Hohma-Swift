@@ -112,8 +112,8 @@ struct SectorsFullScreenView: View {
             notification in
             // Если получаем уведомление о навигации, закрываем экран
             if let destination = notification.userInfo?["destination"] as? String {
-                print(
-                    "🔄 SectorsFullScreenView: Navigation requested to \(destination), closing view")
+                AppLogger.shared.debug(
+                    "SectorsFullScreenView: Navigation requested to \(destination), closing view", category: .ui)
                 // Закрываем экран и отправляем дополнительное уведомление для навигации
                 dismiss()
                 // Отправляем уведомление с небольшой задержкой, чтобы экран успел закрыться
@@ -220,9 +220,8 @@ struct SectorFullScreenRowView: View {
                     if viewModel.isSocketConnected {
                         viewModel.deleteSector(sector)
                     } else {
-                        print(
-                            "⚠️ SectorsFullScreenView: Socket not connected, attempting to connect..."
-                        )
+                        AppLogger.shared.warning(
+                            "SectorsFullScreenView: Socket not connected, attempting to connect...", category: .socket)
                         viewModel.connectSocket()
 
                         // Ждем подключения и повторяем попытку (уменьшили задержку)
@@ -230,9 +229,8 @@ struct SectorFullScreenRowView: View {
                             if viewModel.isSocketConnected {
                                 viewModel.deleteSector(sector)
                             } else {
-                                print(
-                                    "❌ SectorsFullScreenView: Socket still not connected after retry"
-                                )
+                                AppLogger.shared.error(
+                                    "SectorsFullScreenView: Socket still not connected after retry", category: .socket)
                             }
                         }
                     }

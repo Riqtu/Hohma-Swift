@@ -330,35 +330,31 @@ struct CacheSettingsView: View {
     
     private func clearTemporaryFiles() {
         isClearing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            Task {
-                await cacheManager.clearTemporaryFiles()
-                await MainActor.run {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        isClearing = false
-                        successMessage = "Временные файлы успешно очищены"
-                        showSuccessMessage = true
-                        cacheManager.updateCacheSizes()
-                    }
-                }
-            }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            await cacheManager.clearTemporaryFiles()
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
+            isClearing = false
+            successMessage = "Временные файлы успешно очищены"
+            showSuccessMessage = true
+            cacheManager.updateCacheSizes()
         }
     }
     
     private func clearAllCaches() {
         isClearing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
             cacheManager.clearAllCaches()
             // Очищаем также кеш изображений
             ImageCacheService.shared.clearAllCache()
             // Увеличиваем задержку для полной очистки всех кэшей
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                isClearing = false
-                successMessage = "Весь кэш успешно очищен"
-                showSuccessMessage = true
-                // Принудительно обновляем размеры
-                cacheManager.updateCacheSizes()
-            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2.0 секунды
+            isClearing = false
+            successMessage = "Весь кэш успешно очищен"
+            showSuccessMessage = true
+            // Принудительно обновляем размеры
+            cacheManager.updateCacheSizes()
         }
     }
 }

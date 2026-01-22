@@ -189,9 +189,8 @@ struct RaceCellView: View {
             // Показываем участника только на точной позиции
             let shouldShow = cellData.position == Int(stepPosition)
             if shouldShow {
-                print(
-                    "🎯 Клетка \(cellData.position): показываем участника на позиции \(stepPosition)"
-                )
+                AppLogger.shared.debug(
+                    "Клетка \(cellData.position): показываем участника на позиции \(stepPosition)", category: .ui)
             }
             return shouldShow
         }

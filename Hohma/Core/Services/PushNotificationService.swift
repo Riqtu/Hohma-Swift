@@ -91,10 +91,8 @@ class PushNotificationService: NSObject, ObservableObject {
     // MARK: - Notification Settings
     func configureNotificationSettings() {
         // Настраиваем типы уведомлений
-        let notificationCenter = UNUserNotificationCenter.current()
-
-        // Получаем текущие настройки
-        notificationCenter.getNotificationSettings { settings in
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
             AppLogger.shared.debug("Current notification settings:", category: .general)
             AppLogger.shared.debug(
                 "   - Authorization status: \(settings.authorizationStatus.rawValue)",
@@ -122,10 +120,9 @@ class PushNotificationService: NSObject, ObservableObject {
     }
 
     private func checkAuthorizationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                self.isAuthorized = settings.authorizationStatus == .authorized
-            }
+        Task { @MainActor in
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            self.isAuthorized = settings.authorizationStatus == .authorized
         }
     }
 
@@ -243,12 +240,13 @@ class PushNotificationService: NSObject, ObservableObject {
             trigger: trigger
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
+        Task {
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+                AppLogger.shared.info("Local notification scheduled", category: .general)
+            } catch {
                 AppLogger.shared.error(
                     "Failed to schedule notification", error: error, category: .general)
-            } else {
-                AppLogger.shared.info("Local notification scheduled", category: .general)
             }
         }
     }

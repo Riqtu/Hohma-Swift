@@ -365,8 +365,17 @@ struct ConfettiPiece {
             }
         """.data(using: .utf8)!
 
-    let winner = try! JSONDecoder().decode(RaceParticipant.self, from: winnerData)
-    let race = try! JSONDecoder().decode(Race.self, from: raceData)
+    guard let winner = try? JSONDecoder().decode(RaceParticipant.self, from: winnerData),
+          let race = try? JSONDecoder().decode(Race.self, from: raceData) else {
+        AppLogger.shared.error("Failed to decode preview data for RaceWinnerView", category: .ui)
+        // В Preview коде используем fatalError только для разработки
+        #if DEBUG
+        fatalError("Failed to decode preview data for RaceWinnerView")
+        #else
+        // В production просто не показываем Preview
+        return Text("Preview unavailable")
+        #endif
+    }
 
     return RaceWinnerView(
         isPresented: .constant(true),

@@ -8,6 +8,7 @@
 import Combine
 import Foundation
 
+@MainActor
 final class AuthViewModel: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var user: AuthResult?
@@ -24,7 +25,6 @@ final class AuthViewModel: ObservableObject {
 
     private let authService = AuthService.shared
 
-    @MainActor
     func logout() {
         AppLogger.shared.info("Logging out user", category: .auth)
 
@@ -46,10 +46,18 @@ final class AuthViewModel: ObservableObject {
     func handleTelegramAuth(token: String) {
         isLoading = true
         errorMessage = nil
-        authService.loginWithTelegramToken(token) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.completeAuth(with: result)
+        
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let authResult = try await self.authService.loginWithTelegramToken(token)
+                self.isLoading = false
+                self.user = authResult
+                self.isAuthenticated = true
+            } catch {
+                self.isLoading = false
+                self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
             }
         }
     }
@@ -58,19 +66,23 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        Task {
-            if let appleRequest = await AppleAuthService.shared.signInWithApple() {
-                authService.loginWithApple(appleRequest) { result in
-                    Task { @MainActor in
-                        self.isLoading = false
-                        self.completeAuth(with: result)
-                    }
-                }
-            } else {
-                await MainActor.run {
-                    self.isLoading = false
-                    self.errorMessage = "Apple авторизация не удалась"
-                }
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            guard let appleRequest = await AppleAuthService.shared.signInWithApple() else {
+                self.isLoading = false
+                self.errorMessage = "Apple авторизация не удалась"
+                return
+            }
+            
+            do {
+                let authResult = try await self.authService.loginWithApple(appleRequest)
+                self.isLoading = false
+                self.user = authResult
+                self.isAuthenticated = true
+            } catch {
+                self.isLoading = false
+                self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
             }
         }
     }
@@ -87,13 +99,20 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        authService.loginWithCredentials(
-            username: trimmedUsername,
-            password: trimmedPassword
-        ) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.completeAuth(with: result)
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let authResult = try await self.authService.loginWithCredentials(
+                    username: trimmedUsername,
+                    password: trimmedPassword
+                )
+                self.isLoading = false
+                self.user = authResult
+                self.isAuthenticated = true
+            } catch {
+                self.isLoading = false
+                self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
             }
         }
     }
@@ -125,27 +144,24 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        authService.registerWithCredentials(
-            username: trimmedUsername,
-            password: trimmedPassword,
-            email: sanitizedEmail?.isEmpty == true ? nil : sanitizedEmail,
-            firstName: sanitizedFirstName?.isEmpty == true ? nil : sanitizedFirstName,
-            lastName: sanitizedLastName?.isEmpty == true ? nil : sanitizedLastName
-        ) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                self?.completeAuth(with: result)
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let authResult = try await self.authService.registerWithCredentials(
+                    username: trimmedUsername,
+                    password: trimmedPassword,
+                    email: sanitizedEmail?.isEmpty == true ? nil : sanitizedEmail,
+                    firstName: sanitizedFirstName?.isEmpty == true ? nil : sanitizedFirstName,
+                    lastName: sanitizedLastName?.isEmpty == true ? nil : sanitizedLastName
+                )
+                self.isLoading = false
+                self.user = authResult
+                self.isAuthenticated = true
+            } catch {
+                self.isLoading = false
+                self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
             }
-        }
-    }
-
-    private func completeAuth(with result: Result<AuthResult, Error>) {
-        switch result {
-        case .success(let authResult):
-            self.user = authResult
-            self.isAuthenticated = true
-        case .failure(let error):
-            self.errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .auth)
         }
     }
 }

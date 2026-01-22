@@ -29,6 +29,10 @@ class NotificationSettingsViewModel: ObservableObject {
         setupBindings()
         loadSettings()
     }
+    
+    deinit {
+        cancellables.removeAll()
+    }
 
     private func setupBindings() {
         // Подписываемся на изменения статуса авторизации
@@ -43,7 +47,8 @@ class NotificationSettingsViewModel: ObservableObject {
         isLoading = true
 
         // Временно загружаем настройки из UserDefaults
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
             self.isLoading = false
         }
     }
@@ -52,14 +57,14 @@ class NotificationSettingsViewModel: ObservableObject {
         isLoading = true
 
         // Временно сохраняем настройки в UserDefaults
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
             self.successMessage = "Настройки уведомлений сохранены"
             self.isLoading = false
 
             // Очищаем сообщение через 3 секунды
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.successMessage = nil
-            }
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 секунды
+            self.successMessage = nil
         }
     }
 
@@ -87,7 +92,8 @@ class NotificationSettingsViewModel: ObservableObject {
                 }
 
                 // Очищаем сообщения через 3 секунды
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 секунды
                     self.successMessage = nil
                     self.errorMessage = nil
                 }
@@ -115,7 +121,8 @@ class NotificationSettingsViewModel: ObservableObject {
 
         successMessage = "Тестовое уведомление отправлено"
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 секунды
             self.successMessage = nil
         }
     }

@@ -27,9 +27,8 @@ struct RaceSceneView: View {
                 .frame(maxWidth: .infinity, minHeight: 0, maxHeight: 140)
                 .id(themeManager.currentTheme.sceneBackgroundImageName)
                 .onAppear {
-                    print(
-                        "🎨 RaceSceneView: Using background image: \(themeManager.currentTheme.sceneBackgroundImageName)"
-                    )
+                    AppLogger.shared.debug(
+                        "RaceSceneView: Using background image: \(themeManager.currentTheme.sceneBackgroundImageName)", category: .ui)
                 }
 
             // Основная область с дорогой
@@ -46,9 +45,8 @@ struct RaceSceneView: View {
                         .frame(width: roadWidth)  // Ограничиваем ширину
                         .id(themeManager.currentTheme.sceneRaceImageName)
                         .onAppear {
-                            print(
-                                "🎨 RaceSceneView: Using race image: \(themeManager.currentTheme.sceneRaceImageName)"
-                            )
+                            AppLogger.shared.debug(
+                                "RaceSceneView: Using race image: \(themeManager.currentTheme.sceneRaceImageName)", category: .ui)
                         }
 
                     VStack(spacing: 10) {
@@ -66,9 +64,8 @@ struct RaceSceneView: View {
                                         let stepPos = viewModel.currentStepPosition[
                                             viewModel.participants[participantIndex].id]
                                         if let pos = stepPos {
-                                            print(
-                                                "🔄 RaceSceneView: участник \(participantIndex), currentStepPosition = \(pos)"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "RaceSceneView: участник \(participantIndex), currentStepPosition = \(pos)", category: .ui)
                                         }
                                         return stepPos
                                     }(),
@@ -105,17 +102,15 @@ struct RaceSceneView: View {
         }
         .onAppear {
             if let race = race {
-                print(
-                    "🔍 RaceSceneView: Loading race with \(race.participants?.count ?? 0) participants"
-                )
+                AppLogger.shared.debug(
+                    "RaceSceneView: Loading race with \(race.participants?.count ?? 0) participants", category: .ui)
 
                 // Устанавливаем тему из данных гонки
-                AppLogger.shared.debug("🎨 RaceSceneView: Race theme from API: '\(race.theme)'", category: .ui)
-                AppLogger.shared.debug("🎨 RaceSceneView: Road theme from API: '\(race.road.theme)'", category: .ui)
+                AppLogger.shared.debug("RaceSceneView: Race theme from API: '\(race.theme)'", category: .ui)
+                AppLogger.shared.debug("RaceSceneView: Road theme from API: '\(race.road.theme)'", category: .ui)
                 themeManager.setThemeFromRace(race.road.theme)
-                print(
-                    "🎨 RaceSceneView: Current theme after setting: \(themeManager.currentTheme.rawValue)"
-                )
+                AppLogger.shared.debug(
+                    "RaceSceneView: Current theme after setting: \(themeManager.currentTheme.rawValue)", category: .ui)
 
                 viewModel.loadRace(race)
                 // Обновляем состояние скачки при переходе в скачку

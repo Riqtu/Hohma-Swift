@@ -119,15 +119,17 @@ class MovieBattleSocketManager {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 AppLogger.shared.debug("📡 MovieBattleSocketManager: Received battle update event", category: .socket)
                 
-                if let battleData = json["battle"] as? [String: Any],
-                   let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
-                   let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                    AppLogger.shared.info("Successfully decoded battle update", category: .socket)
-                    DispatchQueue.main.async {
-                        self.onBattleUpdate?(battle)
+                if let battleData = json["battle"] as? [String: Any] {
+                    do {
+                        let battleJson = try JSONSerialization.data(withJSONObject: battleData)
+                        let battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
+                        AppLogger.shared.info("Successfully decoded battle update", category: .socket)
+                        Task { @MainActor in
+                            self.onBattleUpdate?(battle)
+                        }
+                    } catch {
+                        AppLogger.shared.error("Failed to decode battle from update event: \(error.localizedDescription)", category: .socket)
                     }
-                } else {
-                    AppLogger.shared.warning("Failed to decode battle from update event", category: .socket)
                 }
             }
         } catch {
@@ -138,30 +140,38 @@ class MovieBattleSocketManager {
     private func handleMovieAdded(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let battleData = json["battle"] as? [String: Any],
-               let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
-               let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                DispatchQueue.main.async {
-                    self.onMovieAdded?(battle)
+               let battleData = json["battle"] as? [String: Any] {
+                do {
+                    let battleJson = try JSONSerialization.data(withJSONObject: battleData)
+                    let battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
+                    Task { @MainActor in
+                        self.onMovieAdded?(battle)
+                    }
+                } catch {
+                    AppLogger.shared.error("Failed to decode battle in movie added: \(error.localizedDescription)", category: .socket)
                 }
             }
         } catch {
-            AppLogger.shared.error("Failed to parse movie added: \(error)", category: .socket)
+            AppLogger.shared.error("Failed to parse movie added: \(error.localizedDescription)", category: .socket)
         }
     }
     
     private func handleGenerationStarted(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let battleData = json["battle"] as? [String: Any],
-               let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
-               let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                DispatchQueue.main.async {
-                    self.onGenerationStarted?(battle)
+               let battleData = json["battle"] as? [String: Any] {
+                do {
+                    let battleJson = try JSONSerialization.data(withJSONObject: battleData)
+                    let battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
+                    Task { @MainActor in
+                        self.onGenerationStarted?(battle)
+                    }
+                } catch {
+                    AppLogger.shared.error("Failed to decode battle in generation started: \(error.localizedDescription)", category: .socket)
                 }
             }
         } catch {
-            AppLogger.shared.error("Failed to parse generation started: \(error)", category: .socket)
+            AppLogger.shared.error("Failed to parse generation started: \(error.localizedDescription)", category: .socket)
         }
     }
     
@@ -199,18 +209,19 @@ class MovieBattleSocketManager {
                 var movieCard: MovieCard? = nil
                 if let movieCardData = json["movieCard"] as? [String: Any] {
                     AppLogger.shared.debug("📡 MovieBattleSocketManager: Found movieCard in event, decoding...", category: .socket)
-                    if let movieCardJson = try? JSONSerialization.data(withJSONObject: movieCardData),
-                       let decodedCard = try? JSONDecoder().decode(MovieCard.self, from: movieCardJson) {
+                    do {
+                        let movieCardJson = try JSONSerialization.data(withJSONObject: movieCardData)
+                        let decodedCard = try JSONDecoder().decode(MovieCard.self, from: movieCardJson)
                         movieCard = decodedCard
                         AppLogger.shared.info("Successfully decoded movieCard", category: .socket)
-                    } else {
-                        AppLogger.shared.warning("Failed to decode movieCard", category: .socket)
+                    } catch {
+                        AppLogger.shared.warning("Failed to decode movieCard: \(error.localizedDescription)", category: .socket)
                     }
                 } else {
                     AppLogger.shared.debug("ℹ️ MovieBattleSocketManager: No movieCard in event", category: .socket)
                 }
                 
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     AppLogger.shared.debug("📡 MovieBattleSocketManager: Calling onGenerationProgress callback", category: .socket)
                     self.onGenerationProgress?(movieCardId, status, movieCard)
                 }
@@ -223,30 +234,38 @@ class MovieBattleSocketManager {
     private func handleVotingStarted(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let battleData = json["battle"] as? [String: Any],
-               let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
-               let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                DispatchQueue.main.async {
-                    self.onVotingStarted?(battle)
+               let battleData = json["battle"] as? [String: Any] {
+                do {
+                    let battleJson = try JSONSerialization.data(withJSONObject: battleData)
+                    let battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
+                    Task { @MainActor in
+                        self.onVotingStarted?(battle)
+                    }
+                } catch {
+                    AppLogger.shared.error("Failed to decode battle in voting started: \(error.localizedDescription)", category: .socket)
                 }
             }
         } catch {
-            AppLogger.shared.error("Failed to parse voting started: \(error)", category: .socket)
+            AppLogger.shared.error("Failed to parse voting started: \(error.localizedDescription)", category: .socket)
         }
     }
     
     private func handleVoteCast(_ data: Data) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let battleData = json["battle"] as? [String: Any],
-               let battleJson = try? JSONSerialization.data(withJSONObject: battleData),
-               let battle = try? JSONDecoder().decode(MovieBattle.self, from: battleJson) {
-                DispatchQueue.main.async {
-                    self.onVoteCast?(battle)
+               let battleData = json["battle"] as? [String: Any] {
+                do {
+                    let battleJson = try JSONSerialization.data(withJSONObject: battleData)
+                    let battle = try JSONDecoder().decode(MovieBattle.self, from: battleJson)
+                    Task { @MainActor in
+                        self.onVoteCast?(battle)
+                    }
+                } catch {
+                    AppLogger.shared.error("Failed to decode battle in vote cast: \(error.localizedDescription)", category: .socket)
                 }
             }
         } catch {
-            AppLogger.shared.error("Failed to parse vote cast: \(error)", category: .socket)
+            AppLogger.shared.error("Failed to parse vote cast: \(error.localizedDescription)", category: .socket)
         }
     }
     
@@ -314,8 +333,11 @@ class MovieBattleSocketManager {
             // isFinished уже обработан выше, но на всякий случай проверяем еще раз
             let isFinishedBool: Bool = isFinished ?? false
             
-            guard let battleJson = try? JSONSerialization.data(withJSONObject: battleData) else {
-                AppLogger.shared.warning("Failed to serialize battle data to JSON", category: .socket)
+            let battleJson: Data
+            do {
+                battleJson = try JSONSerialization.data(withJSONObject: battleData)
+            } catch {
+                AppLogger.shared.error("Failed to serialize battle data to JSON: \(error.localizedDescription)", category: .socket)
                 return
             }
             

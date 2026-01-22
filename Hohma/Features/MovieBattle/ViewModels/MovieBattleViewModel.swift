@@ -104,15 +104,12 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         }()
 
                     if !hasWinnerInLoaded {
-                        print(
-                            "🛡️ MovieBattleViewModel: Loaded battle doesn't contain finished game with winner, keeping current state"
-                        )
-                        print(
-                            "   Current winner: \(currentWinner.originalTitle), finalPosition: \(currentWinner.finalPosition ?? -1)"
-                        )
-                        print(
-                            "   Loaded status: \(filteredBattle.status), movies count: \(filteredBattle.movies?.count ?? 0)"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Loaded battle doesn't contain finished game with winner, keeping current state", category: .ui)
+                        AppLogger.shared.debug(
+                            "   Current winner: \(currentWinner.originalTitle), finalPosition: \(currentWinner.finalPosition ?? -1)", category: .ui)
+                        AppLogger.shared.debug(
+                            "   Loaded status: \(filteredBattle.status), movies count: \(filteredBattle.movies?.count ?? 0)", category: .ui)
                         // Не перезаписываем состояние, но обновляем другие поля если нужно
                         self.isLoading = false
                         return
@@ -125,16 +122,13 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         }),
                             loadedWinner.id != currentWinner.id
                         {
-                            print(
-                                "⚠️ MovieBattleViewModel: Loaded battle has different winner, updating state"
-                            )
-                            print(
-                                "   Current winner: \(currentWinner.originalTitle), Loaded winner: \(loadedWinner.originalTitle)"
-                            )
+                            AppLogger.shared.warning(
+                                "MovieBattleViewModel: Loaded battle has different winner, updating state", category: .ui)
+                            AppLogger.shared.debug(
+                                "   Current winner: \(currentWinner.originalTitle), Loaded winner: \(loadedWinner.originalTitle)", category: .ui)
                         } else {
-                            print(
-                                "✅ MovieBattleViewModel: Loaded battle has same winner or winner confirmed, updating state"
-                            )
+                            AppLogger.shared.debug(
+                                "MovieBattleViewModel: Loaded battle has same winner or winner confirmed, updating state", category: .ui)
                         }
                     }
                 }
@@ -144,9 +138,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                 // Если игра завершена, проверяем наличие победителя
                 if filteredBattle.status == .finished {
                     AppLogger.shared.debug("Loaded finished battle, checking winner", category: .ui)
-                    print(
-                        "   Battle status: \(filteredBattle.status), movies count: \(filteredBattle.movies?.count ?? 0)"
-                    )
+                    AppLogger.shared.debug(
+                        "   Battle status: \(filteredBattle.status), movies count: \(filteredBattle.movies?.count ?? 0)", category: .ui)
 
                     // Проверяем победителя напрямую в filteredBattle
                     let winner: MovieCard? = {
@@ -154,9 +147,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         if let winner = filteredBattle.movies?.first(where: {
                             $0.finalPosition == 1
                         }) {
-                            print(
-                                "✅ MovieBattleViewModel: Winner found by finalPosition: \(winner.originalTitle)"
-                            )
+                            AppLogger.shared.debug(
+                                "MovieBattleViewModel: Winner found by finalPosition: \(winner.originalTitle)", category: .ui)
                             return winner
                         }
                         // Если игра завершена и остался только один не выбывший фильм - он победитель
@@ -164,26 +156,23 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         ),
                             remainingMovies.count == 1
                         {
-                            print(
-                                "✅ MovieBattleViewModel: Winner found by remaining: \(remainingMovies.first?.originalTitle ?? "unknown")"
-                            )
+                            AppLogger.shared.debug(
+                                "MovieBattleViewModel: Winner found by remaining: \(remainingMovies.first?.originalTitle ?? "unknown")", category: .ui)
                             return remainingMovies.first
                         }
                         return nil
                     }()
 
                     if let winner = winner {
-                        print(
-                            "✅ MovieBattleViewModel: Winner confirmed after load: \(winner.originalTitle), finalPosition: \(winner.finalPosition ?? -1)"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Winner confirmed after load: \(winner.originalTitle), finalPosition: \(winner.finalPosition ?? -1)", category: .ui)
                     } else {
                         AppLogger.shared.warning("Winner not found after load", category: .ui)
                         if let movies = filteredBattle.movies {
                             AppLogger.shared.debug("All movies:", category: .ui)
                             for movie in movies {
-                                print(
-                                    "     - \(movie.originalTitle): finalPosition=\(movie.finalPosition ?? -1), eliminatedAtRound=\(movie.eliminatedAtRound ?? -1)"
-                                )
+                                AppLogger.shared.debug(
+                                    "     - \(movie.originalTitle): finalPosition=\(movie.finalPosition ?? -1), eliminatedAtRound=\(movie.eliminatedAtRound ?? -1)", category: .ui)
                             }
                         }
                     }
@@ -349,12 +338,10 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         }()
 
                     if !hasFinishedGameWithWinner {
-                        print(
-                            "🛡️ MovieBattleViewModel: Vote response doesn't contain finished game with winner, keeping current state"
-                        )
-                        print(
-                            "   Current status: \(currentBattle.status), Response status: \(filteredBattle.status)"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Vote response doesn't contain finished game with winner, keeping current state", category: .ui)
+                        AppLogger.shared.debug(
+                            "   Current status: \(currentBattle.status), Response status: \(filteredBattle.status)", category: .ui)
                         self.isLoading = false
                         return
                     }
@@ -504,14 +491,12 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             return winner
         }
 
-        print(
-            "⚠️ WinnerMovie: No winner found. Status: \(battle.status), Movies count: \(battle.movies?.count ?? 0)"
-        )
+        AppLogger.shared.warning(
+            "WinnerMovie: No winner found. Status: \(battle.status), Movies count: \(battle.movies?.count ?? 0)", category: .ui)
         if let movies = battle.movies {
             for movie in movies {
-                print(
-                    "   Movie: \(movie.originalTitle), finalPosition: \(movie.finalPosition ?? -1), eliminatedAtRound: \(movie.eliminatedAtRound ?? -1)"
-                )
+                AppLogger.shared.debug(
+                    "   Movie: \(movie.originalTitle), finalPosition: \(movie.finalPosition ?? -1), eliminatedAtRound: \(movie.eliminatedAtRound ?? -1)", category: .ui)
             }
         }
 
@@ -703,9 +688,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                 }()
 
                 if let currentWinner = currentWinner {
-                    print(
-                        "🛡️ MovieBattleViewModel: Battle already finished with winner: \(currentWinner.originalTitle)"
-                    )
+                    AppLogger.shared.debug(
+                        "MovieBattleViewModel: Battle already finished with winner: \(currentWinner.originalTitle)", category: .ui)
 
                     // Проверяем, есть ли завершенная игра с победителем в новом обновлении
                     // Важно: проверяем не только наличие победителя, но и статус FINISHED
@@ -716,9 +700,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                             if let winner = filteredBattle.movies?.first(where: {
                                 $0.finalPosition == 1
                             }) {
-                                print(
-                                    "✅ MovieBattleViewModel: Winner found in new update by finalPosition: \(winner.originalTitle)"
-                                )
+                                AppLogger.shared.debug(
+                                    "MovieBattleViewModel: Winner found in new update by finalPosition: \(winner.originalTitle)", category: .ui)
                                 return true
                             }
                             // Проверяем по единственному не выбывшему фильму
@@ -726,9 +709,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                                 remaining.count == 1,
                                 let winner = remaining.first
                             {
-                                print(
-                                    "✅ MovieBattleViewModel: Winner found in new update by remaining: \(winner.originalTitle)"
-                                )
+                                AppLogger.shared.debug(
+                                    "MovieBattleViewModel: Winner found in new update by remaining: \(winner.originalTitle)", category: .ui)
                                 return true
                             }
                             AppLogger.shared.warning("No winner found in new update", category: .ui)
@@ -736,29 +718,24 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         }()
 
                     if !hasFinishedGameWithWinner {
-                        print(
-                            "🛡️ MovieBattleViewModel: Ignoring battle update - new update doesn't contain finished game with winner, keeping current state"
-                        )
-                        print(
-                            "   Current winner: \(currentWinner.originalTitle), finalPosition: \(currentWinner.finalPosition ?? -1)"
-                        )
-                        print(
-                            "   New update status: \(filteredBattle.status)"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Ignoring battle update - new update doesn't contain finished game with winner, keeping current state", category: .ui)
+                        AppLogger.shared.debug(
+                            "   Current winner: \(currentWinner.originalTitle), finalPosition: \(currentWinner.finalPosition ?? -1)", category: .ui)
+                        AppLogger.shared.debug(
+                            "   New update status: \(filteredBattle.status)", category: .ui)
                         if let newMovies = filteredBattle.movies {
                             AppLogger.shared.debug("New update movies count: \(newMovies.count)", category: .ui)
                             for movie in newMovies {
-                                print(
-                                    "     - \(movie.originalTitle): finalPosition=\(movie.finalPosition ?? -1), eliminatedAtRound=\(movie.eliminatedAtRound ?? -1)"
-                                )
+                                AppLogger.shared.debug(
+                                    "     - \(movie.originalTitle): finalPosition=\(movie.finalPosition ?? -1), eliminatedAtRound=\(movie.eliminatedAtRound ?? -1)", category: .ui)
                             }
                         }
                         return
                     }
 
-                    print(
-                        "✅ MovieBattleViewModel: New update contains finished game with winner, updating state"
-                    )
+                    AppLogger.shared.debug(
+                        "MovieBattleViewModel: New update contains finished game with winner, updating state", category: .ui)
                 }
 
                 // Обновляем состояние
@@ -770,9 +747,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                     if let winner = self.winnerMovie {
                         AppLogger.shared.info("Winner found: \(winner.originalTitle)", category: .ui)
                     } else {
-                        print(
-                            "⚠️ MovieBattleViewModel: Winner not found yet, will refresh battle data"
-                        )
+                        AppLogger.shared.warning(
+                            "MovieBattleViewModel: Winner not found yet, will refresh battle data", category: .ui)
                         // Если победитель не найден, запрашиваем обновленные данные с сервера
                         Task {
                             await self.loadBattle(id: filteredBattle.id)
@@ -784,9 +760,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
 
                 // Обновляем прогресс генерации для всех фильмов (используем отфильтрованные)
                 if let movies = filteredBattle.movies {
-                    print(
-                        "🔄 MovieBattleViewModel: Updating generation progress for \(movies.count) movies"
-                    )
+                    AppLogger.shared.debug(
+                        "MovieBattleViewModel: Updating generation progress for \(movies.count) movies", category: .ui)
                     for movie in movies {
                         let status = movie.generationStatus
                         let progress: Double
@@ -867,9 +842,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             Task { @MainActor in
                 guard let self = self else { return }
 
-                print(
-                    "🔄 MovieBattleViewModel: Received generation progress - movieCardId: \(movieCardId), status: \(status.rawValue)"
-                )
+                AppLogger.shared.debug(
+                    "MovieBattleViewModel: Received generation progress - movieCardId: \(movieCardId), status: \(status.rawValue)", category: .socket)
 
                 // Определяем прогресс в зависимости от статуса
                 let progress: Double
@@ -905,9 +879,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                     let isFinished = self.battle?.status == .finished && self.winnerMovie != nil
 
                     if isFinished {
-                        print(
-                            "🛡️ MovieBattleViewModel: Game already finished with winner, skipping reload to preserve state"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Game already finished with winner, skipping reload to preserve state", category: .ui)
                         return
                     }
 
@@ -948,9 +921,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                                 }()
 
                             if !hasFinishedGameWithWinner {
-                                print(
-                                    "🛡️ MovieBattleViewModel: Reloaded battle doesn't contain finished game with winner, keeping current state"
-                                )
+                                AppLogger.shared.debug(
+                                    "MovieBattleViewModel: Reloaded battle doesn't contain finished game with winner, keeping current state", category: .ui)
                                 return
                             }
                         }
@@ -1018,18 +990,16 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
             [weak self] battle, eliminatedMovieId, roundNumber, isFinished in
             Task { @MainActor in
                 guard let self = self else { return }
-                print(
-                    "🔄 MovieBattleViewModel: Received round complete event - roundNumber: \(roundNumber), eliminatedMovieId: \(eliminatedMovieId), isFinished: \(isFinished)"
-                )
+                AppLogger.shared.debug(
+                    "MovieBattleViewModel: Received round complete event - roundNumber: \(roundNumber), eliminatedMovieId: \(eliminatedMovieId), isFinished: \(isFinished)", category: .socket)
 
                 // Проверяем, не является ли это событие для уже завершенного раунда
                 // Если текущий раунд битвы уже больше, чем roundNumber из события, игнорируем его
                 if let currentBattle = self.battle,
                     currentBattle.currentRound > roundNumber
                 {
-                    print(
-                        "⚠️ MovieBattleViewModel: Ignoring round complete event for round \(roundNumber) - current round is \(currentBattle.currentRound)"
-                    )
+                    AppLogger.shared.warning(
+                        "MovieBattleViewModel: Ignoring round complete event for round \(roundNumber) - current round is \(currentBattle.currentRound)", category: .socket)
                     return
                 }
 
@@ -1075,16 +1045,14 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                         }()
 
                     if !hasFinishedGameWithWinner {
-                        print(
-                            "🛡️ MovieBattleViewModel: Round complete - new update doesn't contain finished game with winner, keeping current battle state"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Round complete - new update doesn't contain finished game with winner, keeping current battle state", category: .ui)
                         AppLogger.shared.debug("Current winner: \(currentWinner.originalTitle)", category: .ui)
                         AppLogger.shared.debug("New update status: \(filteredBattle.status)", category: .ui)
                         shouldUpdateBattle = false
                     } else {
-                        print(
-                            "✅ MovieBattleViewModel: Round complete - new update contains finished game with winner, updating battle state"
-                        )
+                        AppLogger.shared.debug(
+                            "MovieBattleViewModel: Round complete - new update contains finished game with winner, updating battle state", category: .ui)
                         shouldUpdateBattle = true
                     }
                 } else {
@@ -1100,9 +1068,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                 // Находим выбывший фильм
                 if let eliminatedMovie = battle.movies?.first(where: { $0.id == eliminatedMovieId })
                 {
-                    print(
-                        "✅ MovieBattleViewModel: Found eliminated movie: \(eliminatedMovie.originalTitle)"
-                    )
+                    AppLogger.shared.debug(
+                        "MovieBattleViewModel: Found eliminated movie: \(eliminatedMovie.originalTitle)", category: .ui)
 
                     // Получаем голоса за этот раунд
                     let roundVotes = battle.votes?.filter { $0.roundNumber == roundNumber } ?? []
@@ -1126,13 +1093,11 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                             // Проверяем победителя в текущем состоянии (может быть обновлен или нет)
                             let winner = self.winnerMovie
                             if let winner = winner {
-                                print(
-                                    "✅ MovieBattleViewModel: Winner found: \(winner.originalTitle), finalPosition: \(winner.finalPosition ?? -1)"
-                                )
+                                AppLogger.shared.debug(
+                                    "MovieBattleViewModel: Winner found: \(winner.originalTitle), finalPosition: \(winner.finalPosition ?? -1)", category: .ui)
                             } else {
-                                print(
-                                    "⚠️ MovieBattleViewModel: Winner not found in current state, checking filteredBattle..."
-                                )
+                                AppLogger.shared.warning(
+                                    "MovieBattleViewModel: Winner not found in current state, checking filteredBattle...", category: .ui)
                                 // Проверяем в filteredBattle
                                 let winnerInFiltered =
                                     filteredBattle.status == .finished
@@ -1140,9 +1105,8 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                                         if let winner = filteredBattle.movies?.first(where: {
                                             $0.finalPosition == 1
                                         }) {
-                                            print(
-                                                "✅ MovieBattleViewModel: Winner found in filteredBattle: \(winner.originalTitle)"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "MovieBattleViewModel: Winner found in filteredBattle: \(winner.originalTitle)", category: .ui)
                                             return true
                                         }
                                         if let remaining = filteredBattle.movies?.filter({
@@ -1151,18 +1115,16 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                                             remaining.count == 1,
                                             let winner = remaining.first
                                         {
-                                            print(
-                                                "✅ MovieBattleViewModel: Winner found in filteredBattle (remaining): \(winner.originalTitle)"
-                                            )
+                                            AppLogger.shared.debug(
+                                                "MovieBattleViewModel: Winner found in filteredBattle (remaining): \(winner.originalTitle)", category: .ui)
                                             return true
                                         }
                                         return false
                                     }()
 
                                 if !winnerInFiltered {
-                                    print(
-                                        "⚠️ MovieBattleViewModel: Winner not found in filteredBattle, refreshing battle data"
-                                    )
+                                    AppLogger.shared.warning(
+                                        "MovieBattleViewModel: Winner not found in filteredBattle, refreshing battle data", category: .ui)
                                     Task {
                                         await self.loadBattle(id: battle.id)
                                     }
@@ -1177,16 +1139,14 @@ class MovieBattleViewModel: ObservableObject, TRPCServiceProtocol {
                             self.currentPhase = .roundResult
                         }
                     } else {
-                        print(
-                            "⚠️ MovieBattleViewModel: Ignoring round complete event for round \(roundNumber) - current round is \(currentRound)"
-                        )
+                        AppLogger.shared.warning(
+                            "MovieBattleViewModel: Ignoring round complete event for round \(roundNumber) - current round is \(currentRound)", category: .socket)
                         // Просто обновляем фазу без установки roundResult
                         self.updatePhase()
                     }
                 } else {
-                    print(
-                        "⚠️ MovieBattleViewModel: Could not find eliminated movie with id: \(eliminatedMovieId)"
-                    )
+                    AppLogger.shared.warning(
+                        "MovieBattleViewModel: Could not find eliminated movie with id: \(eliminatedMovieId)", category: .socket)
                     // Если не нашли фильм, пытаемся найти его в обновленном battle
                     // или просто обновляем фазу
                     if isFinished {

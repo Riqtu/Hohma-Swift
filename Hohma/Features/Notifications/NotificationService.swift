@@ -177,9 +177,8 @@ class NotificationService: UNNotificationServiceExtension {
                 AppLogger.shared.info("Image attachment created: \(fileName)", category: .general)
                 completion(attachment)
             } catch {
-                print(
-                    "❌ NotificationService: Failed to create attachment: \(error.localizedDescription)"
-                )
+                AppLogger.shared.error(
+                    "NotificationService: Failed to create attachment: \(error.localizedDescription)", category: .general)
                 completion(nil)
             }
         }
@@ -206,9 +205,8 @@ class NotificationService: UNNotificationServiceExtension {
         // Если это не сработает, вернем nil
         guard let image = UIImage(data: svgData) else {
             AppLogger.shared.warning("SVG cannot be directly converted by UIImage", category: .general)
-            print(
-                "⚠️ NotificationService: SVG conversion requires external library or server-side processing"
-            )
+            AppLogger.shared.warning(
+                "NotificationService: SVG conversion requires external library or server-side processing", category: .general)
             // Для SVG из Telegram можно попробовать заменить расширение на .png в URL
             // Но это не гарантирует работу
             completion(nil)

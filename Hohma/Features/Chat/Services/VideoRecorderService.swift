@@ -93,14 +93,10 @@ class VideoRecorderService: NSObject, ObservableObject {
         }
     }
 
-    func requestPermissions(completion: @escaping (Bool) -> Void) {
-        AVCaptureDevice.requestAccess(for: .video) { videoGranted in
-            AVCaptureDevice.requestAccess(for: .audio) { audioGranted in
-                DispatchQueue.main.async {
-                    completion(videoGranted && audioGranted)
-                }
-            }
-        }
+    func requestPermissions() async -> Bool {
+        let videoGranted = await AVCaptureDevice.requestAccess(for: .video)
+        let audioGranted = await AVCaptureDevice.requestAccess(for: .audio)
+        return videoGranted && audioGranted
     }
 
     @available(iOS, deprecated: 17.0, message: "Use getVideoRotationAngle() instead")
@@ -433,9 +429,8 @@ class VideoRecorderService: NSObject, ObservableObject {
             let videoDevice = AVCaptureDevice.default(
                 .builtInWideAngleCamera, for: .video, position: currentCameraPosition)
         else {
-            print(
-                "❌ VideoRecorderService: Failed to get video device for position \(currentCameraPosition)"
-            )
+            AppLogger.shared.error(
+                "VideoRecorderService: Failed to get video device for position \(currentCameraPosition)", category: .general)
             return
         }
 
@@ -455,9 +450,8 @@ class VideoRecorderService: NSObject, ObservableObject {
                     connection.isVideoMirrored = (currentCameraPosition == .front)
                 }
 
-                print(
-                    "✅ VideoRecorderService: Camera switched to \(currentCameraPosition == .front ? "front" : "back")"
-                )
+                AppLogger.shared.debug(
+                    "VideoRecorderService: Camera switched to \(currentCameraPosition == .front ? "front" : "back")", category: .general)
             } else {
                 AppLogger.shared.error("Cannot add new video input", category: .general)
             }
@@ -535,9 +529,8 @@ class VideoRecorderService: NSObject, ObservableObject {
                     self.continueRecordingAfterSwitch(
                         currentURL: currentURL, savedDuration: savedDuration)
 
-                    print(
-                        "✅ VideoRecorderService: Camera switched to \(self.currentCameraPosition == .front ? "front" : "back") during recording"
-                    )
+                    AppLogger.shared.debug(
+                        "VideoRecorderService: Camera switched to \(self.currentCameraPosition == .front ? "front" : "back") during recording", category: .general)
                 } else {
                     session.commitConfiguration()
                     self.isWaitingForSegmentCompletion = false

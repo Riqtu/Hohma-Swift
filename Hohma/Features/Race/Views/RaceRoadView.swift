@@ -72,7 +72,14 @@ struct RaceRoadView: View {
         }
         """.data(using: .utf8)!
 
-    let participant = try! JSONDecoder().decode(RaceParticipant.self, from: jsonData)
+    guard let participant = try? JSONDecoder().decode(RaceParticipant.self, from: jsonData) else {
+        AppLogger.shared.error("Failed to decode preview data for RaceRoadView", category: .ui)
+        #if DEBUG
+        fatalError("Failed to decode preview data for RaceRoadView")
+        #else
+        return Text("Preview unavailable")
+        #endif
+    }
 
     return RaceRoadView(
         cells: raceCells,

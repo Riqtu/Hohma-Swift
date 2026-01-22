@@ -207,9 +207,8 @@ class WheelSocketManager: WheelSocketProtocol {
             if let socket = socket, socket.isConnected, isAuthorized {
                 socket.emit(.leaveRoom, data: leaveData)
             } else {
-                print(
-                    "⚠️ WheelSocketManager: Cannot leave room - socket not connected or not authorized"
-                )
+                AppLogger.shared.warning(
+                    "WheelSocketManager: Cannot leave room - socket not connected or not authorized", category: .socket)
             }
         }
     }
@@ -222,9 +221,8 @@ class WheelSocketManager: WheelSocketProtocol {
             let requestData: [String: Any] = ["request": "sectors"]
             socket.emit(.requestSectors, data: requestData)
         } else {
-            print(
-                "⚠️ WheelSocketManager: Cannot request sectors - socket not connected or not authorized"
-            )
+            AppLogger.shared.warning(
+                "WheelSocketManager: Cannot request sectors - socket not connected or not authorized", category: .socket)
         }
     }
 

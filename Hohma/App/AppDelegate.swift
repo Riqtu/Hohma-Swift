@@ -63,8 +63,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         AppLogger.shared.debug("===== USER ACTIVITY RECEIVED =====", category: .general)
         AppLogger.shared.debug("Received userActivity: \(userActivity.activityType)", category: .general)
-        print(
-            "🔗 AppDelegate: UserActivity URL: \(userActivity.webpageURL?.absoluteString ?? "nil")")
+        AppLogger.shared.debug(
+            "AppDelegate: UserActivity URL: \(userActivity.webpageURL?.absoluteString ?? "nil")", category: .general)
         AppLogger.shared.debug("UserActivity userInfo: \(userActivity.userInfo ?? [:])", category: .general)
 
         // Обрабатываем Universal Links
@@ -166,9 +166,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             AppLogger.shared.info("Processing Universal Link with hohma.su domain", category: .general)
             return handleUniversalLink(url: url)
         } else {
-            print(
-                "🔗 AppDelegate: ❌ URL scheme '\(url.scheme ?? "nil")' does not match expected schemes (riqtu.Hohma, hohma, or https)"
-            )
+            AppLogger.shared.warning(
+                "AppDelegate: URL scheme '\(url.scheme ?? "nil")' does not match expected schemes (riqtu.Hohma, hohma, or https)", category: .general)
         }
 
         AppLogger.shared.debug("===== CUSTOM URL HANDLING COMPLETE =====", category: .general)

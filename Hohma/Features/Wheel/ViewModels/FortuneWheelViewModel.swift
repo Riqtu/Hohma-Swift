@@ -66,7 +66,8 @@ class FortuneWheelViewModel: ObservableObject {
         }
 
         // Присоединяемся к комнате
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
             self.joinRoom()
         }
     }
@@ -143,8 +144,9 @@ class FortuneWheelViewModel: ObservableObject {
                             roomId: self?.wheelData.id ?? "")
                     }
 
-                    // Добавляем небольшую задержку для стабилизации соединения (уменьшили)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    // Добавляем небольшую задержку для стабилизации соединения
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
                         self?.joinRoom()
                     }
                 }
@@ -216,9 +218,8 @@ class FortuneWheelViewModel: ObservableObject {
         // Инициализируем список пользователей с текущим пользователем
         if let currentUser = currentUser {
             updateRoomUsers([currentUser])
-            print(
-                "👥 FortuneWheelViewModel: Initialized room users with current user: \(String(describing: currentUser.username))"
-            )
+            AppLogger.shared.debug(
+                "FortuneWheelViewModel: Initialized room users with current user: \(String(describing: currentUser.username))", category: .ui)
         }
 
         // Обновляем данные колеса при подключении к комнате
@@ -237,25 +238,19 @@ class FortuneWheelViewModel: ObservableObject {
         // Подписываемся на изменения состояния
         streamPlayer?.$isReady
             .sink { [weak self] isReady in
-                DispatchQueue.main.async {
-                    self?.isVideoReady = isReady
-                }
+                self?.isVideoReady = isReady
             }
             .store(in: &cancellables)
 
         streamPlayer?.$isLoading
             .sink { [weak self] isLoading in
-                DispatchQueue.main.async {
-                    self?.isLoading = isLoading
-                }
+                self?.isLoading = isLoading
             }
             .store(in: &cancellables)
 
         streamPlayer?.$hasError
             .sink { [weak self] hasError in
-                DispatchQueue.main.async {
-                    self?.hasError = hasError
-                }
+                self?.hasError = hasError
             }
             .store(in: &cancellables)
     }
@@ -314,9 +309,8 @@ class FortuneWheelViewModel: ObservableObject {
         Task {
             do {
                 let updatedSector = try await wheelService.updateSector(sectorId, eliminated: true)
-                print(
-                    "✅ FortuneWheelViewModel: Sector eliminated successfully: \(updatedSector.name)"
-                )
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: Sector eliminated successfully: \(updatedSector.name)", category: .ui)
 
                 // Обновляем данные с сервера
                 wheelState.requestSectors()
@@ -341,9 +335,8 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 let updatedSector = try await wheelService.updateSector(
                     sectorId, eliminated: false, winner: true)
-                print(
-                    "✅ FortuneWheelViewModel: Sector winner set successfully: \(updatedSector.name)"
-                )
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: Sector winner set successfully: \(updatedSector.name)", category: .ui)
 
                 // Обновляем данные с сервера
                 wheelState.requestSectors()
@@ -374,9 +367,8 @@ class FortuneWheelViewModel: ObservableObject {
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
-                print(
-                    "❌ FortuneWheelViewModel: Decoding error for wheel status update: \(decodingError)"
-                )
+                AppLogger.shared.error(
+                    "FortuneWheelViewModel: Decoding error for wheel status update", error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка обновления статуса колеса: \(error.localizedDescription)"
                 AppLogger.shared.error("Wheel status update error: \(error)", category: .ui)
@@ -458,9 +450,8 @@ class FortuneWheelViewModel: ObservableObject {
 
         // Если сокет помечен как подключенный, но состояние невалидно, принудительно переподключаемся
         if socketService.isConnected && !socketService.validateConnectionState() {
-            print(
-                "⚠️ FortuneWheelViewModel: Socket marked as connected but state is invalid, forcing reconnect"
-            )
+            AppLogger.shared.warning(
+                "FortuneWheelViewModel: Socket marked as connected but state is invalid, forcing reconnect", category: .socket)
             reconnectSocket()
         }
     }
@@ -468,20 +459,17 @@ class FortuneWheelViewModel: ObservableObject {
     // MARK: - Room Users Management
 
     private func updateRoomUsers(_ users: [AuthUser]) {
-        DispatchQueue.main.async {
-            print(
-                "👥 FortuneWheelViewModel: Updating roomUsers array from \(self.roomUsers.count) to \(users.count)"
-            )
+        AppLogger.shared.debug(
+            "FortuneWheelViewModel: Updating roomUsers array from \(self.roomUsers.count) to \(users.count)", category: .ui)
             self.roomUsers = users
             AppLogger.shared.debug("👥 FortuneWheelViewModel: Room users updated: \(users.count) users", category: .ui)
 
             // Выводим имена пользователей для отладки
             for (index, user) in users.enumerated() {
-                print(
-                    "👥 FortuneWheelViewModel: User \(index + 1): \(String(describing: user.username)) (\(user.firstName ?? "no name"))"
-                )
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: User \(index + 1): \(String(describing: user.username)) (\(user.firstName ?? "no name"))", category: .ui)
             }
-        }
+        self.roomUsers = users
     }
 
     // MARK: - Sector Management
@@ -496,8 +484,8 @@ class FortuneWheelViewModel: ObservableObject {
                 // Запрашиваем актуальные данные с сервера
                 AppLogger.shared.debug("Refreshing sectors from server...", category: .ui)
                 let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
-                print(
-                    "✅ FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server")
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server", category: .ui)
 
                 // Находим созданный сектор с полными данными
                 if let sectorWithFullData = updatedSectors.first(where: {
@@ -512,9 +500,8 @@ class FortuneWheelViewModel: ObservableObject {
                     if let sectorDict = try JSONSerialization.jsonObject(with: sectorData)
                         as? [String: Any]
                     {
-                        print(
-                            "📤 FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)"
-                        )
+                        AppLogger.shared.debug(
+                            "FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)", category: .socket)
                         socketService.emitToRoom(
                             .sectorCreated, roomId: wheelData.id, data: sectorDict)
                     }
@@ -528,8 +515,8 @@ class FortuneWheelViewModel: ObservableObject {
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
-                print(
-                    "❌ FortuneWheelViewModel: Decoding error for sector creation: \(decodingError)")
+                AppLogger.shared.error(
+                    "FortuneWheelViewModel: Decoding error for sector creation", error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка создания сектора: \(error.localizedDescription)"
                 AppLogger.shared.error("Sector creation error: \(error)", category: .ui)
@@ -553,7 +540,8 @@ class FortuneWheelViewModel: ObservableObject {
             socketService.connect()
 
             // Ждем подключения (уменьшили задержку)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
                 if self.socketService.isConnected {
                     AppLogger.shared.info("Socket connected, proceeding with deletion", category: .ui)
                     self.performSectorDeletion(sector)
@@ -584,17 +572,16 @@ class FortuneWheelViewModel: ObservableObject {
                 // Запрашиваем актуальные данные с сервера
                 AppLogger.shared.debug("Refreshing sectors from server...", category: .ui)
                 let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
-                print(
-                    "✅ FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server")
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server", category: .ui)
 
                 // Обновляем состояние колеса актуальными данными
                 wheelState.setSectors(updatedSectors)
                 AppLogger.shared.info("Wheel state updated with fresh data", category: .ui)
 
                 // Отправляем событие в том же формате, что и веб-клиент
-                print(
-                    "📤 FortuneWheelViewModel: Emitting sector:removed event to room \(wheelData.id)"
-                )
+                AppLogger.shared.debug(
+                    "FortuneWheelViewModel: Emitting sector:removed event to room \(wheelData.id)", category: .socket)
                 socketService.emitToRoom(.sectorRemoved, roomId: wheelData.id, data: sector.id)
 
                 // Показываем уведомление об успехе
@@ -605,8 +592,8 @@ class FortuneWheelViewModel: ObservableObject {
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
-                print(
-                    "❌ FortuneWheelViewModel: Decoding error for sector deletion: \(decodingError)")
+                AppLogger.shared.error(
+                    "FortuneWheelViewModel: Decoding error for sector deletion", error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка удаления сектора: \(error.localizedDescription)"
                 AppLogger.shared.error("Sector deletion error: \(error)", category: .ui)

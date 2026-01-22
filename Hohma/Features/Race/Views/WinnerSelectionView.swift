@@ -269,8 +269,15 @@ struct ParticipantCard: View {
             }
         """.data(using: .utf8)!
 
-    let participant1 = try! JSONDecoder().decode(RaceParticipant.self, from: participant1Data)
-    let participant2 = try! JSONDecoder().decode(RaceParticipant.self, from: participant2Data)
+    guard let participant1 = try? JSONDecoder().decode(RaceParticipant.self, from: participant1Data),
+          let participant2 = try? JSONDecoder().decode(RaceParticipant.self, from: participant2Data) else {
+        AppLogger.shared.error("Failed to decode preview data for WinnerSelectionView", category: .ui)
+        #if DEBUG
+        fatalError("Failed to decode preview data for WinnerSelectionView")
+        #else
+        return Text("Preview unavailable")
+        #endif
+    }
 
     return WinnerSelectionView(
         isPresented: .constant(true),

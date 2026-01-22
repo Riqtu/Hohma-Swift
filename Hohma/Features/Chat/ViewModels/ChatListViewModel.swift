@@ -262,11 +262,6 @@ final class ChatListViewModel: ObservableObject {
                 
                 // Принудительно обновляем UI после изменения данных
                 self.objectWillChange.send()
-                
-                // Дополнительно обновляем через DispatchQueue для гарантии
-                DispatchQueue.main.async {
-                    self.objectWillChange.send()
-                }
             }
         } catch {
             errorMessage = error.localizedDescription

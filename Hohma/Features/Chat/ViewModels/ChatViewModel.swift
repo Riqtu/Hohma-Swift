@@ -971,35 +971,32 @@ final class ChatViewModel: ObservableObject {
     func startVideoRecording() {
         guard !isRecordingVideo else { return }
 
-        videoRecorder.requestPermissions { [weak self] granted in
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            let granted = await videoRecorder.requestPermissions()
             guard granted else {
-                Task { @MainActor [weak self] in
-                    self?.errorMessage = "Нужно разрешение на камеру и микрофон"
-                }
+                self.errorMessage = "Нужно разрешение на камеру и микрофон"
                 return
             }
-
-            guard let self = self else { return }
 
             // Запускаем сессию сначала
             self.videoRecorder.startSession()
 
             // Небольшая задержка для запуска сессии
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                Task { @MainActor in
-                    guard self.videoRecorder.startRecording() != nil else {
-                        self.errorMessage = "Не удалось начать запись видео"
-                        self.videoRecorder.stopSession()
-                        return
-                    }
-
-                    // Синхронизируем состояние
-                    self.isRecordingVideo = true
-                    self.videoRecordingDuration = 0
-                    self.isCancelingVideo = false
-                    self.showVideoControls = false
-                }
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+            
+            guard self.videoRecorder.startRecording() != nil else {
+                self.errorMessage = "Не удалось начать запись видео"
+                self.videoRecorder.stopSession()
+                return
             }
+
+            // Синхронизируем состояние
+            self.isRecordingVideo = true
+            self.videoRecordingDuration = 0
+            self.isCancelingVideo = false
+            self.showVideoControls = false
         }
     }
 

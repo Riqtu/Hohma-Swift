@@ -551,9 +551,8 @@ class RaceDiceRollViewModel: ObservableObject {
             // Генерируем индивидуальное значение кубика для каждого участника
             let diceValue = Int.random(in: 1...6)
             diceResults[participant.id] = diceValue
-            print(
-                "🎲 Участник \(participant.user.name ?? participant.user.username ?? "Unknown") (id: \(participant.id)) получил: \(diceValue)"
-            )
+            AppLogger.shared.debug(
+                "Участник \(participant.user.name ?? participant.user.username ?? "Unknown") (id: \(participant.id)) получил: \(diceValue)", category: .ui)
         }
 
         AppLogger.shared.debug("Сгенерированы индивидуальные результаты кубиков: \(diceResults)", category: .ui)

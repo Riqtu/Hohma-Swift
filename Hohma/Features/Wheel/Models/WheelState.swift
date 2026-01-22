@@ -136,9 +136,8 @@ class WheelState: ObservableObject {
             // Отправляем в том же формате, что и веб-клиент: (roomId, data)
             socket.emitToRoom(.sectorRemoved, roomId: roomId ?? "", data: sectorId)
         } else {
-            print(
-                "⚠️ WheelState: Cannot emit sector removal event - socket not connected or not authorized"
-            )
+            AppLogger.shared.warning(
+                "WheelState: Cannot emit sector removal event - socket not connected or not authorized", category: .socket)
         }
     }
 
@@ -171,17 +170,15 @@ class WheelState: ObservableObject {
         delta = delta.truncatingRemainder(dividingBy: 360)
         if delta < 0 { delta += 360 }
 
-        print(
-            "🎯 WheelState: Target angle: \(targetAngle), current rotation: \(currentRotation), delta: \(delta)"
-        )
+        AppLogger.shared.debug(
+            "WheelState: Target angle: \(targetAngle), current rotation: \(currentRotation), delta: \(delta)", category: .ui)
         // Уменьшаем количество дополнительных оборотов для более плавной анимации
         let extraSpins = 360.0 * 3
         let finalDelta = extraSpins + delta
         let newRotation = rotation + finalDelta
 
-        print(
-            "🎲 WheelState: Spinning wheel - current: \(rotation), target: \(newRotation), delta: \(finalDelta)"
-        )
+        AppLogger.shared.debug(
+            "WheelState: Spinning wheel - current: \(rotation), target: \(newRotation), delta: \(finalDelta)", category: .ui)
 
         // Emit spin event to other clients
         let spinData: [String: Any] = [
@@ -200,7 +197,8 @@ class WheelState: ObservableObject {
         handleSpinResult(winningIndex: winningIndex, rotation: newRotation, speed: speed)
 
         if autoSpin {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
                 self.spinWheel()
             }
         }
@@ -237,15 +235,16 @@ class WheelState: ObservableObject {
 
     // MARK: - Private Methods
     private func handleSpinResult(winningIndex: Int, rotation: Double, speed: Double) {
-        print(
-            "🎯 WheelState: Handling spin result - winningIndex: \(winningIndex), rotation: \(rotation), speed: \(speed)"
-        )
-        DispatchQueue.main.asyncAfter(deadline: .now() + speed) {
+        AppLogger.shared.debug(
+            "WheelState: Handling spin result - winningIndex: \(winningIndex), rotation: \(rotation), speed: \(speed)", category: .ui)
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(speed * 1_000_000_000))
+            
             // Проверяем, что колесо все еще вращается и секторы существуют
             guard self.spinning && winningIndex < self.sectors.count else {
-                print(
-                    "⚠️ WheelState: Cannot handle spin result - spinning: \(self.spinning), sectors count: \(self.sectors.count)"
-                )
+                AppLogger.shared.warning(
+                    "WheelState: Cannot handle spin result - spinning: \(self.spinning), sectors count: \(self.sectors.count)", category: .ui)
                 // Принудительно останавливаем вращение если что-то пошло не так
                 self.spinning = false
                 return
@@ -446,7 +445,8 @@ class WheelState: ObservableObject {
             socket.emit(.joinRoom, data: joinData)
 
             // Request sectors after joining room
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
                 self.requestSectors()
             }
         } else {
@@ -480,7 +480,7 @@ class WheelState: ObservableObject {
                     roomId)
                 AppLogger.shared.info("Received \(updatedSectors.count) sectors from server", category: .general)
 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.setSectors(updatedSectors)
                     AppLogger.shared.info("Updated sectors from server", category: .general)
                 }
@@ -500,9 +500,8 @@ class WheelState: ObservableObject {
         }
 
         let generatedByServer = spinData["generatedByServer"] as? Bool ?? false
-        print(
-            "🎯 WheelState: Received spin result from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex), generatedByServer=\(generatedByServer)"
-        )
+        AppLogger.shared.debug(
+            "WheelState: Received spin result from server: rotation=\(rotation), speed=\(speed), winningIndex=\(winningIndex), generatedByServer=\(generatedByServer)", category: .socket)
 
         spinning = true
         self.rotation = rotation
@@ -533,18 +532,14 @@ class WheelState: ObservableObject {
                 let sectorsJsonData = try JSONSerialization.data(withJSONObject: sectorsData)
                 let shuffledSectors = try decoder.decode([Sector].self, from: sectorsJsonData)
 
-                DispatchQueue.main.async {
-                    // Вместо замены массива, сортируем существующий массив по новому порядку
-                    self.reorderSectors(by: shuffledSectors)
-                    print(
-                        "✅ WheelState: Reordered sectors from shuffle event (\(shuffledSectors.count) sectors)"
-                    )
-                    // Debug: print labels to verify they are reordered correctly
-                    for (index, sector) in self.sectors.enumerated() {
-                        print(
-                            "🔍 Sector \(index): label='\(sector.label)', name='\(sector.name)', labelHidden=\(sector.labelHidden)"
-                        )
-                    }
+                // Вместо замены массива, сортируем существующий массив по новому порядку
+                self.reorderSectors(by: shuffledSectors)
+                AppLogger.shared.debug(
+                    "WheelState: Reordered sectors from shuffle event (\(shuffledSectors.count) sectors)", category: .socket)
+                // Debug: log labels to verify they are reordered correctly
+                for (index, sector) in self.sectors.enumerated() {
+                    AppLogger.shared.debug(
+                        "Sector \(index): label='\(sector.label)', name='\(sector.name)', labelHidden=\(sector.labelHidden)", category: .socket)
                 }
             } catch {
                 AppLogger.shared.error("Failed to decode shuffle sectors: \(error)", category: .general)
@@ -575,7 +570,7 @@ class WheelState: ObservableObject {
             AppLogger.shared.debug("Received wheelSpin event", category: .general)
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self?.spinWheelFromServer(json)
                     }
                 }
@@ -588,7 +583,7 @@ class WheelState: ObservableObject {
         socket.on(.sectorsShuffle) { [weak self] data in
             do {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         self?.shuffleSectorsFromServer(json)
                     }
                 }
@@ -601,7 +596,7 @@ class WheelState: ObservableObject {
         socket.on(.syncSectors) { [weak self] data in
             AppLogger.shared.debug("Received sectors:sync event", category: .general)
             // Просто запрашиваем актуальные данные с сервера
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.requestSectors()
             }
         }
@@ -610,7 +605,7 @@ class WheelState: ObservableObject {
         socket.on(.sectorUpdated) { [weak self] data in
             AppLogger.shared.debug("Received sector:updated event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.requestSectors()
             }
         }
@@ -619,7 +614,7 @@ class WheelState: ObservableObject {
         socket.on(.sectorCreated) { [weak self] data in
             AppLogger.shared.debug("Received sector:created event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.requestSectors()
             }
         }
@@ -628,7 +623,7 @@ class WheelState: ObservableObject {
         socket.on(.sectorRemoved) { [weak self] data in
             AppLogger.shared.debug("Received sector:removed event", category: .general)
             // Просто запрашиваем свежие данные с сервера для единообразия
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.requestSectors()
             }
         }
@@ -641,7 +636,7 @@ class WheelState: ObservableObject {
                 let roomUsers = try JSONDecoder().decode([RoomUser].self, from: data)
                 let users = roomUsers.map { $0.toAuthUser() }
 
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     NotificationCenter.default.post(name: .roomUsersUpdated, object: users)
                 }
             } catch {
@@ -658,9 +653,8 @@ class WheelState: ObservableObject {
                 socket.isConnected,
                 self.isAuthorized
             else {
-                print(
-                    "⚠️ WheelState: Cannot respond to sectors request - not connected or not authorized"
-                )
+                AppLogger.shared.warning(
+                    "WheelState: Cannot respond to sectors request - not connected or not authorized", category: .socket)
                 return
             }
 
@@ -692,11 +686,15 @@ class WheelState: ObservableObject {
                     {
                         // Вложенный формат: { "sectors": { "sectors": [...] } }
                         sectorsArray = nestedArray
-                    } else if let directArray = try? JSONSerialization.jsonObject(with: data)
-                        as? [[String: Any]]
-                    {
+                    } else {
                         // Прямой массив секторов
-                        sectorsArray = directArray
+                        do {
+                            if let directArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                                sectorsArray = directArray
+                            }
+                        } catch {
+                            AppLogger.shared.error("Failed to parse sectors as direct array: \(error.localizedDescription)", category: .socket)
+                        }
                     }
 
                     if let sectorsArray = sectorsArray {
@@ -708,12 +706,11 @@ class WheelState: ObservableObject {
                         let sectorsData = try JSONSerialization.data(withJSONObject: sectorsArray)
                         let sectors = try decoder.decode([Sector].self, from: sectorsData)
 
-                        DispatchQueue.main.async {
+                        Task { @MainActor [weak self] in
                             // Вместо замены массива, сортируем существующий массив по новому порядку
                             self?.reorderSectors(by: sectors)
-                            print(
-                                "✅ WheelState: Reordered sectors from other client (\(sectors.count) sectors)"
-                            )
+                            AppLogger.shared.debug(
+                                "WheelState: Reordered sectors from other client (\(sectors.count) sectors)", category: .socket)
                         }
                     } else {
                         AppLogger.shared.error("Could not find sectors array in response", category: .general)

@@ -1,0 +1,47 @@
+# Файлы и директории, которые Cursor должен игнорировать при индексации
+
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+*.xcuserdata/
+*.xcuserdatad/
+*.xcbkptlist
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Build
+build/
+DerivedData/
+*.swiftmodule
+*.swiftdoc
+*.swiftinterface
+
+# CocoaPods
+Pods/
+*.podspec
+
+# Swift Package Manager
+.build/
+.swiftpm/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# Config files with secrets
+Config.xcconfig
+!Config.xcconfig.example
+
+# Temporary files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Documentation (опционально, если не нужен контекст)
+# *.md

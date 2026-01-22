@@ -25,8 +25,8 @@ final class WheelCardViewModel: ObservableObject {
     }
 
     deinit {
-        // Не можем вызывать MainActor методы в deinit
-        // Очистка произойдет автоматически при уничтожении объекта
+        // Отменяем все Combine подписки
+        cancellables.removeAll()
     }
 
     // MARK: - Public Methods
@@ -83,28 +83,22 @@ final class WheelCardViewModel: ObservableObject {
         // Подписываемся на изменения состояния
         streamPlayer?.$isReady
             .sink { [weak self] isReady in
-                DispatchQueue.main.async {
-                    self?.isVideoReady = isReady
-                    self?.isLoading = false
-                }
+                self?.isVideoReady = isReady
+                self?.isLoading = false
             }
             .store(in: &cancellables)
 
         streamPlayer?.$isLoading
             .sink { [weak self] isLoading in
-                DispatchQueue.main.async {
-                    self?.isLoading = isLoading
-                }
+                self?.isLoading = isLoading
             }
             .store(in: &cancellables)
 
         streamPlayer?.$hasError
             .sink { [weak self] hasError in
-                DispatchQueue.main.async {
-                    self?.hasError = hasError
-                    if hasError {
-                        self?.fallbackToLocalVideo()
-                    }
+                self?.hasError = hasError
+                if hasError {
+                    self?.fallbackToLocalVideo()
                 }
             }
             .store(in: &cancellables)
@@ -169,11 +163,12 @@ final class WheelCardViewModel: ObservableObject {
 
         playerObserver = player.currentItem?.observe(\.status, options: [.new]) {
             [weak self] item, _ in
-            DispatchQueue.main.async {
-                self?.isVideoReady = item.status == .readyToPlay
-                self?.isLoading = item.status == .unknown
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.isVideoReady = item.status == .readyToPlay
+                self.isLoading = item.status == .unknown
 
-                if self?.isVideoReady == true {
+                if self.isVideoReady {
                     player.play()
                 }
             }

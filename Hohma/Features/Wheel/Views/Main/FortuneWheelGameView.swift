@@ -278,16 +278,17 @@ struct FortuneWheelGameView: View {
         .onReceive(NotificationCenter.default.publisher(for: .wheelDataUpdated)) { _ in
             // Если получаем уведомление об обновлении данных колеса,
             // обновляем данные колеса
-            AppLogger.shared.debug("Received wheel data update, refreshing wheel data", category: .ui)
+            AppLogger.shared.debug(
+                "Received wheel data update, refreshing wheel data", category: .ui)
             viewModel.refreshWheelData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigationRequested)) {
             notification in
             // Если получаем уведомление о навигации, закрываем экран игры
             if let destination = notification.userInfo?["destination"] as? String {
-                print(
-                    "🔄 FortuneWheelGameView: Navigation requested to \(destination), closing game view"
-                )
+                AppLogger.shared.debug(
+                    "FortuneWheelGameView: Navigation requested to \(destination), closing game view",
+                    category: .ui)
                 // Закрываем полный экран секторов если он открыт
                 showingSectorsFullScreen = false
                 // Принудительно останавливаем вращение и закрываем экран

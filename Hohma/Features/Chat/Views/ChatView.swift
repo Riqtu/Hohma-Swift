@@ -766,9 +766,7 @@ extension ChatView {
                             }
 
                             // Если не изображение, пробуем загрузить как видео через URL
-                            if let videoTransferable = await
-                                (try? item.loadTransferable(type: VideoFileTransferable.self))
-                            {
+                            if let videoTransferable = try? await item.loadTransferable(type: VideoFileTransferable.self) {
                                 let tempURL = FileManager.default.temporaryDirectory
                                     .appendingPathComponent(UUID().uuidString)
                                     .appendingPathExtension("mp4")
@@ -788,7 +786,7 @@ extension ChatView {
                             }
 
                             // Альтернативный способ для видео - через Movie
-                            if let movie = await (try? item.loadTransferable(type: Movie.self)) {
+                            if let movie = try? await item.loadTransferable(type: Movie.self) {
                                 let tempURL = FileManager.default.temporaryDirectory
                                     .appendingPathComponent(UUID().uuidString)
                                     .appendingPathExtension("mp4")
