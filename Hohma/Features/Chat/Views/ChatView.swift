@@ -22,6 +22,8 @@ struct ChatView: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showSettings = false
     @State private var chatBackgroundUrl: String? = nil
+    /// Время начала касания для жеста «тап закрыть клавиатуру» — закрываем только при коротком тапе, не при long-press (вставка/меню).
+    @State private var keyboardDismissTouchStart: Date? = nil
 
     var body: some View {
         ZStack {
@@ -50,6 +52,28 @@ struct ChatView: View {
                 // Input
                 messageInputView
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if keyboardDismissTouchStart == nil {
+                            keyboardDismissTouchStart = Date()
+                        }
+                    }
+                    .onEnded { _ in
+                        let start = keyboardDismissTouchStart ?? Date()
+                        keyboardDismissTouchStart = nil
+                        // Закрываем клавиатуру только при коротком тапе; long-press на инпуте (вставка/меню) не трогаем
+                        if Date().timeIntervalSince(start) < 0.3 {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil,
+                                from: nil,
+                                for: nil
+                            )
+                        }
+                    }
+            )
 
             // Overlay для записи видеосообщения на полный экран
             if viewModel.isRecordingVideo {
@@ -362,7 +386,7 @@ private struct ChatMessagesScrollView: View {
                     )
                 }
                 .coordinateSpace(name: "chatScroll")
-                .scrollDismissesKeyboard(.never)
+                .scrollDismissesKeyboard(.immediately)
                 .scrollIndicators(.hidden)
                 .onPreferenceChange(ChatScrollMetricsKey.self) { metrics in
                     scrollMetrics = metrics
