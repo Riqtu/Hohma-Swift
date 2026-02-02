@@ -135,7 +135,7 @@
 
 ## Git
 
-- Используй понятные commit messages
+- Используй понятные commit messages на русском языке
 - Один feature/fix на один commit
 - Не коммить Config.xcconfig с секретами
 - Используй Config.xcconfig.example как шаблон

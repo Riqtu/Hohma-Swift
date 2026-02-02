@@ -87,12 +87,6 @@ struct ChatView: View {
             }
         }
         .appBackground()
-        .simultaneousGesture(
-            TapGesture()
-                .onEnded { _ in
-                    hideKeyboard()
-                }
-        )
         .navigationTitle(viewModel.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -368,7 +362,7 @@ private struct ChatMessagesScrollView: View {
                     )
                 }
                 .coordinateSpace(name: "chatScroll")
-                .scrollDismissesKeyboard(.interactively)
+                .scrollDismissesKeyboard(.never)
                 .scrollIndicators(.hidden)
                 .onPreferenceChange(ChatScrollMetricsKey.self) { metrics in
                     scrollMetrics = metrics
@@ -432,10 +426,10 @@ private struct ChatMessagesScrollView: View {
             performScroll(animated)
 
             // Повторяем скролл немного позже, чтобы учесть изменение высоты
-            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 секунды
+            try? await Task.sleep(nanoseconds: 150_000_000)  // 0.15 секунды
             performScroll(false)
 
-            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 секунды
+            try? await Task.sleep(nanoseconds: 150_000_000)  // 0.15 секунды
             performScroll(false)
         }
     }
@@ -665,10 +659,6 @@ extension ChatView {
                 .foregroundColor(Color(.separator)),
             alignment: .bottom
         )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            hideKeyboard()
-        }
     }
 
     // MARK: - Messages View
@@ -702,12 +692,6 @@ extension ChatView {
                 messageForReaction = message
             }
         )
-    }
-
-    // MARK: - Helper Methods
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     // MARK: - Message Input View
@@ -764,7 +748,9 @@ extension ChatView {
                             }
 
                             // Если не изображение, пробуем загрузить как видео через URL
-                            if let videoTransferable = try? await item.loadTransferable(type: VideoFileTransferable.self) {
+                            if let videoTransferable = try? await item.loadTransferable(
+                                type: VideoFileTransferable.self)
+                            {
                                 let tempURL = FileManager.default.temporaryDirectory
                                     .appendingPathComponent(UUID().uuidString)
                                     .appendingPathExtension("mp4")
