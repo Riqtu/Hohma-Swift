@@ -73,7 +73,7 @@
 
 - Храни токены в Keychain через KeychainService
 - Никогда не храни секреты в коде
-- Используй Config.xcconfig для переменных окружения
+- Используй Debug.xcconfig / Release.xcconfig и Config.local.xcconfig для URL и секретов
 - Не логируй чувствительные данные (токены, пароли)
 - Используй AppLogger вместо print() для логирования
 
@@ -137,5 +137,5 @@
 
 - Используй понятные commit messages на русском языке
 - Один feature/fix на один commit
-- Не коммить Config.xcconfig с секретами
-- Используй Config.xcconfig.example как шаблон
+- Не коммить Config.local.xcconfig с секретами
+- Используй Config.local.xcconfig.example как шаблон

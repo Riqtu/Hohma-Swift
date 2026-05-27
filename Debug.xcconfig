@@ -1,0 +1,15 @@
+// Debug — локальная разработка (схема «Hohma Debug» → Build Configuration Debug)
+// Переопределения: скопируйте Config.local.xcconfig.example → Config.local.xcconfig
+
+SLASH = /
+
+API_URL = http:$(SLASH)$(SLASH)127.0.0.1:3001/api/trpc
+WS_URL = http:$(SLASH)$(SLASH)127.0.0.1:3123
+DOMAIN = http:$(SLASH)$(SLASH)127.0.0.1:3001
+TELEGRAM_DOMAIN = https:$(SLASH)$(SLASH)hohma.su
+
+// Секреты: Config.local.xcconfig | IP Mac для iPhone: Config.local.dev.xcconfig
+KINOPOISK_API_KEY =
+
+#include? "Config.local.xcconfig"
+#include? "Config.local.dev.xcconfig"

@@ -12,10 +12,11 @@ struct SettingsView: View {
     @State private var showingProfile = false
 
     private var appVersion: String {
-        if let version = Bundle.main.object(forInfoDictionaryKey: "APP_VERSION_DISPLAY") as? String {
-            return String(format: "settings.version".localized, version)
-        }
-        return String(format: "settings.version".localized, "1.3.1")
+        let short =
+            Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        let version = build.map { "\(short) (\($0))" } ?? short
+        return String(format: "settings.version".localized, version)
     }
 
     private var supportEmail: String {

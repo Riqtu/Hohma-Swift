@@ -60,17 +60,14 @@ struct FortuneWheelView: View {
                     )
                     .onAppear {
                         #if DEBUG
-                            AppLogger.shared.debug(
-                                "FortuneWheelView: Rendering sector \(index) with label '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)",
-                                category: .ui)
+                        AppLogger.shared.debug(
+                            "FortuneWheelView: Rendering sector \(index) with label '\(sector.label)', labelHidden: \(sector.labelHidden), id: \(sector.id)", category: .ui)
                         #endif
                     }
                 }
                 .rotationEffect(.degrees(wheelState.rotation))
                 .animation(
-                    wheelState.spinning
-                        ? .timingCurve(0.08, 0.72, 0.12, 1.0, duration: wheelState.speed)
-                        : .default,
+                    wheelState.spinning ? .easeInOut(duration: wheelState.speed) : .default,
                     value: wheelState.rotation
                 )
             }

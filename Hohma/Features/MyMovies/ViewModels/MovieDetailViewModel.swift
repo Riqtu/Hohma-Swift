@@ -33,7 +33,8 @@ final class MovieDetailViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                    errorMessage = ErrorHandler.shared.handle(
+                        error, context: #function, category: .general)
                     isLoading = false
                 }
             }
@@ -45,13 +46,13 @@ final class MovieDetailViewModel: ObservableObject {
         let current = userMovie?.isWatched ?? false
         let newValue = !current
         let newRating = newValue ? userMovie?.userRating : nil
-        
+
         // Оптимистичное обновление - всегда выполняется сразу
         updateLocalState(isWatched: newValue, userRating: newRating)
-        
+
         // Отменяем предыдущий запрос, если он еще выполняется
         updateTask?.cancel()
-        
+
         // Отправка на сервер в фоне
         update(isWatched: newValue, userRating: newRating)
     }
@@ -59,27 +60,29 @@ final class MovieDetailViewModel: ObservableObject {
     func updateRating(_ rating: Int) {
         // Оптимистичное обновление - всегда выполняется сразу
         updateLocalState(isWatched: true, userRating: rating)
-        
+
         // Отменяем предыдущий таймер
         ratingUpdateTimer?.invalidate()
-        
+
         // Debounce: отправляем запрос на сервер через 0.3 секунды после последнего изменения
-        ratingUpdateTimer = Timer.scheduledTimer(withTimeInterval: AppConstants.ratingUpdateInterval, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            // Отменяем предыдущий запрос, если он еще выполняется
-            self.updateTask?.cancel()
-            // Отправка на сервер в фоне
-            self.update(isWatched: true, userRating: rating)
+        ratingUpdateTimer = Timer.scheduledTimer(
+            withTimeInterval: AppConstants.ratingUpdateInterval, repeats: false
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.updateTask?.cancel()
+                self.update(isWatched: true, userRating: rating)
+            }
         }
     }
-    
+
     private func updateLocalState(isWatched: Bool?, userRating: Int?) {
         guard var currentMovie = movie else { return }
-        
+
         if let existingUserMovie = currentMovie.userMovies?.first {
             // Определяем новое значение isWatched
             let newIsWatched = isWatched ?? existingUserMovie.isWatched
-            
+
             // Для userRating: если передано конкретное значение (включая 0), используем его
             // Если nil, сохраняем старое значение только если isWatched не меняется на false
             let newUserRating: Int?
@@ -93,7 +96,7 @@ final class MovieDetailViewModel: ObservableObject {
                 // Сохраняем старое значение
                 newUserRating = existingUserMovie.userRating
             }
-            
+
             // Создаем обновленную запись
             let updatedUserMovie = UserMovieRecord(
                 id: existingUserMovie.id,
@@ -114,17 +117,17 @@ final class MovieDetailViewModel: ObservableObject {
             )
             currentMovie.userMovies = [newUserMovie]
         }
-        
+
         movie = currentMovie
     }
 
     private func update(isWatched: Bool?, userRating: Int?) {
         // Сохраняем текущее состояние для отката в случае ошибки
         let previousMovie = movie
-        
+
         // Отменяем предыдущую задачу, если она еще выполняется
         updateTask?.cancel()
-        
+
         isUpdating = true
         updateTask = Task {
             do {
@@ -133,10 +136,10 @@ final class MovieDetailViewModel: ObservableObject {
                     isWatched: isWatched,
                     userRating: userRating
                 )
-                
+
                 // Проверяем, не была ли задача отменена
                 if Task.isCancelled { return }
-                
+
                 await MainActor.run {
                     var updatedMovie = result.movie
                     updatedMovie.userMovies = [result.userMovie]
@@ -146,13 +149,14 @@ final class MovieDetailViewModel: ObservableObject {
             } catch {
                 // Проверяем, не была ли задача отменена
                 if Task.isCancelled { return }
-                
+
                 await MainActor.run {
                     // Откатываем изменения в случае ошибки
                     if let previous = previousMovie {
                         movie = previous
                     }
-                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                    errorMessage = ErrorHandler.shared.handle(
+                        error, context: #function, category: .general)
                     isUpdating = false
                 }
             }
@@ -170,11 +174,11 @@ final class MovieDetailViewModel: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = ErrorHandler.shared.handle(error, context: #function, category: .general)
+                    errorMessage = ErrorHandler.shared.handle(
+                        error, context: #function, category: .general)
                     isUpdating = false
                 }
             }
         }
     }
 }
-

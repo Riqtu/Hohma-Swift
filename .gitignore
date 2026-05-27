@@ -25,9 +25,10 @@ dist-ssr
 
 .env
 
-# iOS Configuration
+# iOS Configuration (секреты и локальные переопределения)
+Config.local.xcconfig
+Config.local.dev.xcconfig
 Hohma/Config.xcconfig
-*.xcconfig
 
 # Xcode
 .DS_Store

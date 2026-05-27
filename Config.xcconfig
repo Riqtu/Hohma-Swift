@@ -1,0 +1,12 @@
+//
+//  Config.xcconfig
+//  Hohma
+//
+//  Configuration file for build settings
+//
+
+// API Keys - Set these values for your environment
+KINOPOISK_API_KEY = caea9cd963mshe4b9b162980192bp1d7dddjsned41b5c38a7d
+
+// Other configuration
+// Add other environment-specific settings here

@@ -31,7 +31,7 @@ enum GenerationStatus: String, Codable, CaseIterable {
     case descriptionReady = "DESCRIPTION_READY"
     case completed = "COMPLETED"
     case failed = "FAILED"
-    
+
     var displayName: String {
         switch self {
         case .pending: return "Ожидание..."
@@ -50,7 +50,7 @@ enum MovieBattleFilterType: String, Codable, CaseIterable {
     case following = "following"
     case followers = "followers"
     case all = "all"
-    
+
     var displayName: String {
         switch self {
         case .my: return "Мои"
@@ -70,6 +70,7 @@ struct MovieBattle: Codable, Identifiable {
     let maxMovies: Int
     let minParticipants: Int
     let votingTimeSeconds: Int?
+    let votingRoundEndsAt: String?
     let currentRound: Int
     let moviesRemaining: Int
     let createdAt: String
@@ -84,7 +85,7 @@ struct MovieBattle: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, status, isPrivate, minMovies, maxMovies, minParticipants
-        case votingTimeSeconds, currentRound, moviesRemaining
+        case votingTimeSeconds, votingRoundEndsAt, currentRound, moviesRemaining
         case createdAt, updatedAt, startedAt, finishedAt
         case creator, participants, movies, votes
         case _count
@@ -107,6 +108,13 @@ struct MovieBattle: Codable, Identifiable {
         maxMovies = try container.decode(Int.self, forKey: .maxMovies)
         minParticipants = try container.decode(Int.self, forKey: .minParticipants)
         votingTimeSeconds = try container.decodeIfPresent(Int.self, forKey: .votingTimeSeconds)
+
+        if let endsAt = try? container.decodeIfPresent(String.self, forKey: .votingRoundEndsAt) {
+            votingRoundEndsAt = endsAt == "<null>" ? nil : endsAt
+        } else {
+            votingRoundEndsAt = nil
+        }
+
         currentRound = try container.decode(Int.self, forKey: .currentRound)
         moviesRemaining = try container.decode(Int.self, forKey: .moviesRemaining)
         createdAt = try container.decode(String.self, forKey: .createdAt)
@@ -125,12 +133,13 @@ struct MovieBattle: Codable, Identifiable {
         }
 
         creator = try container.decode(MovieBattleCreator.self, forKey: .creator)
-        participants = try container.decodeIfPresent([MovieBattleParticipant].self, forKey: .participants)
+        participants = try container.decodeIfPresent(
+            [MovieBattleParticipant].self, forKey: .participants)
         movies = try container.decodeIfPresent([MovieCard].self, forKey: .movies)
         votes = try container.decodeIfPresent([Vote].self, forKey: .votes)
         _count = try container.decodeIfPresent(MovieBattleCount.self, forKey: ._count)
     }
-    
+
     // Вычисляемые свойства для получения количества
     var participantCount: Int {
         if let count = _count?.participants {
@@ -138,12 +147,37 @@ struct MovieBattle: Codable, Identifiable {
         }
         return participants?.count ?? 0
     }
-    
+
     var movieCount: Int {
         if let count = _count?.movies {
             return count
         }
         return movies?.count ?? 0
+    }
+
+    var votingRoundEndDate: Date? {
+        guard let votingRoundEndsAt else { return nil }
+        return MovieBattle.parseISO8601(votingRoundEndsAt)
+    }
+
+    static func parseISO8601(_ value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSXXXXX"
+        if let date = formatter.date(from: value) {
+            return date
+        }
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXXXX"
+        if let date = formatter.date(from: value) {
+            return date
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: value) {
+            return date
+        }
+        iso.formatOptions = [.withInternetDateTime]
+        return iso.date(from: value)
     }
 }
 
@@ -211,12 +245,15 @@ struct MovieCard: Codable, Identifiable {
         id = try container.decode(String.self, forKey: .id)
         movieBattleId = try container.decode(String.self, forKey: .movieBattleId)
         originalTitle = try container.decode(String.self, forKey: .originalTitle)
-        originalDescription = try container.decodeIfPresent(String.self, forKey: .originalDescription)
+        originalDescription = try container.decodeIfPresent(
+            String.self, forKey: .originalDescription)
         originalPosterUrl = try container.decodeIfPresent(String.self, forKey: .originalPosterUrl)
-        originalKinopoiskId = try container.decodeIfPresent(String.self, forKey: .originalKinopoiskId)
+        originalKinopoiskId = try container.decodeIfPresent(
+            String.self, forKey: .originalKinopoiskId)
         generatedTitle = try container.decodeIfPresent(String.self, forKey: .generatedTitle)
         generatedPosterUrl = try container.decodeIfPresent(String.self, forKey: .generatedPosterUrl)
-        generatedDescription = try container.decodeIfPresent(String.self, forKey: .generatedDescription)
+        generatedDescription = try container.decodeIfPresent(
+            String.self, forKey: .generatedDescription)
         generationStatus = try container.decode(GenerationStatus.self, forKey: .generationStatus)
         generationError = try container.decodeIfPresent(String.self, forKey: .generationError)
         addedBy = try container.decodeIfPresent(MovieBattleUser.self, forKey: .addedBy)
@@ -239,7 +276,7 @@ struct MovieCard: Codable, Identifiable {
         // Если генерация завершена, но названия нет, показываем оригинальное
         return originalTitle
     }
-    
+
     // Проверка, готово ли название для отображения
     var hasGeneratedTitle: Bool {
         if let generated = generatedTitle, !generated.isEmpty {
@@ -309,3 +346,7 @@ struct VoteRequest: Codable {
     let movieCardId: String
 }
 
+struct FinalizeVotingRoundResponse: Codable {
+    let finalized: Bool
+    let battle: MovieBattle
+}

@@ -552,10 +552,12 @@ struct CreateMovieBattleView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var name: String = "Тайный фильм"
-    @State private var minMovies: Int = 4
+    @State private var minMovies: Int = 2
     @State private var maxMovies: Int = 8
     @State private var minParticipants: Int = 1
     @State private var isPrivate: Bool = false
+    @State private var useVotingTimer: Bool = false
+    @State private var votingTimeSeconds: Int = 60
 
     var body: some View {
         NavigationView {
@@ -567,6 +569,15 @@ struct CreateMovieBattleView: View {
                     Stepper(
                         "Минимум участников: \(minParticipants)", value: $minParticipants,
                         in: 1...20)
+                    Toggle("Таймер голосования", isOn: $useVotingTimer)
+                    if useVotingTimer {
+                        Stepper(
+                            "Время на раунд: \(votingTimeSeconds) сек",
+                            value: $votingTimeSeconds,
+                            in: 10...300,
+                            step: 10
+                        )
+                    }
                     Toggle("Приватная игра", isOn: $isPrivate)
                 }
             }
@@ -585,7 +596,7 @@ struct CreateMovieBattleView: View {
                             minMovies: minMovies,
                             maxMovies: maxMovies,
                             minParticipants: minParticipants,
-                            votingTimeSeconds: nil,
+                            votingTimeSeconds: useVotingTimer ? votingTimeSeconds : nil,
                             isPrivate: isPrivate
                         )
                         Task {

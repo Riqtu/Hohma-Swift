@@ -254,9 +254,9 @@ final class StreamPlayer: ObservableObject {
         // Для потокового видео просто перезапускаем без задержки
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 секунды
             if let player = self.player {
-                _ = try? await player.seek(to: .zero)
+                await player.seek(to: .zero)
                 player.play()
             }
         }

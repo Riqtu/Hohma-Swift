@@ -175,26 +175,28 @@ class RaceAudioService: NSObject, ObservableObject {
 
 // MARK: - AVAudioPlayerDelegate
 extension RaceAudioService: AVAudioPlayerDelegate {
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        if player == backgroundPlayer {
-            // Фоновая музыка должна повторяться бесконечно, но на всякий случай перезапускаем
-            if let theme = currentTheme {
-                playBackgroundMusic(for: theme)
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            if player == backgroundPlayer {
+                if let theme = currentTheme {
+                    playBackgroundMusic(for: theme)
+                }
+            } else if player == horseSoundPlayer {
+                horseSoundPlayer = nil
             }
-        } else if player == horseSoundPlayer {
-            // Звук лошади закончился - это нормально
-            horseSoundPlayer = nil
         }
     }
 
-    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        AppLogger.shared.error(
-            "Decode error: \(error?.localizedDescription ?? "unknown")", category: .general)
-        if player == backgroundPlayer {
-            backgroundPlayer = nil
-            currentTheme = nil
-        } else if player == horseSoundPlayer {
-            horseSoundPlayer = nil
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            AppLogger.shared.error(
+                "Decode error: \(error?.localizedDescription ?? "unknown")", category: .general)
+            if player == backgroundPlayer {
+                backgroundPlayer = nil
+                currentTheme = nil
+            } else if player == horseSoundPlayer {
+                horseSoundPlayer = nil
+            }
         }
     }
 }

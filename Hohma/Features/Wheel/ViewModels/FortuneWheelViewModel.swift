@@ -28,6 +28,9 @@ class FortuneWheelViewModel: ObservableObject {
     private var socketService: SocketIOServiceV2
     private var wheelService = FortuneWheelService.shared
     private var cancellables = Set<AnyCancellable>()
+    private var videoCancellables = Set<AnyCancellable>()
+    private var healthTimers: [Timer] = []
+    private var roomUsersObserver: NSObjectProtocol?
 
     private let wheelData: WheelWithRelations
     private let currentUser: AuthUser?
@@ -61,13 +64,14 @@ class FortuneWheelViewModel: ObservableObject {
 
         // Настраиваем сокет в wheelState если он не настроен
         if wheelState.socket == nil {
-            AppLogger.shared.debug("🔧 FortuneWheelViewModel: Setting up socket in wheelState", category: .ui)
+            AppLogger.shared.debug(
+                "🔧 FortuneWheelViewModel: Setting up socket in wheelState", category: .ui)
             wheelState.setupSocket(socketService, roomId: wheelData.id)
         }
 
         // Присоединяемся к комнате
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды
+            try? await Task.sleep(nanoseconds: 300_000_000)  // 0.3 секунды
             self.joinRoom()
         }
     }
@@ -117,20 +121,20 @@ class FortuneWheelViewModel: ObservableObject {
             self?.handlePayoutBets(wheelId: wheelId, winningSectorId: winningSectorId)
         }
 
-        // Настраиваем видео фон если есть
-        if !wheelState.backVideo.isEmpty {
-            setupVideoBackground()
-        }
+        prepareVideoPlaybackForCurrentTheme()
     }
 
     private func setupSocket() {
         AppLogger.shared.debug("🔧 FortuneWheelViewModel: Setting up socket...", category: .ui)
-        AppLogger.shared.debug("- socketService.isConnected: \(socketService.isConnected)", category: .ui)
+        AppLogger.shared.debug(
+            "- socketService.isConnected: \(socketService.isConnected)", category: .ui)
 
         // Подписываемся на изменения состояния сокета
         socketService.$isConnected
             .sink { [weak self] isConnected in
-                AppLogger.shared.debug("🔧 FortuneWheelViewModel: Socket connection state changed: \(isConnected)", category: .ui)
+                AppLogger.shared.debug(
+                    "🔧 FortuneWheelViewModel: Socket connection state changed: \(isConnected)",
+                    category: .ui)
                 self?.isSocketReady = isConnected
                 if isConnected {
                     // Сбрасываем флаг авторизации при успешном подключении
@@ -138,7 +142,9 @@ class FortuneWheelViewModel: ObservableObject {
 
                     // Настраиваем сокет в wheelState если он еще не настроен
                     if self?.wheelState.socket == nil {
-                        AppLogger.shared.debug("🔧 FortuneWheelViewModel: Setting up socket in wheelState", category: .ui)
+                        AppLogger.shared.debug(
+                            "🔧 FortuneWheelViewModel: Setting up socket in wheelState",
+                            category: .ui)
                         self?.wheelState.setupSocket(
                             self?.socketService ?? SocketIOServiceV2(),
                             roomId: self?.wheelData.id ?? "")
@@ -146,7 +152,7 @@ class FortuneWheelViewModel: ObservableObject {
 
                     // Добавляем небольшую задержку для стабилизации соединения
                     Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды
+                        try? await Task.sleep(nanoseconds: 200_000_000)  // 0.2 секунды
                         self?.joinRoom()
                     }
                 }
@@ -165,21 +171,27 @@ class FortuneWheelViewModel: ObservableObject {
         // Настраиваем сокет для wheelState
         wheelState.setupSocket(socketService, roomId: wheelData.id)
 
-        // Подписываемся на обновления пользователей комнаты
-        NotificationCenter.default.addObserver(
+        if let previous = roomUsersObserver {
+            NotificationCenter.default.removeObserver(previous)
+        }
+        roomUsersObserver = NotificationCenter.default.addObserver(
             forName: .roomUsersUpdated,
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            AppLogger.shared.debug("👥 FortuneWheelViewModel: Received roomUsersUpdated notification", category: .ui)
+            AppLogger.shared.debug(
+                "👥 FortuneWheelViewModel: Received roomUsersUpdated notification", category: .ui)
             if let users = notification.object as? [AuthUser] {
-                AppLogger.shared.debug("👥 FortuneWheelViewModel: Updating room users: \(users.count)", category: .ui)
+                AppLogger.shared.debug(
+                    "👥 FortuneWheelViewModel: Updating room users: \(users.count)", category: .ui)
                 Task { @MainActor in
                     self?.updateRoomUsers(users)
                 }
             } else {
-                AppLogger.shared.error("Failed to cast notification object to [AuthUser]", category: .ui)
-                AppLogger.shared.error("Object type: \(type(of: notification.object))", category: .ui)
+                AppLogger.shared.error(
+                    "Failed to cast notification object to [AuthUser]", category: .ui)
+                AppLogger.shared.error(
+                    "Object type: \(type(of: notification.object))", category: .ui)
             }
         }
 
@@ -191,35 +203,51 @@ class FortuneWheelViewModel: ObservableObject {
     }
 
     private func startSocketHealthMonitoring() {
-        // Проверяем здоровье сокета каждые 30 секунд
-        Timer.scheduledTimer(withTimeInterval: AppConstants.wheelUpdateInterval, repeats: true) { [weak self] _ in
+        invalidateHealthTimers()
+
+        let runLoop = RunLoop.main
+        let t1 = Timer(timeInterval: AppConstants.wheelUpdateInterval, repeats: true) {
+            [weak self] _ in
             Task { @MainActor in
                 self?.checkSocketHealth()
             }
         }
+        runLoop.add(t1, forMode: .common)
+        healthTimers.append(t1)
 
-        // Обновляем данные колеса каждые 60 секунд для поддержания актуальности
-        Timer.scheduledTimer(withTimeInterval: AppConstants.wheelStateUpdateInterval, repeats: true) { [weak self] _ in
+        let t2 = Timer(timeInterval: AppConstants.wheelStateUpdateInterval, repeats: true) {
+            [weak self] _ in
             Task { @MainActor in
                 await self?.refreshWheelDataSilently()
             }
         }
+        runLoop.add(t2, forMode: .common)
+        healthTimers.append(t2)
 
-        AppLogger.shared.debug("🏥 FortuneWheelViewModel: Socket health monitoring started", category: .ui)
+        AppLogger.shared.debug(
+            "🏥 FortuneWheelViewModel: Socket health monitoring started", category: .ui)
         AppLogger.shared.debug("Wheel data auto-refresh started (every 60 seconds)", category: .ui)
+    }
+
+    private func invalidateHealthTimers() {
+        healthTimers.forEach { $0.invalidate() }
+        healthTimers.removeAll()
     }
 
     private func joinRoom() {
         AppLogger.shared.debug("Joining room: \(wheelData.id)", category: .ui)
-        AppLogger.shared.debug("- socketService.isConnected: \(socketService.isConnected)", category: .ui)
-        AppLogger.shared.debug("- wheelState.socket exists: \(wheelState.socket != nil)", category: .ui)
+        AppLogger.shared.debug(
+            "- socketService.isConnected: \(socketService.isConnected)", category: .ui)
+        AppLogger.shared.debug(
+            "- wheelState.socket exists: \(wheelState.socket != nil)", category: .ui)
         wheelState.joinRoom(wheelData.id, userId: currentUser)
 
         // Инициализируем список пользователей с текущим пользователем
         if let currentUser = currentUser {
             updateRoomUsers([currentUser])
             AppLogger.shared.debug(
-                "FortuneWheelViewModel: Initialized room users with current user: \(String(describing: currentUser.username))", category: .ui)
+                "FortuneWheelViewModel: Initialized room users with current user: \(String(describing: currentUser.username))",
+                category: .ui)
         }
 
         // Обновляем данные колеса при подключении к комнате
@@ -229,30 +257,72 @@ class FortuneWheelViewModel: ObservableObject {
         }
     }
 
-    func setupVideoBackground() {
-        guard let videoURL = URL(string: wheelState.backVideo) else { return }
+    /// Готово к игре без видео или с относительным URL из темы (`/themeVideo/...`).
+    private func prepareVideoPlaybackForCurrentTheme() {
+        let raw = wheelState.backVideo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, resolvedVideoURL(for: raw) != nil else {
+            videoCancellables.removeAll()
+            isVideoReady = true
+            isLoading = false
+            return
+        }
+        setupVideoBackground()
+    }
 
-        // Используем новый StreamVideoService
+    private func resolvedVideoURL(for raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let absolute = URL(string: trimmed), absolute.scheme != nil {
+            return absolute
+        }
+
+        guard let domain = Bundle.main.object(forInfoDictionaryKey: "DOMAIN") as? String,
+            !domain.isEmpty
+        else {
+            return URL(string: trimmed)
+        }
+
+        let base = domain.hasSuffix("/") ? String(domain.dropLast()) : domain
+        if trimmed.hasPrefix("/") {
+            return URL(string: base + trimmed)
+        }
+        return URL(string: base + "/" + trimmed)
+    }
+
+    func setupVideoBackground() {
+        videoCancellables.removeAll()
+
+        let raw = wheelState.backVideo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let videoURL = resolvedVideoURL(for: raw) else {
+            isVideoReady = true
+            isLoading = false
+            return
+        }
+
         streamPlayer = streamVideoService.getStreamPlayer(for: videoURL)
 
-        // Подписываемся на изменения состояния
         streamPlayer?.$isReady
             .sink { [weak self] isReady in
                 self?.isVideoReady = isReady
             }
-            .store(in: &cancellables)
+            .store(in: &videoCancellables)
 
         streamPlayer?.$isLoading
             .sink { [weak self] isLoading in
                 self?.isLoading = isLoading
             }
-            .store(in: &cancellables)
+            .store(in: &videoCancellables)
 
         streamPlayer?.$hasError
             .sink { [weak self] hasError in
-                self?.hasError = hasError
+                guard let self else { return }
+                self.hasError = hasError
+                if hasError {
+                    self.isVideoReady = true
+                }
             }
-            .store(in: &cancellables)
+            .store(in: &videoCancellables)
     }
 
     func pauseVideo() {
@@ -310,11 +380,11 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 let updatedSector = try await wheelService.updateSector(sectorId, eliminated: true)
                 AppLogger.shared.debug(
-                    "FortuneWheelViewModel: Sector eliminated successfully: \(updatedSector.name)", category: .ui)
+                    "FortuneWheelViewModel: Sector eliminated successfully: \(updatedSector.name)",
+                    category: .ui)
 
-                // Обновляем данные с сервера
-                wheelState.requestSectors()
-                AppLogger.shared.info("Wheel state updated from server", category: .ui)
+                // Порядок на колесе уже задан локально (shuffle); только синхронизируем поля с API
+                wheelState.updateSector(updatedSector)
 
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
@@ -322,7 +392,8 @@ class FortuneWheelViewModel: ObservableObject {
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
-                AppLogger.shared.error("Decoding error for sector update: \(decodingError)", category: .ui)
+                AppLogger.shared.error(
+                    "Decoding error for sector update: \(decodingError)", category: .ui)
             } catch {
                 self.error = "Ошибка обновления сектора: \(error.localizedDescription)"
                 AppLogger.shared.error("Sector update error: \(error)", category: .ui)
@@ -336,11 +407,10 @@ class FortuneWheelViewModel: ObservableObject {
                 let updatedSector = try await wheelService.updateSector(
                     sectorId, eliminated: false, winner: true)
                 AppLogger.shared.debug(
-                    "FortuneWheelViewModel: Sector winner set successfully: \(updatedSector.name)", category: .ui)
+                    "FortuneWheelViewModel: Sector winner set successfully: \(updatedSector.name)",
+                    category: .ui)
 
-                // Обновляем данные с сервера
-                wheelState.requestSectors()
-                AppLogger.shared.info("Wheel state updated from server", category: .ui)
+                wheelState.updateSector(updatedSector)
 
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
@@ -348,7 +418,8 @@ class FortuneWheelViewModel: ObservableObject {
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
-                AppLogger.shared.error("Decoding error for winner update: \(decodingError)", category: .ui)
+                AppLogger.shared.error(
+                    "Decoding error for winner update: \(decodingError)", category: .ui)
             } catch {
                 self.error = "Ошибка обновления победителя: \(error.localizedDescription)"
                 AppLogger.shared.error("Winner update error: \(error)", category: .ui)
@@ -360,15 +431,19 @@ class FortuneWheelViewModel: ObservableObject {
         Task {
             do {
                 let updatedWheel = try await wheelService.updateWheelStatus(wheelId, status: status)
-                AppLogger.shared.debug("Статус колеса обновлен: \(String(describing: updatedWheel.status))", category: .ui)
+                AppLogger.shared.debug(
+                    "Статус колеса обновлен: \(String(describing: updatedWheel.status))",
+                    category: .ui)
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
-                AppLogger.shared.debug("Authorization required for wheel status update", category: .ui)
+                AppLogger.shared.debug(
+                    "Authorization required for wheel status update", category: .ui)
             } catch let decodingError as DecodingError {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
                 AppLogger.shared.error(
-                    "FortuneWheelViewModel: Decoding error for wheel status update", error: decodingError, category: .ui)
+                    "FortuneWheelViewModel: Decoding error for wheel status update",
+                    error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка обновления статуса колеса: \(error.localizedDescription)"
                 AppLogger.shared.error("Wheel status update error: \(error)", category: .ui)
@@ -377,11 +452,27 @@ class FortuneWheelViewModel: ObservableObject {
     }
 
     private func handlePayoutBets(wheelId: String, winningSectorId: String) {
+        guard AppConstants.fortuneWheelAutomaticPayoutEnabled else {
+            AppLogger.shared.debug(
+                "FortuneWheel: payout пропущен (fortuneWheelAutomaticPayoutEnabled = false)",
+                category: .ui)
+            return
+        }
+
+        let ownerId = wheelData.userId ?? wheelData.user?.id
+        guard ownerId == TRPCService.shared.currentUser?.id else {
+            AppLogger.shared.debug(
+                "FortuneWheel: payout только автором колеса (текущий пользователь не владелец)",
+                category: .ui)
+            return
+        }
+
         Task {
             do {
                 try await wheelService.payoutBets(
                     wheelId: wheelId, winningSectorId: winningSectorId)
-                AppLogger.shared.debug("Ставки выплачены для сектора: \(winningSectorId)", category: .ui)
+                AppLogger.shared.debug(
+                    "Ставки выплачены для сектора: \(winningSectorId)", category: .ui)
             } catch URLError.userAuthenticationRequired {
                 // 401 ошибка - пользователь будет автоматически перенаправлен на экран авторизации
                 AppLogger.shared.debug("Authorization required for payout", category: .ui)
@@ -446,12 +537,14 @@ class FortuneWheelViewModel: ObservableObject {
         AppLogger.shared.debug("- Connected: \(socketService.isConnected)", category: .ui)
         AppLogger.shared.debug("- Connecting: \(socketService.isConnecting)", category: .ui)
         AppLogger.shared.error("- Error: \(socketService.error ?? "none")", category: .ui)
-        AppLogger.shared.debug("- Connection state valid: \(socketService.validateConnectionState())", category: .ui)
+        AppLogger.shared.debug(
+            "- Connection state valid: \(socketService.validateConnectionState())", category: .ui)
 
         // Если сокет помечен как подключенный, но состояние невалидно, принудительно переподключаемся
         if socketService.isConnected && !socketService.validateConnectionState() {
             AppLogger.shared.warning(
-                "FortuneWheelViewModel: Socket marked as connected but state is invalid, forcing reconnect", category: .socket)
+                "FortuneWheelViewModel: Socket marked as connected but state is invalid, forcing reconnect",
+                category: .socket)
             reconnectSocket()
         }
     }
@@ -460,16 +553,17 @@ class FortuneWheelViewModel: ObservableObject {
 
     private func updateRoomUsers(_ users: [AuthUser]) {
         AppLogger.shared.debug(
-            "FortuneWheelViewModel: Updating roomUsers array from \(self.roomUsers.count) to \(users.count)", category: .ui)
-            self.roomUsers = users
-            AppLogger.shared.debug("👥 FortuneWheelViewModel: Room users updated: \(users.count) users", category: .ui)
+            "FortuneWheelViewModel: Updating roomUsers array from \(self.roomUsers.count) to \(users.count)",
+            category: .ui)
+        roomUsers = users
+        AppLogger.shared.debug(
+            "👥 FortuneWheelViewModel: Room users updated: \(users.count) users", category: .ui)
 
-            // Выводим имена пользователей для отладки
-            for (index, user) in users.enumerated() {
-                AppLogger.shared.debug(
-                    "FortuneWheelViewModel: User \(index + 1): \(String(describing: user.username)) (\(user.firstName ?? "no name"))", category: .ui)
-            }
-        self.roomUsers = users
+        for (index, user) in users.enumerated() {
+            AppLogger.shared.debug(
+                "FortuneWheelViewModel: User \(index + 1): \(String(describing: user.username)) (\(user.firstName ?? "no name"))",
+                category: .ui)
+        }
     }
 
     // MARK: - Sector Management
@@ -479,13 +573,15 @@ class FortuneWheelViewModel: ObservableObject {
             do {
                 AppLogger.shared.debug("Creating sector: \(sector.name)", category: .ui)
                 let createdSector = try await wheelService.createSector(sector)
-                AppLogger.shared.info("Sector created successfully: \(createdSector.name)", category: .ui)
+                AppLogger.shared.info(
+                    "Sector created successfully: \(createdSector.name)", category: .ui)
 
                 // Запрашиваем актуальные данные с сервера
                 AppLogger.shared.debug("Refreshing sectors from server...", category: .ui)
                 let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
                 AppLogger.shared.debug(
-                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server", category: .ui)
+                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server",
+                    category: .ui)
 
                 // Находим созданный сектор с полными данными
                 if let sectorWithFullData = updatedSectors.first(where: {
@@ -501,12 +597,14 @@ class FortuneWheelViewModel: ObservableObject {
                         as? [String: Any]
                     {
                         AppLogger.shared.debug(
-                            "FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)", category: .socket)
+                            "FortuneWheelViewModel: Emitting sector:created event to room \(wheelData.id)",
+                            category: .socket)
                         socketService.emitToRoom(
                             .sectorCreated, roomId: wheelData.id, data: sectorDict)
                     }
                 } else {
-                    AppLogger.shared.warning("Created sector not found in updated data", category: .ui)
+                    AppLogger.shared.warning(
+                        "Created sector not found in updated data", category: .ui)
                     wheelState.setSectors(updatedSectors)
                 }
 
@@ -516,7 +614,8 @@ class FortuneWheelViewModel: ObservableObject {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
                 AppLogger.shared.error(
-                    "FortuneWheelViewModel: Decoding error for sector creation", error: decodingError, category: .ui)
+                    "FortuneWheelViewModel: Decoding error for sector creation",
+                    error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка создания сектора: \(error.localizedDescription)"
                 AppLogger.shared.error("Sector creation error: \(error)", category: .ui)
@@ -536,14 +635,16 @@ class FortuneWheelViewModel: ObservableObject {
         // Проверяем подключение сокета
 
         if !socketService.isConnected {
-            AppLogger.shared.warning("Socket not connected, attempting to connect...", category: .ui)
+            AppLogger.shared.warning(
+                "Socket not connected, attempting to connect...", category: .ui)
             socketService.connect()
 
             // Ждем подключения (уменьшили задержку)
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 секунды
+                try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5 секунды
                 if self.socketService.isConnected {
-                    AppLogger.shared.info("Socket connected, proceeding with deletion", category: .ui)
+                    AppLogger.shared.info(
+                        "Socket connected, proceeding with deletion", category: .ui)
                     self.performSectorDeletion(sector)
                 } else {
                     AppLogger.shared.error("Socket still not connected after retry", category: .ui)
@@ -555,7 +656,8 @@ class FortuneWheelViewModel: ObservableObject {
 
         // Проверяем, что wheelState настроен с сокетом
         if wheelState.socket == nil {
-            AppLogger.shared.warning("wheelState not configured with socket, setting up...", category: .ui)
+            AppLogger.shared.warning(
+                "wheelState not configured with socket, setting up...", category: .ui)
             wheelState.setupSocket(socketService, roomId: wheelData.id)
         }
 
@@ -573,7 +675,8 @@ class FortuneWheelViewModel: ObservableObject {
                 AppLogger.shared.debug("Refreshing sectors from server...", category: .ui)
                 let updatedSectors = try await wheelService.getSectorsByWheelId(wheelData.id)
                 AppLogger.shared.debug(
-                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server", category: .ui)
+                    "FortuneWheelViewModel: Received \(updatedSectors.count) sectors from server",
+                    category: .ui)
 
                 // Обновляем состояние колеса актуальными данными
                 wheelState.setSectors(updatedSectors)
@@ -581,7 +684,8 @@ class FortuneWheelViewModel: ObservableObject {
 
                 // Отправляем событие в том же формате, что и веб-клиент
                 AppLogger.shared.debug(
-                    "FortuneWheelViewModel: Emitting sector:removed event to room \(wheelData.id)", category: .socket)
+                    "FortuneWheelViewModel: Emitting sector:removed event to room \(wheelData.id)",
+                    category: .socket)
                 socketService.emitToRoom(.sectorRemoved, roomId: wheelData.id, data: sector.id)
 
                 // Показываем уведомление об успехе
@@ -593,7 +697,8 @@ class FortuneWheelViewModel: ObservableObject {
                 self.error =
                     "Ошибка декодирования ответа сервера: \(decodingError.localizedDescription)"
                 AppLogger.shared.error(
-                    "FortuneWheelViewModel: Decoding error for sector deletion", error: decodingError, category: .ui)
+                    "FortuneWheelViewModel: Decoding error for sector deletion",
+                    error: decodingError, category: .ui)
             } catch {
                 self.error = "Ошибка удаления сектора: \(error.localizedDescription)"
                 AppLogger.shared.error("Sector deletion error: \(error)", category: .ui)
@@ -606,7 +711,8 @@ class FortuneWheelViewModel: ObservableObject {
     func refreshWheelData() {
         Task {
             do {
-                AppLogger.shared.debug("Refreshing wheel data for ID: \(wheelData.id)", category: .ui)
+                AppLogger.shared.debug(
+                    "Refreshing wheel data for ID: \(wheelData.id)", category: .ui)
                 let updatedWheelData = try await wheelService.getWheelById(wheelData.id)
 
                 // Обновляем секторы
@@ -618,6 +724,7 @@ class FortuneWheelViewModel: ObservableObject {
                     wheelState.mainColor = theme.mainColor
                     wheelState.font = theme.font
                     wheelState.backVideo = theme.backgroundVideoURL
+                    prepareVideoPlaybackForCurrentTheme()
                 }
 
                 AppLogger.shared.info("Wheel data refreshed successfully", category: .ui)
@@ -631,7 +738,8 @@ class FortuneWheelViewModel: ObservableObject {
 
     func refreshWheelDataSilently() async {
         do {
-            AppLogger.shared.debug("Silently refreshing wheel data for ID: \(wheelData.id)", category: .ui)
+            AppLogger.shared.debug(
+                "Silently refreshing wheel data for ID: \(wheelData.id)", category: .ui)
             let updatedWheelData = try await wheelService.getWheelById(wheelData.id)
 
             // Обновляем секторы
@@ -643,6 +751,7 @@ class FortuneWheelViewModel: ObservableObject {
                 wheelState.mainColor = theme.mainColor
                 wheelState.font = theme.font
                 wheelState.backVideo = theme.backgroundVideoURL
+                prepareVideoPlaybackForCurrentTheme()
             }
 
             AppLogger.shared.info("Wheel data silently refreshed successfully", category: .ui)
@@ -659,15 +768,19 @@ class FortuneWheelViewModel: ObservableObject {
     func cleanup() {
         AppLogger.shared.debug("Starting cleanup", category: .ui)
 
+        invalidateHealthTimers()
+
         // Принудительно останавливаем вращение колеса
         wheelState.forceStopSpinning()
         wheelState.cleanup()
         socketService.disconnect()
         cancellables.removeAll()
+        videoCancellables.removeAll()
 
-        // Отписываемся от уведомлений
-        NotificationCenter.default.removeObserver(
-            self, name: .roomUsersUpdated, object: nil)
+        if let roomUsersObserver {
+            NotificationCenter.default.removeObserver(roomUsersObserver)
+            self.roomUsersObserver = nil
+        }
 
         AppLogger.shared.debug("Cleanup completed", category: .ui)
     }

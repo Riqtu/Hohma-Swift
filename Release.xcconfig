@@ -1,0 +1,13 @@
+// Release — production (схема «Hohma» → Archive / TestFlight)
+
+SLASH = /
+
+API_URL = https:$(SLASH)$(SLASH)hohma.su/api/trpc
+WS_URL = https:$(SLASH)$(SLASH)ws.hohma.su
+DOMAIN = https:$(SLASH)$(SLASH)hohma.su
+TELEGRAM_DOMAIN = https:$(SLASH)$(SLASH)hohma.su
+
+// Только секреты — без dev URL (см. Config.local.dev.xcconfig для Debug)
+KINOPOISK_API_KEY =
+
+#include? "Config.local.xcconfig"

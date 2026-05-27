@@ -1,0 +1,4 @@
+// Секреты (подключается и в Debug, и в Release).
+// cp Config.local.xcconfig.example Config.local.xcconfig
+
+KINOPOISK_API_KEY = YOUR_KINOPOISK_API_KEY_HERE

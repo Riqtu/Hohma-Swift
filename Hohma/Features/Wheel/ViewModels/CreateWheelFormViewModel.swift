@@ -13,7 +13,6 @@ final class CreateWheelFormViewModel: ObservableObject {
     @Published var isSuccess = false
 
     private let wheelService = FortuneWheelService.shared
-    private let trpcService = TRPCService.shared
 
     var canCreate: Bool {
         !wheelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedThemeId != nil
@@ -45,7 +44,6 @@ final class CreateWheelFormViewModel: ObservableObject {
                 name: wheelName.trimmingCharacters(in: .whitespacesAndNewlines),
                 themeId: selectedThemeId!,
                 status: .created,
-                userId: trpcService.currentUser?.id,
                 isPrivate: isPrivate
             )
 

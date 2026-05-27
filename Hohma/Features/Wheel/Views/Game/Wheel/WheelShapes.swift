@@ -41,6 +41,28 @@ struct WinnerOverlayView: View {
                     showBorder: true,
                     borderColor: .white
                 )
+            } else {
+                let initials =
+                    sector.name
+                    .split(separator: " ")
+                    .compactMap { $0.first }
+                    .prefix(2)
+                let initialsText =
+                    initials.isEmpty
+                    ? String(sector.name.prefix(2)).uppercased()
+                    : String(initials).uppercased()
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(width: 80, height: 80)
+                    Text(initialsText)
+                        .font(.title2.bold())
+                        .foregroundColor(.white)
+                }
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 2)
+                )
             }
 
             VStack(spacing: 8) {

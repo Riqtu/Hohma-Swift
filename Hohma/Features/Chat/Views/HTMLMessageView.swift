@@ -182,9 +182,10 @@ struct HTMLMessageView: UIViewRepresentable {
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
             if navigationAction.navigationType == .linkActivated {
-                // Открываем ссылки в Safari
                 if let url = navigationAction.request.url {
-                    UIApplication.shared.open(url)
+                    Task { @MainActor in
+                        await UIApplication.shared.open(url)
+                    }
                     decisionHandler(.cancel)
                     return
                 }
@@ -193,16 +194,15 @@ struct HTMLMessageView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            // После загрузки вызываем обновление высоты несколько раз для надежности
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
-                
-                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 секунды (всего 0.3)
-                webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
-                
-                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 секунды (всего 0.6)
-                webView.evaluateJavaScript("updateHeight();", completionHandler: nil)
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                _ = try? await webView.evaluateJavaScript("updateHeight();")
+
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                _ = try? await webView.evaluateJavaScript("updateHeight();")
+
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                _ = try? await webView.evaluateJavaScript("updateHeight();")
             }
         }
     }

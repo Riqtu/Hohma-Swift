@@ -1,0 +1,7 @@
+// Только для схемы «Hohma Debug» (локальный API на iPhone).
+// cp Config.local.dev.xcconfig.example Config.local.dev.xcconfig
+
+SLASH = /
+API_URL = http:$(SLASH)$(SLASH)192.168.1.116:3001/api/trpc
+WS_URL = http:$(SLASH)$(SLASH)192.168.1.116:3123
+DOMAIN = http:$(SLASH)$(SLASH)192.168.1.116:3001

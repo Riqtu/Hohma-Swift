@@ -267,6 +267,26 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
         AppLogger.shared.debug("Registered handler for event: \(event.rawValue)", category: .socket)
     }
 
+    /// Снимает обработчики Socket.IO для экрана колеса (перед повторной регистрацией).
+    func removeWheelRoomEventHandlers() {
+        guard let socket = socket else { return }
+        let events: [SocketIOEvent] = [
+            .wheelSpin,
+            .sectorsShuffle,
+            .syncSectors,
+            .sectorUpdated,
+            .sectorCreated,
+            .sectorRemoved,
+            .roomUsers,
+            .requestSectors,
+            .currentSectors,
+        ]
+        for event in events {
+            socket.off(event.rawValue)
+        }
+        AppLogger.shared.debug("Removed wheel room Socket.IO handlers", category: .socket)
+    }
+
     // MARK: - Event Emission
     func emit(_ event: SocketIOEvent, data: [String: Any]) {
         guard let socket = socket else {
@@ -391,7 +411,7 @@ class SocketIOServiceV2: ObservableObject, SocketIOServiceProtocol {
 
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1.0 секунда
+            try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1.0 секунда
             self.connect()
         }
     }

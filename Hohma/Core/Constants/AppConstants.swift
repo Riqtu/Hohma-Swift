@@ -77,6 +77,9 @@ enum AppConstants {
     /// Количество дополнительных оборотов колеса
     static let wheelExtraSpins: Double = 360.0 * 3
 
+    /// Ставки в UI ещё не готовы: при `false` клиент не вызывает `bet.payoutBets` (сервер всё равно разрешает выплату только автору колеса).
+    static let fortuneWheelAutomaticPayoutEnabled = false
+
     // MARK: - Reconnection
 
     /// Максимальное количество попыток переподключения

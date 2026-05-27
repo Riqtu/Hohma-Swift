@@ -337,50 +337,69 @@ struct GeneratingView: View {
                                 if movie.generationStatus == .completed {
                                     MovieCardRow(movie: movie)
                                 } else {
-                                    // Иначе показываем прогресс
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            // Показываем название только если оно сгенерировано
-                                            if movie.hasGeneratedTitle {
-                                                Text(movie.displayTitle)
-                                                    .font(.headline)
-                                            } else {
-                                                Text("Генерация названия...")
-                                                    .font(.headline)
-                                                    .foregroundColor(.secondary)
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                if movie.hasGeneratedTitle {
+                                                    Text(movie.displayTitle)
+                                                        .font(.headline)
+                                                } else {
+                                                    Text("Генерация названия...")
+                                                        .font(.headline)
+                                                        .foregroundColor(.secondary)
+                                                }
+
+                                                if let progress = viewModel.generationProgress[
+                                                    movie.id]
+                                                {
+                                                    ProgressView(value: progress.progress)
+                                                        .progressViewStyle(
+                                                            LinearProgressViewStyle())
+                                                    Text(progress.status.displayName)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                } else {
+                                                    Text("Ожидание...")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
                                             }
+
+                                            Spacer()
 
                                             if let progress = viewModel.generationProgress[movie.id]
                                             {
-                                                ProgressView(value: progress.progress)
-                                                    .progressViewStyle(LinearProgressViewStyle())
-                                                Text(progress.status.displayName)
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            } else {
-                                                Text("Ожидание...")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
+                                                if progress.status == .generating
+                                                    || progress.status == .titleReady
+                                                    || progress.status == .posterReady
+                                                    || progress.status == .descriptionReady
+                                                {
+                                                    ProgressView()
+                                                        .scaleEffect(0.8)
+                                                } else if progress.status == .completed {
+                                                    Image(systemName: "checkmark.circle.fill")
+                                                        .foregroundColor(.green)
+                                                } else if progress.status == .failed {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .foregroundColor(.red)
+                                                }
                                             }
                                         }
 
-                                        Spacer()
-
-                                        if let progress = viewModel.generationProgress[movie.id] {
-                                            if progress.status == .generating
-                                                || progress.status == .titleReady
-                                                || progress.status == .posterReady
-                                                || progress.status == .descriptionReady
-                                            {
-                                                ProgressView()
-                                                    .scaleEffect(0.8)
-                                            } else if progress.status == .completed {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.green)
-                                            } else if progress.status == .failed {
-                                                Image(systemName: "xmark.circle.fill")
+                                        if movie.generationStatus == .failed {
+                                            if let error = movie.generationError, !error.isEmpty {
+                                                Text(error)
+                                                    .font(.caption)
                                                     .foregroundColor(.red)
                                             }
+                                            Button("Перегенерировать постер") {
+                                                Task {
+                                                    await viewModel.regeneratePoster(
+                                                        movieCardId: movie.id)
+                                                }
+                                            }
+                                            .font(.caption)
+                                            .buttonStyle(.borderedProminent)
                                         }
                                     }
                                     .padding()
@@ -425,6 +444,31 @@ struct VotingView: View {
     }
 }
 
+struct VotingCountdownView: View {
+    let secondsRemaining: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "timer")
+            Text(formatTime(secondsRemaining))
+                .monospacedDigit()
+                .fontWeight(.semibold)
+        }
+        .font(.subheadline)
+        .foregroundColor(secondsRemaining <= 10 ? .red : .white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.black.opacity(0.45))
+        .cornerRadius(8)
+    }
+
+    private func formatTime(_ totalSeconds: Int) -> String {
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
 // MARK: - Voting Selection View
 
 struct VotingSelectionView: View {
@@ -460,6 +504,11 @@ struct VotingSelectionView: View {
                 // Информация о раунде поверх карточки внизу в безопасной зоне
                 VStack {
                     HStack {
+                        if let seconds = viewModel.votingSecondsRemaining {
+                            VotingCountdownView(secondsRemaining: seconds)
+                                .padding(.leading)
+                        }
+
                         Spacer()
 
                         VStack(alignment: .trailing, spacing: 4) {
@@ -520,6 +569,10 @@ struct VotingWaitingView: View {
                         .font(.title)
                         .bold()
                         .foregroundColor(.secondary)
+
+                    if let seconds = viewModel.votingSecondsRemaining {
+                        VotingCountdownView(secondsRemaining: seconds)
+                    }
 
                     if let progress = viewModel.votingProgress {
                         Text("Голосов: \(progress.totalVotes) / \(progress.totalParticipants)")

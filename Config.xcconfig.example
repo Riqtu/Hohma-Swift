@@ -1,13 +1,7 @@
 //
-//  Config.xcconfig.example
-//  Hohma
+//  Устарело: используйте Debug.xcconfig / Release.xcconfig и Config.local.xcconfig
 //
-//  Example configuration file for build settings
-//  Copy this file to Config.xcconfig and set your actual values
+//  1. cp Config.local.xcconfig.example Config.local.xcconfig
+//  2. Укажите KINOPOISK_API_KEY и при необходимости IP Mac для устройства
+//  3. Схема «Hohma Debug» — dev, «Hohma» — prod
 //
-
-// API Keys - Replace with your actual API keys
-KINOPOISK_API_KEY = YOUR_KINOPOISK_API_KEY_HERE
-
-// Other configuration
-// Add other environment-specific settings here

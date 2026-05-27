@@ -99,10 +99,27 @@ class MovieBattleService: ObservableObject, TRPCServiceProtocol {
         )
     }
 
+    func finalizeVotingRoundIfDue(battleId: String) async throws -> FinalizeVotingRoundResponse {
+        return try await trpcService.executePOST(
+            endpoint: "movieBattle.finalizeVotingRoundIfDue",
+            body: ["battleId": battleId]
+        )
+    }
+
     func deleteBattle(battleId: String) async throws {
         let _: EmptyResponse = try await trpcService.executePOST(
             endpoint: "movieBattle.delete",
             body: ["battleId": battleId]
+        )
+    }
+
+    func regeneratePoster(battleId: String, movieCardId: String) async throws -> MovieCard {
+        return try await trpcService.executePOST(
+            endpoint: "movieBattle.regeneratePoster",
+            body: [
+                "battleId": battleId,
+                "movieCardId": movieCardId,
+            ]
         )
     }
 
@@ -158,4 +175,3 @@ extension VoteRequest {
         ]
     }
 }
-
